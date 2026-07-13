@@ -1,0 +1,123 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/tab",
+	"version": "1.0.0",
+	"title": "Tab",
+	"category": "airo-wp",
+	"description": "Individual tab panel within a Tabs block.",
+	"keywords": [
+		"tab",
+		"panel"
+	],
+	"textdomain": "airo-wp",
+	"icon": "tickets-alt",
+	"parent": [
+		"airo-wp/tabs"
+	],
+	"attributes": {
+		"uniqueId": {
+			"type": "string",
+			"default": ""
+		},
+		"title": {
+			"type": "string",
+			"default": "Tab"
+		},
+		"icon": {
+			"type": "string",
+			"default": ""
+		},
+		"iconStyle": {
+			"type": "string",
+			"enum": ["filled", "outlined"]
+		},
+		"strokeWidth": {
+			"type": "number",
+			"default": 1.5
+		},
+		"iconPosition": {
+			"type": "string",
+			"default": "none",
+			"enum": [
+				"none",
+				"left",
+				"right",
+				"top"
+			]
+		},
+		"anchor": {
+			"type": "string",
+			"default": ""
+		},
+		"style": {
+			"type": "object",
+			"default": {
+				"spacing": {
+					"padding": {
+						"top": "var:preset|spacing|40",
+						"right": "var:preset|spacing|40",
+						"bottom": "var:preset|spacing|40",
+						"left": "var:preset|spacing|40"
+					}
+				}
+			}
+		}
+	},
+	"usesContext": [
+		"airo-wp/tabs/activeTab",
+		"airo-wp/tabs/orientation",
+		"airo-wp/tabs/tabStyle"
+	],
+	"example": {
+		"attributes": {
+			"title": "Tab Panel",
+			"icon": ""
+		},
+		"innerBlocks": [
+			{
+				"name": "core/heading",
+				"attributes": {
+					"level": 3,
+					"content": "Tab Content"
+				}
+			},
+			{
+				"name": "core/paragraph",
+				"attributes": {
+					"content": "This is the content for this tab panel. You can add any blocks here including text, images, buttons, and more."
+				}
+			}
+		]
+	},
+	"supports": {
+		"html": false,
+		"reusable": false,
+		"align": [
+			"left",
+			"center",
+			"right",
+			"wide",
+			"full"
+		],
+		"spacing": {
+			"margin": false,
+			"padding": true,
+			"blockGap": true
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"link": true
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalFontFamily": true,
+			"__experimentalFontWeight": true
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css"
+}

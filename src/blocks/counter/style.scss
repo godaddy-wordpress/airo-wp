@@ -1,0 +1,134 @@
+/**
+ * Counter Block - Frontend Styles
+ *
+ * Individual counter item with icon, number, and label
+ */
+
+.airo-wp-counter {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 1.5rem;
+	box-sizing: border-box;
+	// Inherit color from parent Counter Group by default
+	// WordPress applies inline style when user chooses a color on individual counter, which takes precedence
+	// Falls back to theme contrast color if no parent color is set
+	color: inherit;
+
+	// Icon
+	&__icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 1rem;
+		// Inherit color from parent or use currentColor as fallback
+		color: currentcolor;
+		opacity: 0.9;
+
+		svg {
+			width: 48px;
+			max-width: 100%;
+			height: auto;
+		}
+
+		&--top {
+			margin-bottom: 1rem;
+		}
+
+		&--left {
+			margin-right: 1rem;
+			margin-bottom: 0;
+		}
+
+		&--right {
+			margin-left: 1rem;
+			margin-bottom: 0;
+		}
+	}
+
+	// Content wrapper (number + optional side icons)
+	&__content {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+
+		&--icon-left,
+		&--icon-right {
+			flex-direction: row;
+		}
+	}
+
+	// Number
+	&__number {
+		// Use em units to scale with parent font-size (WordPress typography controls)
+		font-size: 3em;
+		font-weight: 700;
+		line-height: 1.2;
+		// Inherit from .airo-wp-counter wrapper, which has theme contrast color as default
+		// If user sets color via WordPress panel, inline style on wrapper takes precedence
+		// This prevents inheriting from grandparent containers (like Container blocks)
+		color: currentcolor;
+		margin: 0;
+		transition: color 0.3s ease;
+
+		.airo-wp-counter__value {
+			font-variant-numeric: tabular-nums;
+		}
+	}
+
+	// Label
+	&__label {
+		// Use em units to scale with parent font-size
+		font-size: 1em;
+		// Use opacity for visual hierarchy while respecting parent color
+		opacity: 0.8;
+		margin-top: 0.5rem;
+		margin-bottom: 0;
+		line-height: 1.5;
+		transition: color 0.3s ease, opacity 0.3s ease;
+	}
+
+	// Hover state
+	&:hover {
+
+		.airo-wp-counter__number {
+			// Priority: custom hover color > theme accent-2 > counter's text color (currentColor)
+			// If user sets hover color via panel, it's applied as CSS custom property
+			// Otherwise falls back to theme accent color, then counter's own text color
+			color: var(
+				--airo-wp-counter-hover-color,
+				var(--wp--preset--color--accent-2, currentColor)
+			);
+		}
+
+		.airo-wp-counter__label {
+			opacity: 1;
+		}
+	}
+
+	// Accessibility: Respect prefers-reduced-motion
+	@media (prefers-reduced-motion: reduce) {
+
+		.airo-wp-counter__number,
+		.airo-wp-counter__label {
+			transition: none;
+		}
+	}
+
+	// Responsive: Smaller number on mobile
+	@media (max-width: 767px) {
+		padding: 1rem;
+
+		&__number {
+			// Scale down proportionally on mobile
+			font-size: 2.5em;
+		}
+
+		&__icon svg {
+			width: 36px;
+			height: 36px;
+		}
+	}
+}

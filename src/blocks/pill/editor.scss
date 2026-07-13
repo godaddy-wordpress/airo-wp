@@ -1,0 +1,29 @@
+/**
+ * Pill Block Editor Styles
+ *
+ * `.airo-wp-justify` (shared, imported into src/styles/editor.scss) gives the
+ * `.airo-wp-pill` wrapper `display: flex` and justify-content — no alignment rules
+ * are duplicated here. See style.scss for the frontend rationale.
+ */
+
+.airo-wp-pill__content {
+	// Cursor indication for editing
+	cursor: text;
+
+	// Placeholder styling
+	&[data-rich-text-placeholder]::before {
+		opacity: 0.6;
+	}
+
+	// CRITICAL: Must duplicate default styles from style.scss for editor/frontend parity
+	// Default styles - always applied as base, overridden by WordPress color transfers
+	padding: 0.5em 1em;
+	background-color: var(--wp--preset--color--primary, #2563eb);
+	color: var(--wp--preset--color--base, #fff);
+	font-weight: 500;
+	line-height: 1.5;
+	border-radius: 999px;
+	display: inline-block;
+	transition: all 0.2s ease-in-out;
+	white-space: nowrap;
+}

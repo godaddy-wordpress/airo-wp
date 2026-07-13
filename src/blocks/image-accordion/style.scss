@@ -1,0 +1,68 @@
+/**
+ * Image Accordion Block - Frontend Styles
+ *
+ * Horizontal accordion with hover/click expansion and smooth flexbox transitions
+ */
+
+.airo-wp-image-accordion {
+	// CSS Custom Properties (set from block attributes)
+	--transition-duration: var(--airo-wp-image-accordion-transition, 0.5s);
+	--expanded-ratio: var(--airo-wp-image-accordion-expanded-ratio, 3);
+
+	// Gap and height default here (not inline from save()) so Style Kits and
+	// patterns can retheme them. An explicit author value is written inline as
+	// --airo-wp-image-accordion-<prop> by save() and wins the first slot; unset it
+	// falls through to the theme token, then the literal historical default.
+	//   gap:    --airo-wp-image-accordion-gap → --wp--preset--spacing--20 → 4px
+	//   height: --airo-wp-image-accordion-height
+	//           → --wp--custom--airo-wp--image-accordion--height → 500px
+	--accordion-gap: var(
+		--airo-wp-image-accordion-gap,
+		var(--wp--preset--spacing--20, 4px)
+	);
+	--accordion-height: var(
+		--airo-wp-image-accordion-height,
+		var(--wp--custom--airo-wp--image-accordion--height, 500px)
+	);
+
+	display: flex;
+	flex-direction: row;
+	gap: var(--accordion-gap);
+	overflow: hidden;
+	border-radius: 8px;
+	position: relative;
+	width: 100%;
+	height: var(--accordion-height);
+	min-height: 400px;
+
+	// Items container
+	&__items {
+		display: flex;
+		flex-direction: row;
+		gap: var(--accordion-gap);
+		width: 100%;
+		height: 100%;
+	}
+
+	// Alignment support
+	&.alignwide,
+	&.alignfull {
+		width: 100%;
+		max-width: none;
+	}
+
+	// Responsive: Stack vertically on mobile
+	@media (max-width: 768px) {
+		flex-direction: column;
+		height: auto;
+		min-height: 600px;
+
+		.airo-wp-image-accordion-item {
+			min-height: 150px;
+		}
+
+		.airo-wp-image-accordion__items {
+			flex-direction: column;
+		}
+	}
+}

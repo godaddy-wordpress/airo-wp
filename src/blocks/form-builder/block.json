@@ -1,0 +1,240 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/form-builder",
+	"version": "1.0.0",
+	"title": "Form Builder",
+	"category": "airo-wp",
+	"description": "Create custom forms with multiple field types, AJAX submission, and spam protection.",
+	"keywords": [
+		"form",
+		"contact",
+		"submit",
+		"fields",
+		"survey"
+	],
+	"textdomain": "airo-wp",
+	"icon": "forms",
+	"attributes": {
+		"formId": {
+			"type": "string",
+			"default": ""
+		},
+		"hasFields": {
+			"type": "boolean",
+			"default": true
+		},
+		"submitButtonText": {
+			"type": "string",
+			"default": "Submit"
+		},
+		"submitButtonAlignment": {
+			"type": "string",
+			"default": "left",
+			"enum": [
+				"left",
+				"center",
+				"right"
+			]
+		},
+		"submitButtonPosition": {
+			"type": "string",
+			"default": "below",
+			"enum": [
+				"below",
+				"inline"
+			]
+		},
+		"ajaxSubmit": {
+			"type": "boolean",
+			"default": true
+		},
+		"successMessage": {
+			"type": "string",
+			"default": "Thank you! Your form has been submitted successfully."
+		},
+		"errorMessage": {
+			"type": "string",
+			"default": "There was an error submitting the form. Please try again."
+		},
+		"redirectUrl": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldSpacing": {
+			"type": "string",
+			"default": ""
+		},
+		"inputHeight": {
+			"type": "string",
+			"default": ""
+		},
+		"inputPadding": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldLabelColor": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldBorderColor": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldBorderRadius": {
+			"type": "string",
+			"default": ""
+		},
+		"submitButtonColor": {
+			"type": "string",
+			"default": ""
+		},
+		"submitButtonBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"submitButtonPaddingVertical": {
+			"type": "string",
+			"default": ""
+		},
+		"submitButtonPaddingHorizontal": {
+			"type": "string",
+			"default": ""
+		},
+		"submitButtonFontSize": {
+			"type": "string",
+			"default": ""
+		},
+		"submitButtonHeight": {
+			"type": "string",
+			"default": ""
+		},
+		"submitButtonHoverColor": {
+			"type": "string",
+			"default": ""
+		},
+		"submitButtonHoverBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"enableHoneypot": {
+			"type": "boolean",
+			"default": true
+		},
+		"enableRateLimit": {
+			"type": "boolean",
+			"default": true
+		},
+		"rateLimitCount": {
+			"type": "number",
+			"default": 3
+		},
+		"rateLimitWindow": {
+			"type": "number",
+			"default": 60
+		},
+		"enableTurnstile": {
+			"type": "boolean",
+			"default": false
+		},
+		"enableEmail": {
+			"type": "boolean",
+			"default": true
+		},
+		"emailTo": {
+			"type": "string",
+			"default": ""
+		},
+		"emailSubject": {
+			"type": "string",
+			"default": "New Form Submission"
+		},
+		"emailFromName": {
+			"type": "string",
+			"default": ""
+		},
+		"emailFromEmail": {
+			"type": "string",
+			"default": ""
+		},
+		"emailReplyTo": {
+			"type": "string",
+			"default": ""
+		},
+		"emailBody": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"providesContext": {
+		"airo-wp/form/submitButtonText": "submitButtonText",
+		"airo-wp/form/submitButtonColor": "submitButtonColor",
+		"airo-wp/form/fieldLabelColor": "fieldLabelColor",
+		"airo-wp/form/fieldBorderColor": "fieldBorderColor",
+		"airo-wp/form/fieldBackgroundColor": "fieldBackgroundColor",
+		"airo-wp/form/fieldSpacing": "fieldSpacing",
+		"airo-wp/form/fieldBorderRadius": "fieldBorderRadius",
+		"airo-wp/form/inputHeight": "inputHeight",
+		"airo-wp/form/inputPadding": "inputPadding",
+		"airo-wp/form/formId": "formId"
+	},
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true,
+			"__experimentalDefaultControls": {
+				"margin": false,
+				"padding": true
+			}
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"__experimentalDefaultControls": {
+				"background": false,
+				"text": false
+			}
+		}
+	},
+	"example": {
+		"attributes": {
+			"submitButtonText": "Send Message"
+		},
+		"innerBlocks": [
+			{
+				"name": "airo-wp/form-text-field",
+				"attributes": {
+					"label": "Name",
+					"required": true
+				}
+			},
+			{
+				"name": "airo-wp/form-email-field",
+				"attributes": {
+					"label": "Email",
+					"required": true
+				}
+			},
+			{
+				"name": "airo-wp/form-textarea-field",
+				"attributes": {
+					"label": "Message"
+				}
+			}
+		]
+	},
+	"editorScript": "file:./index.js",
+	"viewScript": "file:./view.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./index.css"
+}

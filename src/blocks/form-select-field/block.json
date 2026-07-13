@@ -1,0 +1,97 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/form-select-field",
+	"version": "1.0.0",
+	"title": "Select Field",
+	"category": "airo-wp",
+	"description": "A dropdown select field for forms.",
+	"keywords": [
+		"form",
+		"select",
+		"dropdown",
+		"options",
+		"choice"
+	],
+	"parent": [
+		"airo-wp/form-builder"
+	],
+	"textdomain": "airo-wp",
+	"icon": "menu",
+	"supports": {
+		"html": false,
+		"anchor": false,
+		"customClassName": false,
+		"reusable": false
+	},
+	"usesContext": [
+		"airo-wp/form/fieldSpacing",
+		"airo-wp/form/fieldLabelColor",
+		"airo-wp/form/fieldBorderColor",
+		"airo-wp/form/fieldBackgroundColor",
+		"airo-wp/form/inputHeight",
+		"airo-wp/form/inputPadding"
+	],
+	"attributes": {
+		"fieldName": {
+			"type": "string",
+			"default": ""
+		},
+		"label": {
+			"type": "string",
+			"default": "Select Option"
+		},
+		"helpText": {
+			"type": "string",
+			"default": ""
+		},
+		"required": {
+			"type": "boolean",
+			"default": false
+		},
+		"defaultValue": {
+			"type": "string",
+			"default": ""
+		},
+		"options": {
+			"type": "array",
+			"default": [
+				{
+					"label": "Option 1",
+					"value": "option-1"
+				},
+				{
+					"label": "Option 2",
+					"value": "option-2"
+				},
+				{
+					"label": "Option 3",
+					"value": "option-3"
+				}
+			],
+			"items": {
+				"type": "object",
+				"properties": {
+					"label": {
+						"type": "string"
+					},
+					"value": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"placeholder": {
+			"type": "string",
+			"default": "-- Select an option --"
+		},
+		"fieldWidth": {
+			"type": "string",
+			"default": "100"
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"render": "file:./render.php"
+}

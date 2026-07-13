@@ -1,0 +1,564 @@
+/**
+ * Form Builder Block - Frontend Styles
+ *
+ * @since 1.0.0
+ */
+
+.airo-wp-form-builder {
+	// CSS Custom Properties. These are the inherited defaults: each reads a
+	// theme.json custom property (settings.custom.airowp.form.*, which a
+	// Style Kit can set) and falls back to a sane value. When the author sets an
+	// explicit value on the block it is written as an inline style that overrides
+	// the token here; when omitted, the form inherits the theme.
+	--airo-wp-form-field-spacing: var(
+		--wp--custom--airo-wp--form--field-spacing,
+		1.5rem
+	);
+	--airo-wp-form-input-height: var(
+		--wp--custom--airo-wp--form--input-height,
+		44px
+	);
+	--airo-wp-form-input-padding: var(
+		--wp--custom--airo-wp--form--input-padding,
+		0.75rem
+	);
+	--airo-wp-form-label-color: inherit;
+	--airo-wp-form-border-color: #d1d5db;
+	--airo-wp-form-border-radius: 0.375rem;
+	--airo-wp-form-focus-color: var(--wp--preset--color--primary, #2563eb);
+	--airo-wp-form-error-color: #dc2626;
+	--airo-wp-form-success-color: #16a34a;
+	// Button colors intentionally not set here - uses theme defaults unless overridden
+
+	// The wrapper itself must never render a border. WordPress core ships
+	// `html :where([style*="border-color"]) { border-style: solid; }`, whose
+	// substring match catches the `--airo-wp-form-border-color` custom property in
+	// this block's inline style and forces a solid border (with currentColor and
+	// a default width) around the whole form. The border color is only ever
+	// consumed by the field inputs, never the wrapper, so reset it here.
+	border-style: none;
+
+	// Prevents padding + border from exceeding container width when border-radius is applied
+	box-sizing: border-box;
+	padding: 1rem;
+	width: 100%;
+	max-width: 100%;
+}
+
+.airo-wp-form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--airo-wp-form-field-spacing);
+	width: 100%;
+
+	// Form fields container
+	&__fields {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: var(--airo-wp-form-field-spacing);
+		align-items: flex-start;
+	}
+
+	// Footer with submit button
+	&__footer {
+		display: flex;
+		margin-top: var(--airo-wp-form-field-spacing);
+	}
+
+	// Submit button - hover behavior mirrors icon-button defaults
+	&__submit {
+		// No color/background rules - let theme handle via wp-element-button.
+		// Custom colors and sizing applied as inline styles via block attributes.
+		// Intentional asymmetry with the field tokens above: those custom
+		// properties fall back to the old hardcoded pixel defaults, so migrated
+		// forms stay pixel-stable. The submit button deliberately has NO such
+		// fallback — when its height/padding attributes are unset (or stripped on
+		// migration) it inherits the theme's global button styling (wp-element-button)
+		// rather than a baked 44px, which is the requested behaviour.
+
+		// Hover animation support
+		overflow: hidden;
+		position: relative;
+		text-decoration: none !important;
+		transition: all 0.2s ease;
+		cursor: pointer;
+
+		&:hover {
+			opacity: 0.9;
+			transform: translateY(-1px);
+			text-decoration: none !important;
+		}
+
+		&:active {
+			transform: translateY(0);
+			text-decoration: none !important;
+		}
+
+		&:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+
+			&:hover {
+				transform: none;
+				opacity: 0.5;
+			}
+		}
+
+		// Inline button (for subscribe forms, etc.)
+		// Sizing is controlled via block attributes (inline styles)
+		&--inline {
+			flex: 0 0 auto;
+			width: auto;
+		}
+
+		// Loading state
+		&.airo-wp-form__submit--loading {
+			color: transparent;
+			pointer-events: none;
+
+			&::after {
+				content: '';
+				position: absolute;
+				width: 16px;
+				height: 16px;
+				top: 50%;
+				left: 50%;
+				margin-left: -8px;
+				margin-top: -8px;
+				border: 2px solid currentcolor;
+				border-radius: 50%;
+				border-top-color: transparent;
+				animation: airo-wp-form-spinner 0.6s linear infinite;
+				color: inherit;
+			}
+		}
+	}
+
+	// Message container (success/error)
+	&__message {
+		margin-top: 1rem;
+		padding: 1rem;
+		border-radius: var(--airo-wp-form-border-radius);
+		font-size: 0.875rem;
+		line-height: 1.5;
+
+		&--success {
+			color: var(--airo-wp-form-success-color);
+			background-color: rgb(220 252 231); // light green
+			border: 1px solid var(--airo-wp-form-success-color);
+		}
+
+		&--error {
+			color: var(--airo-wp-form-error-color);
+			background-color: rgb(254 226 226); // light red
+			border: 1px solid var(--airo-wp-form-error-color);
+		}
+	}
+}
+
+// Turnstile widget container
+.airo-wp-turnstile-widget {
+	margin-top: var(--airo-wp-form-field-spacing);
+	width: 100%;
+}
+
+// Button alignment modifiers
+.airo-wp-form-builder--align-left {
+
+	.airo-wp-form__footer {
+		justify-content: flex-start;
+	}
+}
+
+.airo-wp-form-builder--align-center {
+
+	.airo-wp-form__footer {
+		justify-content: center;
+	}
+}
+
+.airo-wp-form-builder--align-right {
+
+	.airo-wp-form__footer {
+		justify-content: flex-end;
+	}
+}
+
+// Inline button mode (for subscribe forms)
+.airo-wp-form-builder--button-inline {
+
+	.airo-wp-form__fields {
+		align-items: flex-end;
+	}
+
+	// Auto-size the last form field to share its row with the button.
+	// Overrides any explicit field width so users don't need to manually
+	// shrink the last field when switching to inline mode.
+	.airo-wp-form-field:last-of-type {
+		flex: 1 1 0 !important;
+		max-width: none !important;
+
+		// Mobile: force full width so the button wraps to a new line
+		@media (max-width: 768px) {
+			flex-basis: 100% !important;
+		}
+	}
+
+	.airo-wp-form__submit--inline {
+		flex: 0 0 auto;
+		width: auto;
+		// Align button bottom with input bottom — compensates for the
+		// form field's internal label-to-input gap (0.5rem)
+		margin-bottom: 0.5rem;
+
+		// Mobile: stack below the field with spacing
+		@media (max-width: 768px) {
+			margin-bottom: 0;
+			margin-top: 0.5rem;
+		}
+	}
+
+	.airo-wp-form__footer {
+		display: none;
+	}
+}
+
+// Loading spinner animation
+@keyframes airo-wp-form-spinner {
+
+	0% {
+		transform: rotate(0deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+
+	.airo-wp-form__submit {
+		width: 100%; // Full width on mobile for easier tapping
+	}
+
+	.airo-wp-form-builder--align-left,
+	.airo-wp-form-builder--align-center,
+	.airo-wp-form-builder--align-right {
+
+		.airo-wp-form__footer {
+			justify-content: stretch;
+		}
+	}
+
+}
+
+// Print styles
+@media print {
+
+	.airo-wp-form__submit {
+		display: none;
+	}
+
+	.airo-wp-form__message {
+		display: none;
+	}
+}
+
+// ============================================================================
+// HOVER COLORS
+// ============================================================================
+// Custom hover colors via CSS variables (same pattern as icon-button)
+
+// No animation — instant background transition
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"]:not([class*="airo-wp-form__submit--"]):hover {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: background-color 0.3s ease;
+}
+
+// Zoom In — preserve transform transition
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"].airo-wp-form__submit--zoom-in:hover {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+// Lift — preserve transform and box-shadow transitions
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"].airo-wp-form__submit--lift:hover {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: transform 0.5s ease, box-shadow 0.5s ease, background-color 0.3s ease;
+}
+
+// Shrink — preserve transform transition
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"].airo-wp-form__submit--shrink:hover {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: transform 0.4s ease, background-color 0.3s ease;
+}
+
+// Border Pulse — preserve border-width transition
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"].airo-wp-form__submit--border-pulse:hover {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: border-width 0.3s ease, background-color 0.3s ease;
+}
+
+// Border Glow — preserve box-shadow transition
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"].airo-wp-form__submit--border-glow:hover {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: all 0.3s ease, background-color 0.3s ease;
+}
+
+// Slide animations — fade in after slide completes
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"].airo-wp-form__submit--slide-left:hover,
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"].airo-wp-form__submit--slide-right:hover,
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"].airo-wp-form__submit--slide-down:hover,
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"].airo-wp-form__submit--slide-up:hover {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: background-color 0.1s ease 0.3s;
+}
+
+// Hover text color
+.airo-wp-form__submit[style*="--airo-wp-button-hover-color"]:hover {
+	color: var(--airo-wp-button-hover-color) !important;
+	transition: color 0.3s ease;
+}
+
+// ============================================================================
+// HOVER ANIMATIONS
+// ============================================================================
+
+// Fill Diagonal — Diagonal sweep fill effect
+.airo-wp-form__submit.airo-wp-form__submit--fill-diagonal {
+
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: "";
+		position: absolute;
+		top: 0;
+		left: -150%;
+		width: 150%;
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: left 0.5s ease;
+		z-index: 0;
+		transform: skewX(-20deg);
+		transform-origin: top left;
+	}
+
+	// Button text above pseudo-element
+	> * {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		left: 0;
+	}
+}
+
+// Zoom In — Scale up on hover
+.airo-wp-form__submit.airo-wp-form__submit--zoom-in {
+	transform: scale(1);
+	transition: transform 0.3s ease;
+
+	&:hover {
+		transform: scale(1.05);
+		opacity: 1;
+	}
+}
+
+// Slide Left — Background slides in from right
+.airo-wp-form__submit.airo-wp-form__submit--slide-left {
+
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: "";
+		position: absolute;
+		top: 0;
+		right: -100%;
+		width: 100%;
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: right 0.3s ease;
+		z-index: 0;
+	}
+
+	> * {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		right: 0;
+	}
+}
+
+// Slide Right — Background slides in from left
+.airo-wp-form__submit.airo-wp-form__submit--slide-right {
+
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: "";
+		position: absolute;
+		top: 0;
+		left: -100%;
+		width: 100%;
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: left 0.3s ease;
+		z-index: 0;
+	}
+
+	> * {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		left: 0;
+	}
+}
+
+// Slide Down — Background slides down from top
+.airo-wp-form__submit.airo-wp-form__submit--slide-down {
+
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: "";
+		position: absolute;
+		top: -100%;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: top 0.3s ease;
+		z-index: 0;
+	}
+
+	> * {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		top: 0;
+	}
+}
+
+// Slide Up — Background slides up from bottom
+.airo-wp-form__submit.airo-wp-form__submit--slide-up {
+
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: "";
+		position: absolute;
+		bottom: -100%;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: bottom 0.3s ease;
+		z-index: 0;
+	}
+
+	> * {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		bottom: 0;
+	}
+}
+
+// Border Pulse — Animated border effect using box-shadow
+.airo-wp-form__submit.airo-wp-form__submit--border-pulse {
+	transition: box-shadow 0.3s ease;
+
+	&:hover {
+		animation: airo-wp-form-border-pulse 1s ease infinite;
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes airo-wp-form-border-pulse {
+
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 currentcolor;
+	}
+
+	50% {
+		box-shadow: 0 0 0 4px currentcolor;
+	}
+}
+
+// Border Glow — Glowing border effect
+.airo-wp-form__submit.airo-wp-form__submit--border-glow {
+	transition: all 0.3s ease;
+
+	&:hover {
+		opacity: 1;
+		transform: none;
+		box-shadow: 0 0 15px currentcolor, 0 0 30px currentcolor, 0 0 45px currentcolor;
+	}
+}
+
+// Lift — Elevate with shadow
+.airo-wp-form__submit.airo-wp-form__submit--lift {
+	transform: translateY(0);
+	transition: transform 0.5s ease, box-shadow 0.5s ease;
+
+	&:hover {
+		transform: translateY(-8px);
+		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2), 0 6px 12px rgba(0, 0, 0, 0.15);
+		opacity: 1;
+	}
+}
+
+// Shrink — Subtle scale down
+.airo-wp-form__submit.airo-wp-form__submit--shrink {
+	transform: scale(1);
+	transition: transform 0.4s ease;
+
+	&:hover {
+		transform: scale(0.95);
+		opacity: 1;
+	}
+}
+
+// No Hover — Explicit opt-out from hover animations
+.airo-wp-form__submit.airo-wp-form__submit--no-hover {
+
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+}

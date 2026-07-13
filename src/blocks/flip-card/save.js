@@ -1,0 +1,45 @@
+/**
+ * Flip Card Block - Save Component
+ *
+ * Saves the flip card with front and back content.
+ *
+ * @since 1.0.0
+ */
+
+import { useBlockProps, useInnerBlocksProps } from '@wordpress/block-editor';
+
+/**
+ * Flip Card Save Component
+ *
+ * @param {Object} props            Component props
+ * @param {Object} props.attributes Block attributes
+ * @return {JSX.Element} Save component
+ */
+export default function FlipCardSave({ attributes }) {
+	const { flipTrigger, flipEffect, flipDirection, flipDuration } = attributes;
+
+	// Block wrapper props
+	const blockProps = useBlockProps.save({
+		className: `airo-wp-flip-card airo-wp-flip-card--${flipTrigger} airo-wp-flip-card--effect-${flipEffect} airo-wp-flip-card--${flipDirection}`,
+		// `width: 100%` is NOT serialized — it is constant for every card and
+		// style.scss already declares it on `.airo-wp-flip-card`. Only the
+		// author-controlled flip duration is written inline.
+		style: {
+			'--airo-wp-flip-duration': flipDuration,
+		},
+		'data-flip-trigger': flipTrigger,
+		'data-flip-effect': flipEffect,
+		'data-flip-direction': flipDirection,
+	});
+
+	// Inner blocks props
+	const innerBlocksProps = useInnerBlocksProps.save({
+		className: 'airo-wp-flip-card__container',
+	});
+
+	return (
+		<div {...blockProps}>
+			<div {...innerBlocksProps} />
+		</div>
+	);
+}

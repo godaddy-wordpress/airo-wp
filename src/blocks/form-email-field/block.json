@@ -1,0 +1,66 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/form-email-field",
+	"version": "1.0.0",
+	"title": "Email Field",
+	"category": "airo-wp",
+	"description": "Email input field with built-in validation.",
+	"keywords": [
+		"form",
+		"email",
+		"input",
+		"field"
+	],
+	"textdomain": "airo-wp",
+	"icon": "email-alt",
+	"parent": [
+		"airo-wp/form-builder"
+	],
+	"attributes": {
+		"fieldName": {
+			"type": "string",
+			"default": ""
+		},
+		"label": {
+			"type": "string",
+			"default": "Email"
+		},
+		"placeholder": {
+			"type": "string",
+			"default": ""
+		},
+		"helpText": {
+			"type": "string",
+			"default": ""
+		},
+		"required": {
+			"type": "boolean",
+			"default": false
+		},
+		"defaultValue": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldWidth": {
+			"type": "string",
+			"default": "100"
+		}
+	},
+	"usesContext": [
+		"airo-wp/form/fieldLabelColor",
+		"airo-wp/form/fieldBorderColor",
+		"airo-wp/form/fieldBackgroundColor",
+		"airo-wp/form/fieldSpacing",
+		"airo-wp/form/formId"
+	],
+	"supports": {
+		"html": false,
+		"reusable": false,
+		"inserter": true
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./index.css",
+	"render": "file:./render.php"
+}

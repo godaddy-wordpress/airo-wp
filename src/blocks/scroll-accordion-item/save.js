@@ -1,0 +1,37 @@
+/**
+ * WordPress dependencies
+ */
+import { useBlockProps, useInnerBlocksProps } from '@wordpress/block-editor';
+import classnames from 'classnames';
+import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+
+/**
+ * Save component for the Scroll Accordion Item block.
+ * Simple container that outputs inner blocks.
+ *
+ * @param {Object} props            - Component props.
+ * @param {Object} props.attributes - Block attributes.
+ * @return {Element} Element to render.
+ */
+export default function Save({ attributes }) {
+	const { overlayColor } = attributes;
+
+	// Apply overlay styles when color is set
+	const overlayStyles = overlayColor
+		? {
+				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+				'--airo-wp-overlay-opacity': '0.8',
+			}
+		: {};
+
+	const blockProps = useBlockProps.save({
+		className: classnames('airo-wp-scroll-accordion-item', {
+			'airo-wp-scroll-accordion-item--has-overlay': !!overlayColor,
+		}),
+		style: overlayColor ? overlayStyles : undefined,
+	});
+
+	const innerBlocksProps = useInnerBlocksProps.save(blockProps);
+
+	return <div {...innerBlocksProps} />;
+}

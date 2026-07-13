@@ -1,0 +1,386 @@
+/**
+ * Shape Divider Controls Component
+ *
+ * Inspector panel controls for configuring shape dividers.
+ *
+ * @since 1.4.2
+ */
+
+import { __ } from '@wordpress/i18n';
+import {
+	PanelBody,
+	SelectControl,
+	RangeControl,
+	ToggleControl,
+	Flex,
+	FlexItem,
+	Notice,
+	Button,
+} from '@wordpress/components';
+import {
+	getShapeDividerOptions,
+	getShapeDivider,
+} from '../utils/shape-dividers';
+import { sanitizeColor } from '../utils/sanitize-color';
+import { convertColorToCSSVar } from '../../../utils/convert-preset-to-css-var';
+
+/**
+ * Shape preview component showing a small preview of the selected shape
+ *
+ * @param {Object}  props                        Component props
+ * @param {string}  props.shape                  Shape name
+ * @param {string}  props.color                  Fill color
+ * @param {string}  props.backgroundColor        Background color behind the shape
+ * @param {boolean} props.flipX                  Flip horizontally
+ * @param {boolean} props.flipY                  Flip vertically
+ * @param {boolean} props.isBottom               Whether this is a bottom divider
+ * @param {string}  props.sectionBackgroundColor Section background color
+ * @param {string}  props.sectionTextColor       Section text color
+ * @return {JSX.Element|null} Preview element
+ */
+function ShapePreview({
+	shape,
+	color,
+	backgroundColor,
+	flipX,
+	flipY,
+	isBottom,
+	sectionBackgroundColor = '',
+	sectionTextColor = '',
+}) {
+	if (!shape) {
+		return null;
+	}
+
+	const shapeElement = getShapeDivider(shape);
+	if (!shapeElement) {
+		return null;
+	}
+
+	// Calculate transform based on flip settings
+	const transforms = [];
+	if (flipX) {
+		transforms.push('scaleX(-1)');
+	}
+	// Bottom dividers are rotated 180 degrees by default, flipY inverts this
+	if (isBottom ? !flipY : flipY) {
+		transforms.push('scaleY(-1)');
+	}
+
+	// Convert preset format to CSS variable before sanitization
+	const safeColor = sanitizeColor(convertColorToCSSVar(color));
+	const safeBackgroundColor = sanitizeColor(
+		convertColorToCSSVar(backgroundColor)
+	);
+
+	return (
+		<div
+			style={{
+				width: '100%',
+				height: '40px',
+				overflow: 'hidden',
+				borderRadius: '4px',
+				backgroundColor:
+					safeBackgroundColor ||
+					sanitizeColor(sectionTextColor) ||
+					'#f0f0f0',
+				marginBottom: '12px',
+			}}
+		>
+			<svg
+				viewBox="0 0 1200 120"
+				preserveAspectRatio="none"
+				style={{
+					width: '100%',
+					height: '100%',
+					fill: safeColor || sectionBackgroundColor || 'transparent',
+					transform:
+						transforms.length > 0
+							? transforms.join(' ')
+							: undefined,
+				}}
+			>
+				{shapeElement}
+			</svg>
+		</div>
+	);
+}
+
+/**
+ * Reusable Shape Divider Panel Component
+ * Renders controls for a single shape divider (top or bottom)
+ * Note: Color controls are in the main color panel, not here.
+ *
+ * @param {Object}   props                        Component props
+ * @param {string}   props.title                  Panel title
+ * @param {string}   props.shape                  Selected shape value
+ * @param {string}   props.color                  Shape color (for preview only)
+ * @param {string}   props.backgroundColor        Background color (for preview only)
+ * @param {number}   props.height                 Shape height
+ * @param {number}   props.width                  Shape width percentage
+ * @param {boolean}  props.flipX                  Flip horizontal
+ * @param {boolean}  props.flipY                  Flip vertical
+ * @param {boolean}  props.front                  Bring to front
+ * @param {boolean}  props.isBottom               Whether this is a bottom divider
+ * @param {Function} props.onChange               Callback for attribute changes
+ * @param {string}   props.sectionBackgroundColor Section background color
+ * @param {string}   props.sectionTextColor       Section text color
+ * @return {JSX.Element} Shape divider panel
+ */
+function ShapeDividerPanel({
+	title,
+	shape,
+	color,
+	backgroundColor,
+	height,
+	width,
+	flipX,
+	flipY,
+	front,
+	isBottom,
+	onChange,
+	sectionBackgroundColor = '',
+	sectionTextColor = '',
+}) {
+	return (
+		<PanelBody title={title} initialOpen={false}>
+			<SelectControl
+				label={__('Shape', 'airo-wp')}
+				value={shape}
+				options={(() => {
+					const [none, ...rest] = getShapeDividerOptions();
+					return [
+						none,
+						{
+							label: __('Theme default', 'airo-wp'),
+							value: 'inherit',
+						},
+						...rest,
+					];
+				})()}
+				onChange={(value) => onChange({ shape: value })}
+				__next40pxDefaultSize
+				__nextHasNoMarginBottom
+			/>
+
+			{shape && (
+				<>
+					<ShapePreview
+						shape={shape}
+						color={color}
+						backgroundColor={backgroundColor}
+						flipX={flipX}
+						flipY={flipY}
+						isBottom={isBottom}
+						sectionBackgroundColor={sectionBackgroundColor}
+						sectionTextColor={sectionTextColor}
+					/>
+
+					<RangeControl
+						label={__('Height', 'airo-wp')}
+						value={height}
+						onChange={(value) => onChange({ height: value })}
+						min={10}
+						max={500}
+						step={1}
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+					/>
+
+					<RangeControl
+						label={__('Width', 'airo-wp')}
+						value={width}
+						onChange={(value) => onChange({ width: value })}
+						min={100}
+						max={300}
+						step={1}
+						help={__(
+							'Stretch the shape wider for more dramatic effect.',
+							'airo-wp'
+						)}
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+					/>
+
+					<Flex>
+						<FlexItem>
+							<ToggleControl
+								label={__('Flip Horizontal', 'airo-wp')}
+								checked={flipX}
+								onChange={(value) => onChange({ flipX: value })}
+								__nextHasNoMarginBottom
+							/>
+						</FlexItem>
+						<FlexItem>
+							<ToggleControl
+								label={__('Flip Vertical', 'airo-wp')}
+								checked={flipY}
+								onChange={(value) => onChange({ flipY: value })}
+								__nextHasNoMarginBottom
+							/>
+						</FlexItem>
+					</Flex>
+
+					<ToggleControl
+						label={__('Bring to Front', 'airo-wp')}
+						checked={front}
+						onChange={(value) => onChange({ front: value })}
+						help={__(
+							'Display the shape above the section content.',
+							'airo-wp'
+						)}
+						__nextHasNoMarginBottom
+					/>
+				</>
+			)}
+		</PanelBody>
+	);
+}
+
+/**
+ * Shape Divider Controls
+ * Note: Color controls are in the main color panel (InspectorControls group="color")
+ *
+ * @param {Object}   props                        Component props
+ * @param {Object}   props.attributes             Block attributes
+ * @param {Function} props.setAttributes          Function to update attributes
+ * @param {string}   props.sectionBackgroundColor Section background color
+ * @param {string}   props.sectionTextColor       Section text color
+ * @return {JSX.Element} Shape divider controls
+ */
+export default function ShapeDividerControls({
+	attributes,
+	setAttributes,
+	sectionBackgroundColor = '',
+	sectionTextColor = '',
+}) {
+	const {
+		shapeDividerTop,
+		shapeDividerTopColor,
+		shapeDividerTopBackgroundColor,
+		shapeDividerTopHeight,
+		shapeDividerTopWidth,
+		shapeDividerTopFlipX,
+		shapeDividerTopFlipY,
+		shapeDividerTopFront,
+		shapeDividerBottom,
+		shapeDividerBottomColor,
+		shapeDividerBottomBackgroundColor,
+		shapeDividerBottomHeight,
+		shapeDividerBottomWidth,
+		shapeDividerBottomFlipX,
+		shapeDividerBottomFlipY,
+		shapeDividerBottomFront,
+		// Video background attribute (from extension)
+		dsgoVideoUrl,
+	} = attributes;
+
+	// Check if video background is enabled
+	const hasVideoBackground = !!dsgoVideoUrl;
+
+	// Handler for top shape divider changes
+	const handleTopChange = (changes) => {
+		const attrMap = {
+			shape: 'shapeDividerTop',
+			color: 'shapeDividerTopColor',
+			backgroundColor: 'shapeDividerTopBackgroundColor',
+			height: 'shapeDividerTopHeight',
+			width: 'shapeDividerTopWidth',
+			flipX: 'shapeDividerTopFlipX',
+			flipY: 'shapeDividerTopFlipY',
+			front: 'shapeDividerTopFront',
+		};
+		const newAttrs = {};
+		Object.entries(changes).forEach(([key, value]) => {
+			if (attrMap[key]) {
+				newAttrs[attrMap[key]] = value;
+			}
+		});
+		setAttributes(newAttrs);
+	};
+
+	// Handler for bottom shape divider changes
+	const handleBottomChange = (changes) => {
+		const attrMap = {
+			shape: 'shapeDividerBottom',
+			color: 'shapeDividerBottomColor',
+			backgroundColor: 'shapeDividerBottomBackgroundColor',
+			height: 'shapeDividerBottomHeight',
+			width: 'shapeDividerBottomWidth',
+			flipX: 'shapeDividerBottomFlipX',
+			flipY: 'shapeDividerBottomFlipY',
+			front: 'shapeDividerBottomFront',
+		};
+		const newAttrs = {};
+		Object.entries(changes).forEach(([key, value]) => {
+			if (attrMap[key]) {
+				newAttrs[attrMap[key]] = value;
+			}
+		});
+		setAttributes(newAttrs);
+	};
+
+	// If video background is enabled, show notice instead of controls
+	if (hasVideoBackground) {
+		return (
+			<PanelBody
+				title={__('Shape Dividers', 'airo-wp')}
+				initialOpen={false}
+			>
+				<Notice status="warning" isDismissible={false}>
+					{__(
+						'Shape dividers cannot be used with video backgrounds.',
+						'airo-wp'
+					)}
+				</Notice>
+				<Button
+					variant="secondary"
+					onClick={() =>
+						setAttributes({
+							dsgoVideoUrl: '',
+							dsgoVideoPoster: '',
+						})
+					}
+					style={{ marginTop: '12px' }}
+				>
+					{__('Remove Video Background', 'airo-wp')}
+				</Button>
+			</PanelBody>
+		);
+	}
+
+	return (
+		<>
+			<ShapeDividerPanel
+				title={__('Top Shape Divider', 'airo-wp')}
+				shape={shapeDividerTop}
+				color={shapeDividerTopColor}
+				backgroundColor={shapeDividerTopBackgroundColor}
+				height={shapeDividerTopHeight}
+				width={shapeDividerTopWidth}
+				flipX={shapeDividerTopFlipX}
+				flipY={shapeDividerTopFlipY}
+				front={shapeDividerTopFront}
+				isBottom={false}
+				onChange={handleTopChange}
+				sectionBackgroundColor={sectionBackgroundColor}
+				sectionTextColor={sectionTextColor}
+			/>
+			<ShapeDividerPanel
+				title={__('Bottom Shape Divider', 'airo-wp')}
+				shape={shapeDividerBottom}
+				color={shapeDividerBottomColor}
+				backgroundColor={shapeDividerBottomBackgroundColor}
+				height={shapeDividerBottomHeight}
+				width={shapeDividerBottomWidth}
+				flipX={shapeDividerBottomFlipX}
+				flipY={shapeDividerBottomFlipY}
+				front={shapeDividerBottomFront}
+				isBottom={true}
+				onChange={handleBottomChange}
+				sectionBackgroundColor={sectionBackgroundColor}
+				sectionTextColor={sectionTextColor}
+			/>
+		</>
+	);
+}

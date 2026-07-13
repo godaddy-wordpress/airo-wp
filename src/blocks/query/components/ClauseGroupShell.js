@@ -1,0 +1,173 @@
+import { __, sprintf } from '@wordpress/i18n';
+import {
+	Button,
+	SelectControl,
+	__experimentalVStack as VStack,
+} from '@wordpress/components';
+
+/**
+ * Reusable recursive group shell for tax/meta clause builders.
+ *
+ * Props:
+ *   group        - { relation, clauses }
+ *   onChange     - (patch) => void — called with { relation?, clauses? }
+ *   onRemove     - () => void | undefined — present on nested groups, absent on root
+ *   depth        - number (0 = root)
+ *   renderClause - (clause, idx, updateEntry, removeEntry) => JSX — renders one leaf clause
+ *   newClause    - object — default shape for a new leaf clause
+ * @param root0
+ * @param root0.group
+ * @param root0.onChange
+ * @param root0.onRemove
+ * @param root0.depth
+ * @param root0.renderClause
+ * @param root0.newClause
+ * @param root0.isAddDisabled
+ */
+export default function ClauseGroupShell({
+	group,
+	onChange,
+	onRemove,
+	depth = 0,
+	renderClause,
+	newClause,
+	isAddDisabled,
+}) {
+	const { relation = 'AND', clauses = [] } = group;
+
+	const updateEntry = (idx, patch) => {
+		const next = clauses.map((c, i) =>
+			i === idx ? { ...c, ...patch } : c
+		);
+		onChange({ clauses: next });
+	};
+
+	const replaceEntry = (idx, entry) => {
+		const next = clauses.map((c, i) => (i === idx ? entry : c));
+		onChange({ clauses: next });
+	};
+
+	const removeEntry = (idx) =>
+		onChange({ clauses: clauses.filter((_, i) => i !== idx) });
+
+	const addClause = () =>
+		onChange({ clauses: [...clauses, { ...newClause }] });
+
+	const addGroup = () =>
+		onChange({
+			clauses: [
+				...clauses,
+				{ relation: 'AND', clauses: [{ ...newClause }] },
+			],
+		});
+
+	const groupLabel =
+		depth === 0
+			? __('top level', 'airo-wp')
+			: sprintf(
+					/* translators: %d: nesting depth, where 1 is the first nested group. */
+					__('nested group level %d', 'airo-wp'),
+					depth
+				);
+
+	return (
+		<VStack
+			spacing={2}
+			className={`airo-wp-clause-group airo-wp-clause-group--depth-${depth}`}
+			role="group"
+			aria-label={sprintf(
+				/* translators: %s: human label for the group's nesting depth. */
+				__('Filter clauses, %s', 'airo-wp'),
+				groupLabel
+			)}
+			style={
+				depth > 0
+					? {
+							paddingLeft: '12px',
+							borderLeft:
+								'2px solid var(--wp-admin-theme-color-darker-10, #ccc)',
+						}
+					: undefined
+			}
+		>
+			{(clauses.length > 1 || depth > 0) && (
+				<SelectControl
+					label={__('Match', 'airo-wp')}
+					value={relation}
+					options={[
+						{ label: __('All (AND)', 'airo-wp'), value: 'AND' },
+						{ label: __('Any (OR)', 'airo-wp'), value: 'OR' },
+					]}
+					onChange={(val) => onChange({ relation: val })}
+					__nextHasNoMarginBottom
+				/>
+			)}
+
+			{clauses.map((entry, idx) =>
+				Array.isArray(entry.clauses) ? (
+					<ClauseGroupShell
+						key={idx}
+						group={entry}
+						onChange={(patch) =>
+							replaceEntry(idx, { ...entry, ...patch })
+						}
+						onRemove={() => removeEntry(idx)}
+						depth={depth + 1}
+						renderClause={renderClause}
+						newClause={newClause}
+						isAddDisabled={isAddDisabled}
+					/>
+				) : (
+					renderClause(entry, idx, updateEntry, removeEntry)
+				)
+			)}
+
+			<div className="airo-wp-clause-group__actions">
+				<Button
+					variant="secondary"
+					size="small"
+					onClick={addClause}
+					disabled={isAddDisabled}
+					aria-label={sprintf(
+						/* translators: %s: human label for the group's nesting depth. */
+						__('Add clause to %s', 'airo-wp'),
+						groupLabel
+					)}
+					__next40pxDefaultSize
+				>
+					{__('+ Clause', 'airo-wp')}
+				</Button>
+				<Button
+					variant="secondary"
+					size="small"
+					onClick={addGroup}
+					disabled={isAddDisabled}
+					aria-label={sprintf(
+						/* translators: %s: human label for the group's nesting depth. */
+						__('Add group inside %s', 'airo-wp'),
+						groupLabel
+					)}
+					__next40pxDefaultSize
+				>
+					{__('+ Group', 'airo-wp')}
+				</Button>
+				{onRemove && (
+					<Button
+						variant="tertiary"
+						isDestructive
+						size="small"
+						onClick={onRemove}
+						aria-label={sprintf(
+							/* translators: %s: human label for the group's nesting depth. */
+							__('Remove %s', 'airo-wp'),
+							groupLabel
+						)}
+						__next40pxDefaultSize
+					>
+						{__('Remove group', 'airo-wp')}
+					</Button>
+				)}
+			</div>
+		</VStack>
+	);
+}

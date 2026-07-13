@@ -1,0 +1,58 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/scroll-accordion",
+	"version": "1.0.0",
+	"title": "Scroll Accordion",
+	"category": "airo-wp",
+	"description": "Accordion that reveals items progressively as you scroll down the page",
+	"keywords": [
+		"scroll",
+		"accordion",
+		"sticky",
+		"stacking"
+	],
+	"textdomain": "airo-wp",
+	"icon": "menu-alt2",
+	"attributes": {
+		"align": {
+			"type": "string"
+		},
+		"textAlign": {
+			"type": "string"
+		},
+		"alignItems": {
+			"type": "string",
+			"default": "flex-start"
+		}
+	},
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true,
+			"blockGap": true
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"gradients": true
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true
+		},
+		"layout": {
+			"allowEditing": false
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"viewScript": "file:./view.js"
+}

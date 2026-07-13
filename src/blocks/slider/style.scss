@@ -1,0 +1,551 @@
+/**
+ * Slider Block - Frontend & Editor Styles
+ * CRITICAL: Must be duplicated to editor.scss for editor/frontend parity
+ */
+
+.airo-wp-slider {
+	// CRITICAL: Ensure slider takes full width of parent container
+	// Without this, slider can collapse to 0 width inside flex containers
+	width: 100%;
+	position: relative;
+	overflow: hidden;
+	box-sizing: border-box; // Ensure padding doesn't increase slider width
+	max-width: 100%; // Prevent overflow in containers and on small screens
+	min-width: 0; // Allow shrinking in flex/grid parents (e.g. WordPress Group Row/Stack layouts)
+
+	// Wide alignment - use negative margins to extend to wide width
+	&.alignwide {
+		width: var(--wp--style--global--wide-size);
+		max-width: 100%;
+	}
+
+	// Full alignment - use negative margins to extend edge-to-edge
+	&.alignfull {
+		width: 100%;
+		max-width: 100%;
+		margin-right: calc(var(--wp--style--root--padding-right) * -1);
+		margin-left: calc(var(--wp--style--root--padding-left) * -1);
+	}
+
+	// Use CSS custom properties from inline styles
+	--airo-wp-slider-aspect-ratio: 16/9;
+	--airo-wp-slider-gap: 20px;
+	--airo-wp-slider-transition: 0.5s;
+	--airo-wp-slider-slides-per-view: 1;
+	--airo-wp-slider-slides-per-view-tablet: 1;
+	--airo-wp-slider-slides-per-view-mobile: 1;
+
+	&__viewport {
+		display: flex;
+		flex-direction: column;
+		position: relative;
+		width: 100%; // Inner viewport fills the slider width
+		min-width: 0; // Allow shrinking in flex/grid contexts
+		min-height: var(--airo-wp-slider-height, 0);
+		overflow: hidden;
+	}
+
+	// Use aspect ratio if enabled
+	&[data-use-aspect-ratio="true"] &__viewport {
+		min-height: 0; // Reset - let aspect-ratio determine height
+		aspect-ratio: var(--airo-wp-slider-aspect-ratio);
+	}
+
+	&__track {
+		display: flex;
+		width: 100%; // Constrain track to viewport width so percentage flex-basis resolves correctly
+		// flex-grow: 1 — expand to fill viewport height when an explicit height is set
+		// flex-shrink: 0 — never compress below content size (prevents clipping)
+		// flex-basis: 0% — start at zero before growing (avoids auto-sizing quirks)
+		flex: 1 0 0%;
+		gap: var(--airo-wp-slider-gap);
+		transition: transform var(--airo-wp-slider-transition) ease-in-out;
+		will-change: transform;
+
+		// Multi-slide view calculations
+		> .airo-wp-slide {
+			flex: 0 0 calc((100% - (var(--airo-wp-slider-gap) * (var(--airo-wp-slider-slides-per-view) - 1))) / var(--airo-wp-slider-slides-per-view));
+			min-width: 0; // Prevent flex item overflow
+		}
+	}
+
+	// Centered slides mode
+	&--centered &__track {
+		justify-content: center;
+	}
+
+	// Free mode (smooth scrolling)
+	&--free-mode &__track {
+		scroll-snap-type: none;
+		transition: none;
+	}
+
+	// Navigation: Arrows
+	&__arrows {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 10;
+		pointer-events: none;
+	}
+
+	&__arrow {
+		position: absolute;
+		top: 50%;
+		translate: 0 -50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--airo-wp-slider-arrow-padding, 12px);
+		background: var(--airo-wp-slider-arrow-bg-color, rgba(255, 255, 255, 0.9));
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		pointer-events: auto;
+		transition: all 0.2s ease;
+		font-size: var(--airo-wp-slider-arrow-size, 24px);
+		line-height: 1;
+		font-weight: 700;
+		color: var(--airo-wp-slider-arrow-color, #2563eb);
+
+		&:hover:not(:disabled) {
+			opacity: 0.9;
+			scale: 1.05;
+		}
+
+		&:disabled {
+			opacity: 0.3;
+			cursor: not-allowed;
+		}
+
+		&--prev {
+			left: 16px;
+		}
+
+		&--next {
+			right: 16px;
+		}
+
+		&:focus-visible {
+			outline: none;
+		}
+	}
+
+	// Arrow styles
+	&[data-arrow-style="circle"] &__arrow {
+		border-radius: 50%;
+	}
+
+	&[data-arrow-style="square"] &__arrow {
+		border-radius: 0;
+	}
+
+	&[data-arrow-style="minimal"] &__arrow {
+		background: transparent;
+		border: 2px solid rgba(255, 255, 255, 0.9);
+		color: #fff;
+
+		&:hover:not(:disabled) {
+			background: rgba(255, 255, 255, 0.2);
+			border-color: rgba(255, 255, 255, 1);
+		}
+	}
+
+	// Arrow positions (Horizontal)
+	&[data-arrow-position="inside"] &__arrow {
+
+		&--prev {
+			left: 32px;
+		}
+
+		&--next {
+			right: 32px;
+		}
+	}
+
+	&[data-arrow-position="outside"] {
+		padding: 0 clamp(20px, 10%, 80px); // Scale padding for narrow containers
+
+		.airo-wp-slider__arrow {
+
+			&--prev {
+				left: 0;
+			}
+
+			&--next {
+				right: 0;
+			}
+		}
+	}
+
+	// Arrow positions (Vertical)
+	&[data-arrow-vertical-position="top"] &__arrow {
+		top: 20px;
+		translate: none;
+	}
+
+	// Center is default via top: 50% and translate: 0 -50%
+	// No additional styles needed
+
+	&[data-arrow-vertical-position="bottom"] &__arrow {
+		top: auto;
+		bottom: 20px;
+		translate: none;
+	}
+
+	// Navigation: Dots
+	&__dots {
+		position: absolute;
+		bottom: 20px;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		gap: 8px;
+		z-index: 10;
+		padding: 8px 12px;
+		background: rgba(0, 0, 0, 0.3);
+		border-radius: 20px;
+	}
+
+	&__dot {
+		width: 12px;
+		height: 12px;
+		padding: 0;
+		background: var(--airo-wp-slider-dot-color, rgba(255, 255, 255, 0.5));
+		border: none;
+		border-radius: 50%;
+		cursor: pointer;
+		transition: all 0.3s ease;
+
+		&:hover {
+			background: var(--airo-wp-slider-dot-color, rgba(255, 255, 255, 0.8));
+			opacity: 0.8;
+			transform: scale(1.2);
+		}
+
+		&--active {
+			background: var(--airo-wp-slider-dot-color, rgba(255, 255, 255, 1));
+			transform: scale(1.3);
+		}
+
+		&:focus-visible {
+			outline: none;
+		}
+	}
+
+	// Dot styles
+	&[data-dot-style="lines"] &__dot {
+		width: 24px;
+		height: 3px;
+		border-radius: 2px;
+
+		&--active {
+			width: 32px;
+		}
+	}
+
+	&[data-dot-style="squares"] &__dot {
+		border-radius: 2px;
+
+		&--active {
+			border-radius: 2px;
+		}
+	}
+
+	// Dot position: outside (below the slider, not overlapping content)
+	&[data-dot-position="outside"] &__dots {
+		position: relative;
+		bottom: auto;
+		left: auto;
+		transform: none;
+		justify-content: center;
+		margin: 12px auto 0;
+		background: transparent;
+	}
+
+	&[data-dot-position="outside"] &__dot {
+		background: var(--airo-wp-slider-dot-color, rgba(0, 0, 0, 0.3));
+
+		&:hover {
+			background: var(--airo-wp-slider-dot-color, rgba(0, 0, 0, 0.5));
+		}
+
+		&--active {
+			background: var(--airo-wp-slider-dot-color, rgba(0, 0, 0, 0.8));
+		}
+	}
+
+	// Editor-only navigation preview
+	&__arrows--editor-only,
+	&__dots--editor-only {
+		opacity: 0.5;
+		pointer-events: none;
+	}
+}
+
+// Transition Effects
+.airo-wp-slider--effect-fade,
+.airo-wp-slider--effect-zoom {
+	--airo-wp-slider-slides-per-view: 1;
+	--airo-wp-slider-slides-per-view-tablet: 1;
+	--airo-wp-slider-slides-per-view-mobile: 1;
+}
+
+.airo-wp-slider--effect-fade {
+
+	.airo-wp-slider__track > .airo-wp-slide {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%; // Fill the track when absolutely positioned
+		opacity: 0;
+		transition: opacity var(--airo-wp-slider-transition) ease-in-out;
+		pointer-events: none;
+
+		&--active {
+			opacity: 1;
+			pointer-events: auto;
+			z-index: 1;
+		}
+	}
+}
+
+.airo-wp-slider--effect-zoom {
+
+	.airo-wp-slider__track > .airo-wp-slide {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%; // Fill the track when absolutely positioned
+		opacity: 0;
+		transform: scale(0.8);
+		transition: opacity var(--airo-wp-slider-transition) ease-in-out,
+			transform var(--airo-wp-slider-transition) ease-in-out;
+		pointer-events: none;
+
+		&--active {
+			opacity: 1;
+			transform: scale(1);
+			pointer-events: auto;
+			z-index: 1;
+		}
+	}
+}
+
+// Style Variations
+.airo-wp-slider--classic {
+	border-radius: 8px;
+}
+
+.airo-wp-slider--minimal {
+
+	.airo-wp-slider__arrows {
+		opacity: 0;
+		transition: opacity 0.3s ease;
+	}
+
+	&:hover .airo-wp-slider__arrows {
+		opacity: 1;
+	}
+
+	.airo-wp-slider__dots {
+		background: transparent;
+		padding: 4px 8px;
+	}
+
+	.airo-wp-slider__dot {
+		background: rgba(255, 255, 255, 0.3);
+	}
+}
+
+.airo-wp-slider--card {
+	padding: 20px;
+	border-radius: 12px;
+
+	.airo-wp-slider__viewport {
+		border-radius: 8px;
+	}
+
+	.airo-wp-slide {
+		border-radius: 8px;
+	}
+}
+
+.airo-wp-slider--fullbleed {
+	border-radius: 0;
+
+	.airo-wp-slider__viewport {
+		min-height: 100vh;
+	}
+
+	.airo-wp-slider__arrows {
+
+		.airo-wp-slider__arrow {
+			background: rgba(0, 0, 0, 0.5);
+			color: #fff;
+			border-radius: 0;
+
+			&:hover:not(:disabled) {
+				background: rgba(0, 0, 0, 0.7);
+			}
+		}
+	}
+}
+
+// Responsive Breakpoints
+@media (max-width: 1024px) {
+
+	.airo-wp-slider__track > .airo-wp-slide {
+		flex: 0 0 calc((100% - (var(--airo-wp-slider-gap) * (var(--airo-wp-slider-slides-per-view-tablet) - 1))) / var(--airo-wp-slider-slides-per-view-tablet));
+	}
+}
+
+@media (max-width: 768px) {
+
+	.airo-wp-slider__track > .airo-wp-slide {
+		flex: 0 0 calc((100% - (var(--airo-wp-slider-gap) * (var(--airo-wp-slider-slides-per-view-mobile) - 1))) / var(--airo-wp-slider-slides-per-view-mobile));
+	}
+
+	.airo-wp-slider__arrow {
+		font-size: 20px;
+		padding: 8px;
+
+		&--prev {
+			left: 8px;
+		}
+
+		&--next {
+			right: 8px;
+		}
+	}
+
+	.airo-wp-slider[data-arrow-position="inside"] .airo-wp-slider__arrow {
+
+		&--prev {
+			left: 16px;
+		}
+
+		&--next {
+			right: 16px;
+		}
+	}
+
+	.airo-wp-slider[data-arrow-position="outside"] {
+		padding: 0 clamp(20px, 8%, 40px);
+	}
+
+	.airo-wp-slider__dots {
+		bottom: 12px;
+		padding: 6px 10px;
+	}
+
+	.airo-wp-slider[data-dot-position="outside"] .airo-wp-slider__dots {
+		bottom: auto;
+	}
+
+	.airo-wp-slider__dot {
+		width: 10px;
+		height: 10px;
+	}
+
+	.airo-wp-slider--card {
+		padding: 12px;
+	}
+}
+
+// Accessibility
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-slider,
+	.airo-wp-slider__track,
+	.airo-wp-slider__track > .airo-wp-slide,
+	.airo-wp-slider__arrow,
+	.airo-wp-slider__dot,
+	.airo-wp-slider__scroll-progress-bar {
+		transition: none !important;
+		animation: none !important;
+	}
+}
+
+// Scroll-driven horizontal mode
+.airo-wp-slider-pin-spacer {
+	position: relative;
+	width: 100%;
+}
+
+// Double-class selector (0-2-0) so position: sticky beats
+// [role="region"] { position: relative } (0-1-0) from wp-components,
+// which CoBlocks/GoDaddy plugins enqueue on the frontend.
+.airo-wp-slider.airo-wp-slider--scroll-driven {
+	position: sticky;
+	top: 0;
+	overflow: hidden;
+	padding-bottom: 36px; // Room for the scroll progress bar (16px bottom + 4px bar + 16px breathing)
+
+	.airo-wp-slider__track {
+		transition: none;
+		will-change: transform;
+	}
+
+	// Progress bar indicator
+	.airo-wp-slider__scroll-progress {
+		position: absolute;
+		bottom: 16px;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 120px;
+		height: 4px;
+		background: rgba(0, 0, 0, 0.2);
+		border-radius: 2px;
+		z-index: 10;
+		overflow: hidden;
+	}
+
+	.airo-wp-slider__scroll-progress-bar {
+		height: 100%;
+		width: 0;
+		background: rgba(255, 255, 255, 0.9);
+		border-radius: 2px;
+		transition: width 0.05s linear;
+		will-change: width;
+	}
+}
+
+@media (max-width: 782px) {
+
+	.airo-wp-slider--scroll-driven .airo-wp-slider__scroll-progress {
+		width: 80px;
+		bottom: 12px;
+	}
+}
+
+// Loading state
+.airo-wp-slider.is-loading {
+
+	.airo-wp-slider__track {
+		opacity: 0.5;
+	}
+
+	.airo-wp-slider__arrows,
+	.airo-wp-slider__dots {
+		pointer-events: none;
+	}
+}
+
+// Screen reader only text
+/* stylelint-disable-next-line selector-class-pattern */
+.airo-wp-slider .screen-reader-text {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border-width: 0;
+}

@@ -1,0 +1,145 @@
+/**
+ * Icon Block - Frontend Styles
+ *
+ * Dashicon display with optional shapes and links
+ *
+ * `.airo-wp-icon` is a positioning wrapper only — `.airo-wp-justify` (shared) gives it
+ * `display: flex` and the justify-content. It is deliberately NOT shrink-wrapped:
+ * a block-level, auto-width box is what lets core's constrained layout cap it at
+ * the content column. Colour/background/border/padding are routed to
+ * `.airo-wp-icon__wrapper` in render.php.
+ */
+
+.airo-wp-icon {
+	line-height: 1; // Prevent inherited line-height from creating extra vertical space
+
+	// Link wrapper
+	&__link {
+		display: inline-flex;
+		text-decoration: none;
+		color: inherit;
+		transition: transform 0.2s ease, opacity 0.2s ease;
+
+		&:hover {
+			transform: scale(1.1);
+			opacity: 0.8;
+		}
+
+		&:focus {
+			outline: none;
+		}
+	}
+
+	// Icon wrapper
+	&__wrapper {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		line-height: 1;
+		color: currentcolor;
+		transition: background-color 0.2s ease, color 0.2s ease;
+
+		// Size falls back to the theme icon token when no explicit iconSize
+		// is set inline. An inline width/height (explicit override) wins by
+		// specificity. defaultSize is a unitless number in theme.json.
+		width: calc(
+			var(--wp--custom--airo-wp--icon--default-size, 48) * 1px
+		);
+		height: calc(
+			var(--wp--custom--airo-wp--icon--default-size, 48) * 1px
+		);
+
+		// Ensure SVGs fill the wrapper (wrapper has explicit dimensions via inline styles)
+		svg {
+			display: block;
+			width: 100%;
+			height: 100%;
+		}
+
+		/* stylelint-disable-next-line selector-class-pattern */
+		.dashicons {
+			display: block;
+			width: 1em;
+			height: 1em;
+			font-size: inherit;
+			line-height: 1;
+			transition: transform 0.2s ease;
+		}
+
+		// Ensure shapes are square (1:1 aspect ratio)
+		/* stylelint-disable selector-class-pattern */
+		&.shape-circle,
+		&.shape-square,
+		&.shape-rounded {
+			aspect-ratio: 1;
+		}
+
+		// Shape variants
+		&.shape-circle {
+			border-radius: 50%;
+		}
+
+		&.shape-square {
+			border-radius: 0;
+		}
+
+		&.shape-rounded {
+			border-radius: 8px;
+		}
+		/* stylelint-enable selector-class-pattern */
+	}
+
+	// Accessibility: Respect prefers-reduced-motion
+	@media (prefers-reduced-motion: reduce) {
+		/* stylelint-disable selector-class-pattern */
+		&__link,
+		&__wrapper,
+		.dashicons {
+			transition: none;
+		}
+		/* stylelint-enable selector-class-pattern */
+
+		&__link:hover {
+			transform: none;
+		}
+	}
+}
+
+// LEGACY SUPPORT for stale `align: left|center|right` on un-migrated content
+// used to live here as a CSS neutralizer on `.airo-wp-icon.alignleft` etc. It's
+// gone: `align-self`'s cross-axis positioning is overridden by that stale
+// class's own `margin: auto` in flexbox, so the neutralizer always recentred
+// the wrapper instead of respecting `justify-content`. render.php now strips
+// the stale alignleft/aligncenter/alignright class from the wrapper directly
+// (see its docblock) — `alignwide`/`alignfull` are untouched there, so those
+// still escape the column as core intends.
+
+// Outlined icon style (.airo-wp-icon-outlined) now lives in the shared global
+// bundle so every icon-bearing block can use it — see
+// src/styles/_icon-outlined.scss.
+
+// Parent container hover: apply icon background when parent is hovered
+// Uses CSS variable set by parent container (Flex, Grid, Stack)
+// CRITICAL: Check if PARENT container has the variable, not the icon itself
+// CRITICAL: Use __inner wrapper to avoid triggering on outer padding areas
+// CRITICAL: Exclude icons that are inside nested containers
+// Targets .airo-wp-icon__wrapper (the shrink-wrapped visible icon box), NOT
+// .airo-wp-icon (the block-level positioning wrapper) — painting the outer
+// wrapper would span the full content column instead of hugging the icon,
+// same reasoning as the block's own color support being routed inward.
+// The `[style*=…]` selectors activate from the parent's inline var (its
+// hoverIconBackgroundColor attribute). The `.airo-wp-flex--has-hover-icon`,
+// `.airo-wp-grid--has-hover-icon`, and `.airo-wp-stack--has-hover-icon` selectors
+// activate from a Row, Grid, or Section `is-style-hover-icon-*` style
+// variation, whose stylesheet supplies the var — the inline gate can't see
+// it. The class is only emitted for that variation, so the !important
+// override never clobbers an icon whose parent has no hover-icon color set.
+.airo-wp-flex[style*="--airo-wp-parent-hover-icon-bg"]:hover .airo-wp-flex__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-grid[style*="--airo-wp-parent-hover-icon-bg"]:hover .airo-wp-grid__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-stack[style*="--airo-wp-parent-hover-icon-bg"]:hover .airo-wp-stack__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-flex--has-hover-icon:hover .airo-wp-flex__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-grid--has-hover-icon:hover .airo-wp-grid__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-stack--has-hover-icon:hover .airo-wp-stack__inner > .airo-wp-icon .airo-wp-icon__wrapper {
+	background-color: var(--airo-wp-parent-hover-icon-bg) !important;
+	transition: background-color 0.3s ease;
+}

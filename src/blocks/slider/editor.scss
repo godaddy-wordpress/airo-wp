@@ -1,0 +1,302 @@
+/**
+ * Slider Block - Editor-only Styles
+ * CRITICAL: Imports base styles from style.scss for editor/frontend parity
+ */
+
+@use './style' as *;
+
+// Editor-specific adjustments
+.airo-wp-slider {
+	max-width: 100%; // Prevent overflow in containers and on small screens
+	min-width: 0; // Allow shrinking inside flex/grid editor wrappers
+
+	// Add visual indicator in editor
+	&::before {
+		content: 'Slider: ' attr(data-effect);
+		position: absolute;
+		top: 8px;
+		left: 8px;
+		z-index: 20;
+		padding: 4px 8px;
+		background: rgba(0, 0, 0, 0.7);
+		color: #fff;
+		font-size: 11px;
+		font-weight: 600;
+		border-radius: 4px;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		pointer-events: none;
+	}
+
+	// Make track scrollable in editor for easier slide management
+	&__track {
+		overflow-x: auto;
+		overflow-y: hidden;
+		scroll-snap-type: x mandatory;
+		-webkit-overflow-scrolling: touch;
+
+		// Hide scrollbar in editor
+		&::-webkit-scrollbar {
+			height: 6px;
+		}
+
+		&::-webkit-scrollbar-track {
+			background: rgba(0, 0, 0, 0.1);
+		}
+
+		&::-webkit-scrollbar-thumb {
+			background: rgba(0, 0, 0, 0.3);
+			border-radius: 3px;
+
+			&:hover {
+				background: rgba(0, 0, 0, 0.5);
+			}
+		}
+
+		> .airo-wp-slide {
+			scroll-snap-align: start;
+		}
+	}
+
+	// Editor-only: Show all slides in a row for easy editing
+	&.is-selected &__track,
+	&:hover &__track {
+		flex-wrap: nowrap;
+	}
+
+	// Editor-only: Highlight selected slide
+	.airo-wp-slide {
+
+		&.is-selected {
+			outline: 2px solid #2563eb;
+			outline-offset: -2px;
+		}
+	}
+
+	// Editor-only navigation (functional scroll controls)
+	// Note: pointer-events must stay none on the container (it's a full-coverage overlay).
+	// The individual button children receive events via their own pointer-events: auto.
+	&__arrows--editor-only {
+
+		.airo-wp-slider__arrow {
+			cursor: pointer;
+			pointer-events: auto;
+		}
+	}
+
+	&__dots--editor-only {
+
+		.airo-wp-slider__dot {
+			cursor: pointer;
+			pointer-events: auto;
+		}
+	}
+
+	// Pin the slide's block-list-appender "+" button to the slide's
+	// bottom-center so it sits below the arrow band instead of overlapping
+	// the arrows (which are centered mid-height, intentionally overlaying
+	// the slide). Frontend/save output is unaffected.
+	/* stylelint-disable selector-class-pattern */
+	.airo-wp-slide .block-editor-default-block-appender__content {
+		display: none;
+	}
+
+	// `display: contents` on the slide's own end-of-content appender wrappers
+	// removes them from layout, so they don't take flex-flow space in the
+	// centered content (which was pushing heading/paragraph upward). The
+	// inserter button inside then becomes a direct child of .airo-wp-slide__content.
+	// Scoped to the direct-child appender only (not inserters inside nested
+	// Group / Columns / etc. blocks within a slide).
+	.airo-wp-slide > .airo-wp-slide__content > .block-list-appender,
+	.airo-wp-slide > .airo-wp-slide__content > .block-list-appender > .block-editor-default-block-appender {
+		display: contents;
+	}
+
+	// Make .airo-wp-slide__content static so the nearest positioned ancestor of
+	// the slide-level inserter is .airo-wp-slide. Overlay stacking still works
+	// because the overlay is rendered before content in the DOM.
+	.airo-wp-slide > .airo-wp-slide__content {
+		position: static;
+	}
+
+	// Pin ONLY the slide-level inserter (not inserters inside nested blocks).
+	.airo-wp-slide > .airo-wp-slide__content > .block-list-appender .block-editor-inserter {
+		position: absolute !important;
+		top: auto !important;
+		right: auto !important;
+		bottom: 16px !important;
+		left: 50% !important;
+		translate: -50% 0 !important;
+		transform: none !important;
+		z-index: 5;
+	}
+	/* stylelint-enable selector-class-pattern */
+
+	// Make appender visible in editor
+	/* stylelint-disable-next-line selector-class-pattern */
+	.block-list-appender {
+		margin-left: var(--airo-wp-slider-gap);
+	}
+
+	// Fix fade/zoom effects in editor - show all slides
+	// These effects use absolute positioning + opacity: 0, which hides all slides in editor
+	&.airo-wp-slider--effect-fade,
+	&.airo-wp-slider--effect-zoom {
+		--airo-wp-slider-slides-per-view: 1;
+		--airo-wp-slider-slides-per-view-tablet: 1;
+		--airo-wp-slider-slides-per-view-mobile: 1;
+
+		.airo-wp-slider__track > .airo-wp-slide {
+			position: relative !important;
+			opacity: 1 !important;
+			transform: none !important;
+			pointer-events: auto !important;
+		}
+	}
+}
+
+// Editor: Block toolbar
+.wp-block-airo-wp-slider {
+
+	.block-editor-block-list__block {
+		margin-top: 0;
+		margin-bottom: 0;
+	}
+}
+
+// Editor-only slide navigator
+.airo-wp-slider__nav--editor-only {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-top: 12px;
+	padding: 8px;
+	background: rgba(0, 0, 0, 0.03);
+	border: 1px dashed rgba(0, 0, 0, 0.15);
+	border-radius: 4px;
+
+	.airo-wp-slider__nav-chip {
+		display: inline-flex;
+		align-items: center;
+		background: #fff;
+		border: 1px solid rgba(0, 0, 0, 0.15);
+		border-radius: 4px;
+		overflow: hidden;
+		transition: border-color 0.15s ease, box-shadow 0.15s ease;
+		max-width: 220px;
+
+		&:hover {
+			border-color: var(--wp-admin-theme-color, #2271b1);
+
+			.airo-wp-slider__nav-chip-actions {
+				display: inline-flex;
+			}
+		}
+
+		&.is-active {
+			border-color: var(--wp-admin-theme-color, #2271b1);
+			box-shadow: 0 0 0 1px var(--wp-admin-theme-color, #2271b1);
+		}
+	}
+
+	.airo-wp-slider__nav-chip-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 8px;
+		background: none;
+		border: 0;
+		cursor: pointer;
+		font-size: 12px;
+		line-height: 1.2;
+		color: inherit;
+		max-width: 100%;
+
+		&:focus-visible {
+			outline: 2px solid var(--wp-admin-theme-color, #2271b1);
+			outline-offset: -2px;
+		}
+	}
+
+	.airo-wp-slider__nav-chip-index {
+		flex-shrink: 0;
+		width: 18px;
+		height: 18px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.08);
+		border-radius: 9px;
+		font-size: 10px;
+		font-weight: 600;
+		color: rgba(0, 0, 0, 0.7);
+	}
+
+	.airo-wp-slider__nav-chip.is-active .airo-wp-slider__nav-chip-index {
+		background: var(--wp-admin-theme-color, #2271b1);
+		color: #fff;
+	}
+
+	.airo-wp-slider__nav-chip-title {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.airo-wp-slider__nav-chip-actions {
+		display: none;
+		align-items: center;
+		border-left: 1px solid rgba(0, 0, 0, 0.1);
+		padding: 0 2px;
+
+		// Always show on focus inside the chip for keyboard users
+		.airo-wp-slider__nav-chip:focus-within & {
+			display: inline-flex;
+		}
+	}
+
+	.airo-wp-slider__nav-add {
+		margin-left: auto;
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Query-bound editor preview. The block-editor-managed template slot sits
+// inside a manually-built track alongside read-only server-rendered slides.
+// Give the slot the same flex-basis that .airo-wp-slider__track > .airo-wp-slide
+// would receive on the frontend — we can't use `display: contents` here
+// because the slider's `> .airo-wp-slide` rule matches the DOM tree, and the
+// block-editor always wraps the slide in this intermediate div, so the
+// slide never becomes a DOM direct child of the track and the rule misses.
+// Without the explicit flex-basis below the slot collapses to width 0 and
+// the slide's text content wraps to absurd heights.
+// ---------------------------------------------------------------------------
+.wp-block-airo-wp-slider {
+
+	.airo-wp-slider__editor-template-slot {
+		flex: 0 0 calc((100% - (var(--airo-wp-slider-gap) * (var(--airo-wp-slider-slides-per-view) - 1))) / var(--airo-wp-slider-slides-per-view));
+		min-width: 0;
+		display: flex;
+	}
+
+	.airo-wp-slider__editor-readonly-item {
+		flex: 0 0 calc((100% - (var(--airo-wp-slider-gap) * (var(--airo-wp-slider-slides-per-view) - 1))) / var(--airo-wp-slider-slides-per-view));
+		min-width: 0;
+		pointer-events: none;
+	}
+
+	.airo-wp-slider__editor-empty-hint {
+		flex: 1 1 auto;
+		padding: 1.25rem;
+		font-size: 0.875rem;
+		color: #6c7180;
+		background: rgba(0, 0, 0, 0.03);
+		border-radius: 4px;
+	}
+
+	.airo-wp-slider__track--query-loading,
+	.airo-wp-slider__track--query-empty {
+		min-height: 120px;
+	}
+}

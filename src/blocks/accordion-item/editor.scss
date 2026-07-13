@@ -1,0 +1,89 @@
+/**
+ * Accordion Item Block - Editor Styles
+ * Import frontend styles + editor-specific overrides
+ */
+
+// Import all frontend styles so they appear in editor
+@use './style.scss' as *;
+
+// Editor-specific overrides and enhancements
+.editor-styles-wrapper,
+.block-editor-block-list__layout {
+
+	.airo-wp-accordion-item {
+		// Editor-specific spacing between items
+		&:not(:last-child) {
+			margin-bottom: var(--wp--preset--spacing--20, 0.5rem);
+		}
+
+		// Panel behavior in editor - interactive like frontend
+		.airo-wp-accordion-item__panel {
+			// Respect open/closed state in editor
+			// But disable animation for instant toggle
+			transition: none !important;
+
+			// Add visual indicator in editor
+			.airo-wp-accordion-item__content {
+				// Subtle border in editor to show content area
+				border-left: 2px solid var(--wp--preset--color--primary, rgba(37, 99, 235, 0.2));
+				margin-left: var(--wp--preset--spacing--40, 1.5rem);
+				padding-left: var(--wp--preset--spacing--30, 1rem);
+			}
+		}
+
+		// Editor visual feedback when selected
+		&.is-selected {
+
+			> .airo-wp-accordion-item__header {
+
+				.airo-wp-accordion-item__trigger {
+					outline: 2px solid var(--wp--admin-theme-color, #007cba);
+					outline-offset: 2px;
+					box-shadow: 0 0 0 4px rgba(0, 124, 186, 0.1);
+				}
+			}
+		}
+
+		// Make trigger interactive in editor
+		.airo-wp-accordion-item__trigger {
+			// Allow trigger to be clickable
+			cursor: pointer;
+
+			// Title is editable via RichText
+			.airo-wp-accordion-item__title {
+				cursor: text;
+			}
+
+			// Show hover effects in editor
+			&:hover {
+				background-color: var(--airo-wp-accordion-hover-bg, var(--wp--preset--color--base-2, rgba(0, 0, 0, 0.04)));
+			}
+		}
+
+		// Visual feedback for open/closed state in editor
+		&.airo-wp-accordion-item--open {
+			// Panel is visible when open
+			.airo-wp-accordion-item__panel {
+				display: block;
+			}
+		}
+
+		&.airo-wp-accordion-item--closed {
+			// Panel is hidden when closed
+			.airo-wp-accordion-item__panel {
+				display: none;
+			}
+		}
+	}
+}
+
+// Block preview (inserter)
+.block-editor-block-preview__content {
+
+	.airo-wp-accordion-item {
+
+		.airo-wp-accordion-item__panel {
+			display: block !important;
+		}
+	}
+}

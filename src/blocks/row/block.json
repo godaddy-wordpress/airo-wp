@@ -1,0 +1,188 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/row",
+	"version": "1.0.0",
+	"title": "Row",
+	"category": "airo-wp",
+	"description": "Flexible horizontal or vertical layouts with wrapping. Perfect for button groups, hero sections, and responsive card layouts.",
+	"keywords": [
+		"row",
+		"flex",
+		"flexbox",
+		"horizontal",
+		"layout",
+		"container"
+	],
+	"textdomain": "airo-wp",
+	"icon": "leftright",
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"html": false,
+		"inserter": true,
+		"layout": {
+			"allowSwitching": false,
+			"allowInheriting": false,
+			"allowEditing": true,
+			"allowSizingOnChildren": true,
+			"allowVerticalAlignment": true,
+			"default": {
+				"type": "flex",
+				"orientation": "horizontal",
+				"justifyContent": "left",
+				"flexWrap": "nowrap"
+			}
+		},
+		"spacing": {
+			"margin": true,
+			"padding": true,
+			"blockGap": true,
+			"__experimentalDefaultControls": {
+				"padding": true,
+				"blockGap": true
+			}
+		},
+		"dimensions": {
+			"minHeight": true,
+			"minWidth": true
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"gradients": true,
+			"link": true,
+			"__experimentalDefaultControls": {
+				"background": true,
+				"text": true
+			}
+		},
+		"background": {
+			"backgroundImage": true,
+			"backgroundSize": true
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalDefaultControls": {
+				"fontSize": true
+			}
+		},
+		"shadow": true,
+		"position": {
+			"sticky": true
+		},
+		"__experimentalBorder": {
+			"color": true,
+			"radius": true,
+			"style": true,
+			"width": true,
+			"__experimentalDefaultControls": {
+				"color": true,
+				"radius": true,
+				"style": true,
+				"width": true
+			}
+		}
+	},
+	"attributes": {
+		"align": {
+			"type": "string",
+			"default": "full"
+		},
+		"tagName": {
+			"type": "string",
+			"default": "div"
+		},
+		"constrainWidth": {
+			"type": "boolean",
+			"default": false
+		},
+		"contentWidth": {
+			"type": "string",
+			"default": ""
+		},
+		"mobileStack": {
+			"type": "boolean",
+			"default": false
+		},
+		"style": {
+			"type": "object",
+			"default": {
+				"spacing": {
+					"padding": {
+						"top": "var:preset|spacing|50",
+						"bottom": "var:preset|spacing|50",
+						"left": "var:preset|spacing|30",
+						"right": "var:preset|spacing|30"
+					},
+					"blockGap": "var:preset|spacing|30"
+				}
+			}
+		},
+		"hoverBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"hoverTextColor": {
+			"type": "string",
+			"default": ""
+		},
+		"hoverIconBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"hoverButtonBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"overlayColor": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"schemaMetadata": {
+		"attributeDescriptions": {
+			"align": "Block alignment (wide or full width)",
+			"tagName": "HTML tag to use for the row container",
+			"constrainWidth": "Whether to constrain the content to a maximum width",
+			"contentWidth": "Maximum width for the content area (CSS value)",
+			"mobileStack": "Stack items vertically on mobile devices instead of horizontally",
+			"style": "WordPress block style object containing spacing, colors, and typography settings",
+			"hoverBackgroundColor": "Background color when hovering over the row",
+			"hoverTextColor": "Text color when hovering over the row",
+			"hoverIconBackgroundColor": "Icon background color on hover (passed to child blocks via context)",
+			"hoverButtonBackgroundColor": "Button background color on hover (passed to child blocks via context)",
+			"overlayColor": "Semi-transparent overlay color for background images"
+		}
+	},
+	"providesContext": {
+		"airo-wp/hoverIconBackgroundColor": "hoverIconBackgroundColor",
+		"airo-wp/hoverButtonBackgroundColor": "hoverButtonBackgroundColor"
+	},
+	"example": {
+		"attributes": {
+			"mobileStack": false
+		},
+		"innerBlocks": [
+			{
+				"name": "core/button",
+				"attributes": {
+					"text": "Primary Button"
+				}
+			},
+			{
+				"name": "core/button",
+				"attributes": {
+					"text": "Secondary Button"
+				}
+			}
+		]
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css"
+}

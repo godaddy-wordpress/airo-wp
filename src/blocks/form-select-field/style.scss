@@ -1,0 +1,24 @@
+/**
+ * Form Select Field Block - Styles
+ *
+ * Uses shared form field styles from text field
+ *
+ * @since 1.0.0
+ */
+
+// Select field uses the same styles as text field
+@use '../form-text-field/style' as *;
+
+// Select-specific adjustments
+.airo-wp-form-field--select {
+
+	.airo-wp-form-field__select {
+		cursor: pointer;
+		appearance: none;
+		/* stylelint-disable-next-line function-url-quotes */
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 1rem center;
+		padding-right: 2.5rem;
+	}
+}

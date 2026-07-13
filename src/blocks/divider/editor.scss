@@ -1,0 +1,80 @@
+/**
+ * Divider Block - Editor Styles
+ *
+ * Editor-specific styles (matches frontend for WYSIWYG)
+ *
+ * @since 1.0.0
+ */
+
+.airo-wp-divider {
+	// CRITICAL: Must be duplicated from style.scss for editor/frontend parity
+	// (Main styles are in style.scss and automatically applied in editor)
+
+	// CRITICAL: Ensure divider takes full width of parent container
+	// Without this, divider can collapse to 0 width inside flex containers
+	width: 100%;
+
+	// Editor-specific styles to improve UX
+	position: relative;
+	min-height: 20px; // Ensure block is selectable even with thin dividers
+	display: flex;
+	align-items: center;
+
+	// Selected state
+	&.is-selected {
+		outline: 1px solid var(--wp-admin-theme-color, #007cba);
+		outline-offset: 4px;
+		border-radius: 2px;
+	}
+
+	// Hover state in editor
+	&:hover {
+		outline: 1px dashed var(--wp-admin-theme-color, #007cba);
+		outline-offset: 4px;
+		border-radius: 2px;
+		cursor: pointer;
+	}
+
+	// Ensure the divider is visible in the editor
+	// NOTE: width is set via inline style from the width attribute (percentage)
+	&__container {
+		pointer-events: none; // Allow click-through to select the block
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin: 0 auto; // Default center alignment
+	}
+
+	// Left alignment
+	&.alignleft &__container {
+		margin-left: 0;
+		margin-right: auto;
+		justify-content: flex-start;
+	}
+
+	// Right alignment
+	&.alignright &__container {
+		margin-left: auto;
+		margin-right: 0;
+		justify-content: flex-end;
+	}
+
+	// Center alignment (explicit)
+	&.aligncenter &__container {
+		margin: 0 auto;
+		justify-content: center;
+	}
+
+	// Add a subtle background when selected for better visibility
+	&.is-selected::before {
+		content: '';
+		position: absolute;
+		top: -4px;
+		left: -4px;
+		right: -4px;
+		bottom: -4px;
+		background: rgba(0, 124, 186, 0.05);
+		border-radius: 2px;
+		z-index: -1;
+	}
+}

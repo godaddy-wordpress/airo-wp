@@ -1,0 +1,1771 @@
+/**
+ * Stack Block - Deprecated versions
+ *
+ * @since 1.0.0
+ */
+
+import { useBlockProps, useInnerBlocksProps } from '@wordpress/block-editor';
+import {
+	convertPresetToCSSVar,
+	convertColorToCSSVar,
+} from '../../utils/convert-preset-to-css-var';
+import { getLegacyShapeDivider } from './utils/legacy-shape-dividers';
+import { sanitizeColor } from './utils/sanitize-color';
+import {
+	hasOverlayStyleClass,
+	hoverVariationClasses,
+} from './utils/has-overlay-style';
+import ShapeDivider from './components/ShapeDivider';
+import { getDeprecatedBlockHTML } from '../../utils/deprecated-block-html';
+
+// Shared supports for deprecations (must match what was in block.json when blocks were saved).
+// Without this, useBlockProps.save() in deprecated save functions won't generate
+// the correct classes/styles (has-*-color, padding, etc.), causing validation to fail.
+const sharedSupports = {
+	anchor: true,
+	align: ['wide', 'full'],
+	html: false,
+	inserter: true,
+	layout: {
+		allowSwitching: false,
+		allowInheriting: false,
+		allowEditing: true,
+		allowSizingOnChildren: true,
+		default: {
+			type: 'flex',
+			orientation: 'vertical',
+			justifyContent: 'center',
+		},
+	},
+	spacing: {
+		margin: true,
+		padding: true,
+		blockGap: true,
+		__experimentalDefaultControls: {
+			padding: true,
+			blockGap: true,
+		},
+	},
+	dimensions: {
+		minHeight: true,
+	},
+	color: {
+		background: true,
+		text: true,
+		gradients: true,
+		link: true,
+		__experimentalDefaultControls: {
+			background: true,
+			text: true,
+		},
+	},
+	background: {
+		backgroundImage: true,
+		backgroundSize: true,
+		backgroundPosition: true,
+		backgroundRepeat: true,
+		__experimentalDefaultControls: {
+			backgroundImage: true,
+		},
+	},
+	typography: {
+		fontSize: true,
+		lineHeight: true,
+		__experimentalDefaultControls: {
+			fontSize: true,
+		},
+	},
+	shadow: true,
+	position: {
+		sticky: true,
+	},
+	__experimentalBorder: {
+		color: true,
+		radius: true,
+		style: true,
+		width: true,
+		__experimentalDefaultControls: {
+			color: true,
+			radius: true,
+			style: true,
+			width: true,
+		},
+	},
+};
+
+/**
+ * Old ShapeDivider component for v3 deprecation.
+ * Uses currentColor fallback (the old behavior before background color inheritance).
+ * @param {Object}  root0                 Component props
+ * @param {string}  root0.shape           Shape name
+ * @param {string}  root0.color           Fill color
+ * @param {string}  root0.backgroundColor Background color
+ * @param {number}  root0.height          Shape height
+ * @param {number}  root0.width           Shape width percentage
+ * @param {boolean} root0.flipX           Flip horizontal
+ * @param {boolean} root0.flipY           Flip vertical
+ * @param {boolean} root0.front           Bring to front
+ * @param {string}  root0.position        Position (top/bottom)
+ */
+function OldShapeDivider({
+	shape,
+	color,
+	backgroundColor,
+	height = 100,
+	width = 100,
+	flipX = false,
+	flipY = false,
+	front = false,
+	position = 'top',
+}) {
+	if (!shape) {
+		return null;
+	}
+
+	const shapeElement = getLegacyShapeDivider(shape);
+	if (!shapeElement) {
+		return null;
+	}
+
+	const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+	const safeHeight = clamp(Number(height) || 100, 10, 500);
+	const safeWidth = clamp(Number(width) || 100, 100, 300);
+	const safeColor = sanitizeColor(color);
+	const safeBackgroundColor = sanitizeColor(backgroundColor);
+
+	const transforms = [];
+	if (flipX) {
+		transforms.push('scaleX(-1)');
+	}
+	if (position === 'bottom' && !flipY) {
+		transforms.push('scaleY(-1)');
+	} else if (position !== 'bottom' && flipY) {
+		transforms.push('scaleY(-1)');
+	}
+
+	const widthOffset = Math.max(0, (safeWidth - 100) / 2);
+
+	const className = [
+		'airo-wp-shape-divider',
+		`airo-wp-shape-divider--${position}`,
+		front && 'airo-wp-shape-divider--front',
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	const style = {
+		'--airo-wp-shape-height': `${safeHeight}px`,
+		'--airo-wp-shape-width': `${safeWidth}%`,
+		'--airo-wp-shape-offset': `-${widthOffset}%`,
+		'--airo-wp-shape-color': safeColor || 'currentColor',
+		...(safeBackgroundColor && {
+			'--airo-wp-shape-background': safeBackgroundColor,
+		}),
+	};
+
+	return (
+		<div className={className} style={style} aria-hidden="true">
+			<svg
+				viewBox="0 0 1200 120"
+				preserveAspectRatio="none"
+				style={{
+					transform:
+						transforms.length > 0
+							? transforms.join(' ')
+							: undefined,
+				}}
+			>
+				{shapeElement}
+			</svg>
+		</div>
+	);
+}
+
+/**
+ * V4ShapeDivider component for v4 deprecation.
+ * Same as current ShapeDivider but used inline for deprecation stability.
+ * This version uses background color inheritance for shape fill but has
+ * no text color inheritance for shape background.
+ * @param {Object}  root0                 Component props
+ * @param {string}  root0.shape           Shape name
+ * @param {string}  root0.color           Fill color
+ * @param {string}  root0.backgroundColor Background color
+ * @param {number}  root0.height          Shape height
+ * @param {number}  root0.width           Shape width percentage
+ * @param {boolean} root0.flipX           Flip horizontal
+ * @param {boolean} root0.flipY           Flip vertical
+ * @param {boolean} root0.front           Bring to front
+ * @param {string}  root0.position        Position (top/bottom)
+ */
+function V4ShapeDivider({
+	shape,
+	color,
+	backgroundColor,
+	height = 100,
+	width = 100,
+	flipX = false,
+	flipY = false,
+	front = false,
+	position = 'top',
+}) {
+	if (!shape) {
+		return null;
+	}
+
+	const shapeElement = getLegacyShapeDivider(shape);
+	if (!shapeElement) {
+		return null;
+	}
+
+	const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+	const safeHeight = clamp(Number(height) || 100, 10, 500);
+	const safeWidth = clamp(Number(width) || 100, 100, 300);
+	const safeColor = sanitizeColor(color);
+	const safeBackgroundColor = sanitizeColor(backgroundColor);
+
+	const transforms = [];
+	if (flipX) {
+		transforms.push('scaleX(-1)');
+	}
+	if (position === 'bottom' && !flipY) {
+		transforms.push('scaleY(-1)');
+	} else if (position !== 'bottom' && flipY) {
+		transforms.push('scaleY(-1)');
+	}
+
+	const widthOffset = Math.max(0, (safeWidth - 100) / 2);
+
+	const className = [
+		'airo-wp-shape-divider',
+		`airo-wp-shape-divider--${position}`,
+		front && 'airo-wp-shape-divider--front',
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	const style = {
+		'--airo-wp-shape-height': `${safeHeight}px`,
+		'--airo-wp-shape-width': `${safeWidth}%`,
+		'--airo-wp-shape-offset': `-${widthOffset}%`,
+		'--airo-wp-shape-color': safeColor || 'transparent',
+		...(safeBackgroundColor && {
+			'--airo-wp-shape-background': safeBackgroundColor,
+		}),
+	};
+
+	return (
+		<div className={className} style={style} aria-hidden="true">
+			<svg
+				viewBox="0 0 1200 120"
+				preserveAspectRatio="none"
+				style={{
+					transform:
+						transforms.length > 0
+							? transforms.join(' ')
+							: undefined,
+				}}
+			>
+				{shapeElement}
+			</svg>
+		</div>
+	);
+}
+
+// Version 8: Pre-hover-variation-classes output. The current save() also
+// emits `airo-wp-stack--has-hover-text` / `-icon` / `-button` when a style-kit
+// hover variation (`is-style-hover-{text,icon,button}-*`) is present on
+// className, so the corresponding `!important` hover override can activate
+// from a variation's stylesheet instead of only the inline-style gate.
+// Sections saved with such a variation but no matching `airo-wp-stack--has-hover-*`
+// class in their stored HTML therefore mismatch the current save() — an
+// "invalid content" mismatch, the same failure mode v7 fixes for the overlay
+// class.
+//
+// isEligible targets that signature (a hover-variation family present on
+// className whose activation class is missing from the stored HTML) so those
+// blocks migrate SILENTLY. save() reproduces the pre-hover-variation-classes
+// output — i.e. v7's *current* (non-deprecated) behavior at the time hover
+// classes were added, which already includes the overlay-variation class
+// derivation from v7/60c99058, just without the hover activation classes —
+// so it also byte-matches on WP versions that still validate the
+// deprecation's save() before migrating. migrate() is a passthrough — only
+// the serialised class differs, not the attribute values; the current save()
+// then re-derives the hover classes from the variation.
+const v8 = {
+	supports: sharedSupports,
+	attributes: {
+		align: { type: 'string', default: 'full' },
+		tagName: { type: 'string', default: 'div' },
+		constrainWidth: { type: 'boolean', default: true },
+		contentWidth: { type: 'string', default: '' },
+		// Mirror block.json's `style` default (see v7's identical note).
+		style: {
+			type: 'object',
+			default: {
+				spacing: {
+					padding: {
+						top: 'var:preset|spacing|50',
+						bottom: 'var:preset|spacing|50',
+						left: 'var:preset|spacing|30',
+						right: 'var:preset|spacing|30',
+					},
+				},
+			},
+		},
+		hoverBackgroundColor: { type: 'string', default: '' },
+		hoverTextColor: { type: 'string', default: '' },
+		hoverIconBackgroundColor: { type: 'string', default: '' },
+		hoverButtonBackgroundColor: { type: 'string', default: '' },
+		overlayColor: { type: 'string', default: '' },
+		shapeDividerTop: { type: 'string', default: '' },
+		shapeDividerTopColor: { type: 'string', default: '' },
+		shapeDividerTopHeight: { type: 'number', default: 100 },
+		shapeDividerTopWidth: { type: 'number', default: 100 },
+		shapeDividerTopFlipX: { type: 'boolean', default: false },
+		shapeDividerTopFlipY: { type: 'boolean', default: false },
+		shapeDividerTopFront: { type: 'boolean', default: false },
+		shapeDividerTopBackgroundColor: { type: 'string', default: '' },
+		shapeDividerBottom: { type: 'string', default: '' },
+		shapeDividerBottomColor: { type: 'string', default: '' },
+		shapeDividerBottomHeight: { type: 'number', default: 100 },
+		shapeDividerBottomWidth: { type: 'number', default: 100 },
+		shapeDividerBottomFlipX: { type: 'boolean', default: false },
+		shapeDividerBottomFlipY: { type: 'boolean', default: false },
+		shapeDividerBottomFront: { type: 'boolean', default: false },
+		shapeDividerBottomBackgroundColor: { type: 'string', default: '' },
+	},
+	/**
+	 * Silently migrate sections that carry a style-kit hover variation
+	 * (`is-style-hover-{text,icon,button}-*`) but whose stored HTML predates
+	 * the matching `airo-wp-stack--has-hover-*` activation class being derived
+	 * from that variation.
+	 *
+	 * @param {Object} attributes      Block attributes.
+	 * @param {Array}  innerBlocks     Inner blocks.
+	 * @param {Object} extra           Extra data.
+	 * @param {Object} extra.blockNode Raw parsed block (carries innerHTML).
+	 * @param {Object} extra.block     Parsed block (carries originalContent).
+	 * @return {boolean} True when a hover-variation family is present without
+	 *                    its matching activation class in the stored HTML.
+	 */
+	isEligible(attributes, innerBlocks, extra) {
+		const innerHTML = getDeprecatedBlockHTML(extra);
+		if (!innerHTML || !innerHTML.includes('airo-wp-stack')) {
+			return false;
+		}
+
+		return hoverVariationClasses(attributes.className).some(
+			(activationClass) => !innerHTML.includes(activationClass)
+		);
+	},
+	save({ attributes }) {
+		const {
+			tagName = 'div',
+			constrainWidth,
+			contentWidth,
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			overlayColor,
+			shapeDividerTop,
+			shapeDividerTopBackgroundColor,
+			shapeDividerTopHeight,
+			shapeDividerTopWidth,
+			shapeDividerTopFlipX,
+			shapeDividerTopFlipY,
+			shapeDividerTopFront,
+			shapeDividerBottom,
+			shapeDividerBottomBackgroundColor,
+			shapeDividerBottomHeight,
+			shapeDividerBottomWidth,
+			shapeDividerBottomFlipX,
+			shapeDividerBottomFlipY,
+			shapeDividerBottomFront,
+		} = attributes;
+
+		const shapeDividerTopBandColor = convertColorToCSSVar(
+			shapeDividerTopBackgroundColor
+		);
+		const shapeDividerBottomBandColor = convertColorToCSSVar(
+			shapeDividerBottomBackgroundColor
+		);
+
+		// Pre-hover-variation-classes className: overlay class already derives
+		// from the style variation (v7/60c99058), but no hover activation classes.
+		const hasOverlay =
+			!!overlayColor || hasOverlayStyleClass(attributes.className);
+		const className = [
+			'airo-wp-stack',
+			!constrainWidth && 'airo-wp-no-width-constraint',
+			hasOverlay && 'airo-wp-stack--has-overlay',
+			(shapeDividerTop || shapeDividerBottom) &&
+				'airo-wp-stack--has-shape-divider',
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		const TagName = tagName || 'div';
+		const blockProps = useBlockProps.save({
+			className,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertColorToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertColorToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertColorToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+				...(overlayColor && {
+					'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+					'--airo-wp-overlay-opacity': '0.8',
+				}),
+			},
+		});
+
+		const innerStyle = {};
+		if (constrainWidth) {
+			innerStyle.maxWidth =
+				contentWidth ||
+				'var(--wp--style--global--content-size, 1140px)';
+			innerStyle.marginLeft = 'auto';
+			innerStyle.marginRight = 'auto';
+		}
+
+		if (shapeDividerTop) {
+			innerStyle.paddingTop = `${shapeDividerTopHeight || 100}px`;
+		}
+		if (shapeDividerBottom) {
+			innerStyle.paddingBottom = `${shapeDividerBottomHeight || 100}px`;
+		}
+
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-stack__inner',
+			style: innerStyle,
+		});
+
+		return (
+			<TagName {...blockProps}>
+				<ShapeDivider
+					shape={shapeDividerTop}
+					position="top"
+					height={shapeDividerTopHeight}
+					width={shapeDividerTopWidth}
+					flipX={shapeDividerTopFlipX}
+					flipY={shapeDividerTopFlipY}
+					front={shapeDividerTopFront}
+					bandColor={shapeDividerTopBandColor}
+				/>
+				<div {...innerBlocksProps} />
+				<ShapeDivider
+					shape={shapeDividerBottom}
+					position="bottom"
+					height={shapeDividerBottomHeight}
+					width={shapeDividerBottomWidth}
+					flipX={shapeDividerBottomFlipX}
+					flipY={shapeDividerBottomFlipY}
+					front={shapeDividerBottomFront}
+					bandColor={shapeDividerBottomBandColor}
+				/>
+			</TagName>
+		);
+	},
+	migrate(attributes) {
+		// Only the serialised hover-activation classes differ; the current
+		// save() derives them from the style variation on className, so no
+		// attribute change.
+		return attributes;
+	},
+};
+
+// Version 7: Overlay class from overlayColor only (before style-kit overlay
+// variations). The current save() also emits `airo-wp-stack--has-overlay` when a
+// style-kit overlay variation (`is-style-overlay-*`) is present on className,
+// so the overlay color can move out of the `overlayColor` attribute and into
+// the variation's stylesheet. Sections saved with such a variation but no
+// `overlayColor` therefore lack `airo-wp-stack--has-overlay` in their stored HTML
+// while the new save() adds it — an "invalid content" mismatch.
+//
+// isEligible targets exactly that signature (overlay variation on className +
+// no overlay class in the stored HTML) so those blocks migrate SILENTLY. save()
+// reproduces the pre-change output (overlay class from `overlayColor` only) so
+// it also byte-matches on WP versions that still validate the deprecation's
+// save() before migrating. migrate() is a passthrough — only the serialised
+// class differs, not the attribute values; the current save() then re-renders
+// the block with the overlay class derived from the variation.
+const v7 = {
+	supports: sharedSupports,
+	attributes: {
+		align: { type: 'string', default: 'full' },
+		tagName: { type: 'string', default: 'div' },
+		constrainWidth: { type: 'boolean', default: true },
+		contentWidth: { type: 'string', default: '' },
+		// Mirror block.json's `style` default. Without it, migration parses
+		// `style` as undefined and v7.save() omits the default spacing padding,
+		// so it no longer byte-matches stored markup (which carries the padding)
+		// and the deprecation never fires. Must stay in sync with block.json.
+		style: {
+			type: 'object',
+			default: {
+				spacing: {
+					padding: {
+						top: 'var:preset|spacing|50',
+						bottom: 'var:preset|spacing|50',
+						left: 'var:preset|spacing|30',
+						right: 'var:preset|spacing|30',
+					},
+				},
+			},
+		},
+		hoverBackgroundColor: { type: 'string', default: '' },
+		hoverTextColor: { type: 'string', default: '' },
+		hoverIconBackgroundColor: { type: 'string', default: '' },
+		hoverButtonBackgroundColor: { type: 'string', default: '' },
+		overlayColor: { type: 'string', default: '' },
+		shapeDividerTop: { type: 'string', default: '' },
+		shapeDividerTopColor: { type: 'string', default: '' },
+		shapeDividerTopHeight: { type: 'number', default: 100 },
+		shapeDividerTopWidth: { type: 'number', default: 100 },
+		shapeDividerTopFlipX: { type: 'boolean', default: false },
+		shapeDividerTopFlipY: { type: 'boolean', default: false },
+		shapeDividerTopFront: { type: 'boolean', default: false },
+		shapeDividerTopBackgroundColor: { type: 'string', default: '' },
+		shapeDividerBottom: { type: 'string', default: '' },
+		shapeDividerBottomColor: { type: 'string', default: '' },
+		shapeDividerBottomHeight: { type: 'number', default: 100 },
+		shapeDividerBottomWidth: { type: 'number', default: 100 },
+		shapeDividerBottomFlipX: { type: 'boolean', default: false },
+		shapeDividerBottomFlipY: { type: 'boolean', default: false },
+		shapeDividerBottomFront: { type: 'boolean', default: false },
+		shapeDividerBottomBackgroundColor: { type: 'string', default: '' },
+	},
+	/**
+	 * Silently migrate sections that carry a style-kit overlay variation
+	 * (`is-style-overlay-*`) but whose stored HTML predates the overlay class
+	 * being derived from that variation.
+	 *
+	 * @param {Object} attributes      Block attributes.
+	 * @param {Array}  innerBlocks     Inner blocks.
+	 * @param {Object} extra           Extra data.
+	 * @param {Object} extra.blockNode Raw parsed block (carries innerHTML).
+	 * @param {Object} extra.block     Parsed block (carries originalContent).
+	 * @return {boolean} True when the pre-variation overlay signature is found.
+	 */
+	isEligible(attributes, innerBlocks, extra) {
+		const innerHTML = getDeprecatedBlockHTML(extra);
+		return !!(
+			hasOverlayStyleClass(attributes.className) &&
+			innerHTML &&
+			innerHTML.includes('airo-wp-stack') &&
+			!innerHTML.includes('airo-wp-stack--has-overlay')
+		);
+	},
+	save({ attributes }) {
+		const {
+			tagName = 'div',
+			constrainWidth,
+			contentWidth,
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			overlayColor,
+			shapeDividerTop,
+			shapeDividerTopBackgroundColor,
+			shapeDividerTopHeight,
+			shapeDividerTopWidth,
+			shapeDividerTopFlipX,
+			shapeDividerTopFlipY,
+			shapeDividerTopFront,
+			shapeDividerBottom,
+			shapeDividerBottomBackgroundColor,
+			shapeDividerBottomHeight,
+			shapeDividerBottomWidth,
+			shapeDividerBottomFlipX,
+			shapeDividerBottomFlipY,
+			shapeDividerBottomFront,
+		} = attributes;
+
+		const shapeDividerTopBandColor = convertColorToCSSVar(
+			shapeDividerTopBackgroundColor
+		);
+		const shapeDividerBottomBandColor = convertColorToCSSVar(
+			shapeDividerBottomBackgroundColor
+		);
+
+		// Pre-change className: overlay class from overlayColor ONLY.
+		const className = [
+			'airo-wp-stack',
+			!constrainWidth && 'airo-wp-no-width-constraint',
+			overlayColor && 'airo-wp-stack--has-overlay',
+			(shapeDividerTop || shapeDividerBottom) &&
+				'airo-wp-stack--has-shape-divider',
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		const TagName = tagName || 'div';
+		const blockProps = useBlockProps.save({
+			className,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertColorToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertColorToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertColorToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+				...(overlayColor && {
+					'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+					'--airo-wp-overlay-opacity': '0.8',
+				}),
+			},
+		});
+
+		const innerStyle = {};
+		if (constrainWidth) {
+			innerStyle.maxWidth =
+				contentWidth ||
+				'var(--wp--style--global--content-size, 1140px)';
+			innerStyle.marginLeft = 'auto';
+			innerStyle.marginRight = 'auto';
+		}
+
+		if (shapeDividerTop) {
+			innerStyle.paddingTop = `${shapeDividerTopHeight || 100}px`;
+		}
+		if (shapeDividerBottom) {
+			innerStyle.paddingBottom = `${shapeDividerBottomHeight || 100}px`;
+		}
+
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-stack__inner',
+			style: innerStyle,
+		});
+
+		return (
+			<TagName {...blockProps}>
+				<ShapeDivider
+					shape={shapeDividerTop}
+					position="top"
+					height={shapeDividerTopHeight}
+					width={shapeDividerTopWidth}
+					flipX={shapeDividerTopFlipX}
+					flipY={shapeDividerTopFlipY}
+					front={shapeDividerTopFront}
+					bandColor={shapeDividerTopBandColor}
+				/>
+				<div {...innerBlocksProps} />
+				<ShapeDivider
+					shape={shapeDividerBottom}
+					position="bottom"
+					height={shapeDividerBottomHeight}
+					width={shapeDividerBottomWidth}
+					flipX={shapeDividerBottomFlipX}
+					flipY={shapeDividerBottomFlipY}
+					front={shapeDividerBottomFront}
+					bandColor={shapeDividerBottomBandColor}
+				/>
+			</TagName>
+		);
+	},
+	migrate(attributes) {
+		// Only the serialised overlay class differs; the current save() derives
+		// it from the style variation on className, so no attribute change.
+		return attributes;
+	},
+};
+
+// Version 6: Block animations extension before lean serialization.
+// In commit 634833e5, addAnimationSaveProps was changed to only output data
+// attributes that differ from the defaults. Previously it always output all
+// animation data attrs (trigger, duration, delay, easing, offset, once,
+// exit-animation) regardless of their values. Patterns saved before that
+// change (e.g. pricing/pricing-tabs) have all attrs in their stored HTML.
+// Current serialization omits the default-value attrs, so the stored HTML no
+// longer matches and the block shows "Attempt Recovery".
+//
+// isEligible targets the legacy signature: sections that are animated AND
+// whose stored HTML contains data-airo-wp-animation-trigger= (only the old
+// save-props filter always emitted that attribute; the current filter omits
+// it when it equals the default "scroll").
+//
+// save() reproduces the legacy HTML by passing the missing default-value attrs
+// directly into useBlockProps.save(). blocks.getSaveContent.extraProps still
+// runs on top and overrides any non-default-value attrs with the same values,
+// so the net output matches the stored markup exactly.
+//
+// migrate() is a passthrough — only the serialised HTML differs, not the
+// attribute values themselves.
+//
+// NOTE: the dsgoAnimation* attributes referenced in isEligible()/save() below
+// are intentionally NOT listed in `attributes` here. They are injected onto
+// every block's schema by the block-animations extension's
+// blocks.registerBlockType filter at registration time — and that filter pass
+// runs on each deprecated entry too, so the deprecated block type ends up with
+// them automatically. This is the same extension-injected attribute pattern
+// documented on the accordion and pill v1 deprecations in this repo.
+const v6 = {
+	supports: sharedSupports,
+	attributes: {
+		align: { type: 'string', default: 'full' },
+		tagName: { type: 'string', default: 'div' },
+		constrainWidth: { type: 'boolean', default: true },
+		contentWidth: { type: 'string', default: '' },
+		style: { type: 'object' },
+		hoverBackgroundColor: { type: 'string', default: '' },
+		hoverTextColor: { type: 'string', default: '' },
+		hoverIconBackgroundColor: { type: 'string', default: '' },
+		hoverButtonBackgroundColor: { type: 'string', default: '' },
+		overlayColor: { type: 'string', default: '' },
+		shapeDividerTop: { type: 'string', default: '' },
+		shapeDividerTopColor: { type: 'string', default: '' },
+		shapeDividerTopHeight: { type: 'number', default: 100 },
+		shapeDividerTopWidth: { type: 'number', default: 100 },
+		shapeDividerTopFlipX: { type: 'boolean', default: false },
+		shapeDividerTopFlipY: { type: 'boolean', default: false },
+		shapeDividerTopFront: { type: 'boolean', default: false },
+		shapeDividerTopBackgroundColor: { type: 'string', default: '' },
+		shapeDividerBottom: { type: 'string', default: '' },
+		shapeDividerBottomColor: { type: 'string', default: '' },
+		shapeDividerBottomHeight: { type: 'number', default: 100 },
+		shapeDividerBottomWidth: { type: 'number', default: 100 },
+		shapeDividerBottomFlipX: { type: 'boolean', default: false },
+		shapeDividerBottomFlipY: { type: 'boolean', default: false },
+		shapeDividerBottomFront: { type: 'boolean', default: false },
+		shapeDividerBottomBackgroundColor: { type: 'string', default: '' },
+	},
+	/**
+	 * Matches sections saved with the old animation filter that always emitted
+	 * all data attrs. The presence of data-airo-wp-animation-trigger= in the
+	 * stored HTML is the unique signature — current serialization never outputs
+	 * that attribute when it holds the default value "scroll".
+	 *
+	 * @param {Object} attributes      - Block attributes
+	 * @param {Array}  innerBlocks     - Inner blocks
+	 * @param {Object} extra           - Extra data
+	 * @param {Object} extra.blockNode - Raw parsed block (carries innerHTML)
+	 * @param {Object} extra.block     - Parsed block (carries originalContent)
+	 * @return {boolean} True when the legacy animation-attrs pattern is detected
+	 */
+	isEligible(attributes, innerBlocks, extra) {
+		const innerHTML = getDeprecatedBlockHTML(extra);
+		return !!(
+			attributes.dsgoAnimationEnabled &&
+			innerHTML &&
+			innerHTML.includes('data-airo-wp-animation-trigger=')
+		);
+	},
+	/**
+	 * Reproduces the legacy outer-element HTML by passing the data attrs that
+	 * the old animation filter always emitted (trigger, delay, easing, offset,
+	 * once, exit-animation, duration) directly into useBlockProps.save().
+	 *
+	 * blocks.getSaveContent.extraProps (the current lean animation filter) still
+	 * runs on top. For non-default values it overrides with the same value;
+	 * for default values the current filter emits nothing so these props survive
+	 * in the final markup — matching the stored legacy HTML exactly.
+	 *
+	 * @param {Object} root0            Props
+	 * @param {Object} root0.attributes Block attributes
+	 * @return {JSX.Element} Save element
+	 */
+	save({ attributes }) {
+		const {
+			tagName = 'div',
+			backgroundColor,
+			textColor,
+			constrainWidth,
+			contentWidth,
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			overlayColor,
+			// Shape divider attributes
+			shapeDividerTop,
+			shapeDividerTopColor,
+			shapeDividerTopBackgroundColor,
+			shapeDividerTopHeight,
+			shapeDividerTopWidth,
+			shapeDividerTopFlipX,
+			shapeDividerTopFlipY,
+			shapeDividerTopFront,
+			shapeDividerBottom,
+			shapeDividerBottomColor,
+			shapeDividerBottomBackgroundColor,
+			shapeDividerBottomHeight,
+			shapeDividerBottomWidth,
+			shapeDividerBottomFlipX,
+			shapeDividerBottomFlipY,
+			shapeDividerBottomFront,
+			// Animation attributes injected by the block-animations extension
+			dsgoAnimationEnabled,
+			dsgoEntranceAnimation,
+			dsgoExitAnimation,
+			dsgoAnimationTrigger,
+			dsgoAnimationDuration,
+			dsgoAnimationDelay,
+			dsgoAnimationEasing,
+			dsgoAnimationOffset,
+			dsgoAnimationOnce,
+		} = attributes;
+
+		const sectionBackgroundColor =
+			attributes.style?.color?.background ||
+			(backgroundColor
+				? `var(--wp--preset--color--${backgroundColor})`
+				: '');
+
+		const sectionTextColor =
+			attributes.style?.color?.text ||
+			(textColor ? `var(--wp--preset--color--${textColor})` : '');
+
+		const className = [
+			'airo-wp-stack',
+			!constrainWidth && 'airo-wp-no-width-constraint',
+			overlayColor && 'airo-wp-stack--has-overlay',
+			(shapeDividerTop || shapeDividerBottom) &&
+				'airo-wp-stack--has-shape-divider',
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		const TagName = tagName || 'div';
+
+		// When animated, include ALL the data attrs that the old save-props filter
+		// always emitted. The current lean filter (blocks.getSaveContent.extraProps)
+		// still runs on top — it overrides non-default values with the same value
+		// and leaves default-value attrs (trigger, easing, offset, once, delay=0,
+		// exit-animation="") that it no longer emits, reproducing the legacy HTML.
+		const legacyAnimationAttrs = dsgoAnimationEnabled
+			? {
+					'data-airo-wp-animation-enabled': 'true',
+					'data-airo-wp-entrance-animation': dsgoEntranceAnimation || '',
+					'data-airo-wp-exit-animation': dsgoExitAnimation || '',
+					'data-airo-wp-animation-trigger':
+						dsgoAnimationTrigger || 'scroll',
+					'data-airo-wp-animation-duration':
+						dsgoAnimationDuration ?? 600,
+					'data-airo-wp-animation-delay': dsgoAnimationDelay ?? 0,
+					'data-airo-wp-animation-easing':
+						dsgoAnimationEasing || 'ease-out',
+					'data-airo-wp-animation-offset': dsgoAnimationOffset ?? 100,
+					'data-airo-wp-animation-once':
+						dsgoAnimationOnce !== false ? 'true' : 'false',
+				}
+			: {};
+
+		const blockProps = useBlockProps.save({
+			className,
+			...legacyAnimationAttrs,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertColorToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertColorToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertColorToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+				...(overlayColor && {
+					'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+					'--airo-wp-overlay-opacity': '0.8',
+				}),
+			},
+		});
+
+		const innerStyle = {};
+		if (constrainWidth) {
+			innerStyle.maxWidth =
+				contentWidth ||
+				'var(--wp--style--global--content-size, 1140px)';
+			innerStyle.marginLeft = 'auto';
+			innerStyle.marginRight = 'auto';
+		}
+
+		if (shapeDividerTop) {
+			innerStyle.paddingTop = `${shapeDividerTopHeight || 100}px`;
+		}
+		if (shapeDividerBottom) {
+			innerStyle.paddingBottom = `${shapeDividerBottomHeight || 100}px`;
+		}
+
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-stack__inner',
+			style: innerStyle,
+		});
+
+		// Uses V4ShapeDivider — same as current save (no --airo-wp-shape-gradient-dir)
+		return (
+			<TagName {...blockProps}>
+				<V4ShapeDivider
+					shape={shapeDividerTop}
+					color={
+						convertColorToCSSVar(shapeDividerTopColor) ||
+						sectionBackgroundColor
+					}
+					backgroundColor={
+						convertColorToCSSVar(shapeDividerTopBackgroundColor) ||
+						sectionTextColor
+					}
+					height={shapeDividerTopHeight}
+					width={shapeDividerTopWidth}
+					flipX={shapeDividerTopFlipX}
+					flipY={shapeDividerTopFlipY}
+					front={shapeDividerTopFront}
+					position="top"
+				/>
+				<div {...innerBlocksProps} />
+				<V4ShapeDivider
+					shape={shapeDividerBottom}
+					color={
+						convertColorToCSSVar(shapeDividerBottomColor) ||
+						sectionBackgroundColor
+					}
+					backgroundColor={
+						convertColorToCSSVar(
+							shapeDividerBottomBackgroundColor
+						) || sectionTextColor
+					}
+					height={shapeDividerBottomHeight}
+					width={shapeDividerBottomWidth}
+					flipX={shapeDividerBottomFlipX}
+					flipY={shapeDividerBottomFlipY}
+					front={shapeDividerBottomFront}
+					position="bottom"
+				/>
+			</TagName>
+		);
+	},
+	migrate(attributes) {
+		return attributes;
+	},
+};
+
+// Version 5: Shape dividers before gradient direction fix.
+// The anti-aliasing gradient was always applied at the top for bottom dividers
+// and bottom for top dividers, regardless of flipY. When flipY was true, this
+// created a visible line where the wave curve didn't reach the container edge.
+// Fix: added --airo-wp-shape-gradient-dir CSS custom property to ShapeDivider.
+//
+// NOTE ON THE SVG -> CLASS-BASED MIGRATION (commits 88f98fa/b81ba13/c01f810d):
+// The current save() in save.js was changed to emit an empty classed <div>
+// (no inline <svg>). No NEW deprecation entry was added for that change,
+// because the existing v3-v6 chain already migrates old content. WordPress's
+// applyBlockDeprecatedVersions() walks the deprecations in order and, for
+// each, first tries to byte-match that deprecation's own save() against the
+// stored HTML and, failing that, falls back to its isEligible(). Old
+// inline-SVG posts byte-match the frozen save() of whichever era wrote them
+// (OldShapeDivider/`currentColor` in v3, V4ShapeDivider/background-color
+// inheritance in v4-v6); that deprecation's passthrough migrate() then
+// carries the attributes forward unchanged so the new class-based save()
+// re-renders them. v5's broad isEligible (below) is an additional safety net
+// for near-miss markup. Verified in src/blocks/section/test/deprecated.test.js
+// — do not delete that test; it is the regression guard for this migration.
+const v5 = {
+	supports: sharedSupports,
+	attributes: {
+		align: { type: 'string', default: 'full' },
+		tagName: { type: 'string', default: 'div' },
+		constrainWidth: { type: 'boolean', default: true },
+		contentWidth: { type: 'string', default: '' },
+		style: { type: 'object' },
+		hoverBackgroundColor: { type: 'string', default: '' },
+		hoverTextColor: { type: 'string', default: '' },
+		hoverIconBackgroundColor: { type: 'string', default: '' },
+		hoverButtonBackgroundColor: { type: 'string', default: '' },
+		overlayColor: { type: 'string', default: '' },
+		shapeDividerTop: { type: 'string', default: '' },
+		shapeDividerTopColor: { type: 'string', default: '' },
+		shapeDividerTopHeight: { type: 'number', default: 100 },
+		shapeDividerTopWidth: { type: 'number', default: 100 },
+		shapeDividerTopFlipX: { type: 'boolean', default: false },
+		shapeDividerTopFlipY: { type: 'boolean', default: false },
+		shapeDividerTopFront: { type: 'boolean', default: false },
+		shapeDividerTopBackgroundColor: { type: 'string', default: '' },
+		shapeDividerBottom: { type: 'string', default: '' },
+		shapeDividerBottomColor: { type: 'string', default: '' },
+		shapeDividerBottomHeight: { type: 'number', default: 100 },
+		shapeDividerBottomWidth: { type: 'number', default: 100 },
+		shapeDividerBottomFlipX: { type: 'boolean', default: false },
+		shapeDividerBottomFlipY: { type: 'boolean', default: false },
+		shapeDividerBottomFront: { type: 'boolean', default: false },
+		shapeDividerBottomBackgroundColor: { type: 'string', default: '' },
+	},
+	// No isEligible: markup-change deprecation, reached by save-matching on an
+	// INVALID block (WordPress skips isEligible for those). The old guard was
+	// just "has a shape divider", which is equally true of a CURRENT section —
+	// three separate versions shared it, so a divider claimed all three.
+	save({ attributes }) {
+		const {
+			tagName = 'div',
+			backgroundColor,
+			textColor,
+			constrainWidth,
+			contentWidth,
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			overlayColor,
+			shapeDividerTop,
+			shapeDividerTopColor,
+			shapeDividerTopBackgroundColor,
+			shapeDividerTopHeight,
+			shapeDividerTopWidth,
+			shapeDividerTopFlipX,
+			shapeDividerTopFlipY,
+			shapeDividerTopFront,
+			shapeDividerBottom,
+			shapeDividerBottomColor,
+			shapeDividerBottomBackgroundColor,
+			shapeDividerBottomHeight,
+			shapeDividerBottomWidth,
+			shapeDividerBottomFlipX,
+			shapeDividerBottomFlipY,
+			shapeDividerBottomFront,
+		} = attributes;
+
+		const sectionBackgroundColor =
+			attributes.style?.color?.background ||
+			(backgroundColor
+				? `var(--wp--preset--color--${backgroundColor})`
+				: '');
+
+		const sectionTextColor =
+			attributes.style?.color?.text ||
+			(textColor ? `var(--wp--preset--color--${textColor})` : '');
+
+		const className = [
+			'airo-wp-stack',
+			!constrainWidth && 'airo-wp-no-width-constraint',
+			overlayColor && 'airo-wp-stack--has-overlay',
+			(shapeDividerTop || shapeDividerBottom) &&
+				'airo-wp-stack--has-shape-divider',
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		const TagName = tagName || 'div';
+		const blockProps = useBlockProps.save({
+			className,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertColorToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertColorToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertColorToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+				...(overlayColor && {
+					'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+					'--airo-wp-overlay-opacity': '0.8',
+				}),
+			},
+		});
+
+		const innerStyle = {};
+		if (constrainWidth) {
+			innerStyle.maxWidth =
+				contentWidth ||
+				'var(--wp--style--global--content-size, 1140px)';
+			innerStyle.marginLeft = 'auto';
+			innerStyle.marginRight = 'auto';
+		}
+
+		if (shapeDividerTop) {
+			innerStyle.paddingTop = `${shapeDividerTopHeight || 100}px`;
+		}
+		if (shapeDividerBottom) {
+			innerStyle.paddingBottom = `${shapeDividerBottomHeight || 100}px`;
+		}
+
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-stack__inner',
+			style: innerStyle,
+		});
+
+		// Uses V4ShapeDivider (no --airo-wp-shape-gradient-dir property)
+		return (
+			<TagName {...blockProps}>
+				<V4ShapeDivider
+					shape={shapeDividerTop}
+					color={
+						convertColorToCSSVar(shapeDividerTopColor) ||
+						sectionBackgroundColor
+					}
+					backgroundColor={
+						convertColorToCSSVar(shapeDividerTopBackgroundColor) ||
+						sectionTextColor
+					}
+					height={shapeDividerTopHeight}
+					width={shapeDividerTopWidth}
+					flipX={shapeDividerTopFlipX}
+					flipY={shapeDividerTopFlipY}
+					front={shapeDividerTopFront}
+					position="top"
+				/>
+				<div {...innerBlocksProps} />
+				<V4ShapeDivider
+					shape={shapeDividerBottom}
+					color={
+						convertColorToCSSVar(shapeDividerBottomColor) ||
+						sectionBackgroundColor
+					}
+					backgroundColor={
+						convertColorToCSSVar(
+							shapeDividerBottomBackgroundColor
+						) || sectionTextColor
+					}
+					height={shapeDividerBottomHeight}
+					width={shapeDividerBottomWidth}
+					flipX={shapeDividerBottomFlipX}
+					flipY={shapeDividerBottomFlipY}
+					front={shapeDividerBottomFront}
+					position="bottom"
+				/>
+			</TagName>
+		);
+	},
+	migrate(attributes) {
+		return attributes;
+	},
+};
+
+// Version 4: Shape dividers with background color inheritance but no text color for shape background
+const v4 = {
+	supports: sharedSupports,
+	attributes: {
+		align: { type: 'string', default: 'full' },
+		tagName: { type: 'string', default: 'div' },
+		constrainWidth: { type: 'boolean', default: true },
+		contentWidth: { type: 'string', default: '' },
+		style: { type: 'object' },
+		hoverBackgroundColor: { type: 'string', default: '' },
+		hoverTextColor: { type: 'string', default: '' },
+		hoverIconBackgroundColor: { type: 'string', default: '' },
+		hoverButtonBackgroundColor: { type: 'string', default: '' },
+		overlayColor: { type: 'string', default: '' },
+		shapeDividerTop: { type: 'string', default: '' },
+		shapeDividerTopColor: { type: 'string', default: '' },
+		shapeDividerTopHeight: { type: 'number', default: 100 },
+		shapeDividerTopWidth: { type: 'number', default: 100 },
+		shapeDividerTopFlipX: { type: 'boolean', default: false },
+		shapeDividerTopFlipY: { type: 'boolean', default: false },
+		shapeDividerTopFront: { type: 'boolean', default: false },
+		shapeDividerTopBackgroundColor: { type: 'string', default: '' },
+		shapeDividerBottom: { type: 'string', default: '' },
+		shapeDividerBottomColor: { type: 'string', default: '' },
+		shapeDividerBottomHeight: { type: 'number', default: 100 },
+		shapeDividerBottomWidth: { type: 'number', default: 100 },
+		shapeDividerBottomFlipX: { type: 'boolean', default: false },
+		shapeDividerBottomFlipY: { type: 'boolean', default: false },
+		shapeDividerBottomFront: { type: 'boolean', default: false },
+		shapeDividerBottomBackgroundColor: { type: 'string', default: '' },
+	},
+	// No isEligible: markup-change deprecation, reached by save-matching on an
+	// INVALID block (WordPress skips isEligible for those). The old guard was
+	// just "has a shape divider", which is equally true of a CURRENT section —
+	// three separate versions shared it, so a divider claimed all three.
+	save({ attributes }) {
+		const {
+			tagName = 'div',
+			backgroundColor,
+			constrainWidth,
+			contentWidth,
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			overlayColor,
+			shapeDividerTop,
+			shapeDividerTopColor,
+			shapeDividerTopBackgroundColor,
+			shapeDividerTopHeight,
+			shapeDividerTopWidth,
+			shapeDividerTopFlipX,
+			shapeDividerTopFlipY,
+			shapeDividerTopFront,
+			shapeDividerBottom,
+			shapeDividerBottomColor,
+			shapeDividerBottomBackgroundColor,
+			shapeDividerBottomHeight,
+			shapeDividerBottomWidth,
+			shapeDividerBottomFlipX,
+			shapeDividerBottomFlipY,
+			shapeDividerBottomFront,
+		} = attributes;
+
+		// Previous behavior: shape color inherits background, shape background has no text color fallback
+		const sectionBackgroundColor =
+			attributes.style?.color?.background ||
+			(backgroundColor
+				? `var(--wp--preset--color--${backgroundColor})`
+				: '');
+
+		const className = [
+			'airo-wp-stack',
+			!constrainWidth && 'airo-wp-no-width-constraint',
+			overlayColor && 'airo-wp-stack--has-overlay',
+			(shapeDividerTop || shapeDividerBottom) &&
+				'airo-wp-stack--has-shape-divider',
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		const TagName = tagName || 'div';
+		const blockProps = useBlockProps.save({
+			className,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertPresetToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertPresetToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertPresetToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertPresetToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+				...(overlayColor && {
+					'--airo-wp-overlay-color': convertPresetToCSSVar(overlayColor),
+					'--airo-wp-overlay-opacity': '0.8',
+				}),
+			},
+		});
+
+		const innerStyle = {};
+		if (constrainWidth) {
+			innerStyle.maxWidth =
+				contentWidth ||
+				'var(--wp--style--global--content-size, 1140px)';
+			innerStyle.marginLeft = 'auto';
+			innerStyle.marginRight = 'auto';
+		}
+
+		if (shapeDividerTop) {
+			innerStyle.paddingTop = `${shapeDividerTopHeight || 100}px`;
+		}
+		if (shapeDividerBottom) {
+			innerStyle.paddingBottom = `${shapeDividerBottomHeight || 100}px`;
+		}
+
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-stack__inner',
+			style: innerStyle,
+		});
+
+		return (
+			<TagName {...blockProps}>
+				<V4ShapeDivider
+					shape={shapeDividerTop}
+					color={
+						convertPresetToCSSVar(shapeDividerTopColor) ||
+						sectionBackgroundColor
+					}
+					backgroundColor={convertPresetToCSSVar(
+						shapeDividerTopBackgroundColor
+					)}
+					height={shapeDividerTopHeight}
+					width={shapeDividerTopWidth}
+					flipX={shapeDividerTopFlipX}
+					flipY={shapeDividerTopFlipY}
+					front={shapeDividerTopFront}
+					position="top"
+				/>
+				<div {...innerBlocksProps} />
+				<V4ShapeDivider
+					shape={shapeDividerBottom}
+					color={
+						convertPresetToCSSVar(shapeDividerBottomColor) ||
+						sectionBackgroundColor
+					}
+					backgroundColor={convertPresetToCSSVar(
+						shapeDividerBottomBackgroundColor
+					)}
+					height={shapeDividerBottomHeight}
+					width={shapeDividerBottomWidth}
+					flipX={shapeDividerBottomFlipX}
+					flipY={shapeDividerBottomFlipY}
+					front={shapeDividerBottomFront}
+					position="bottom"
+				/>
+			</TagName>
+		);
+	},
+	migrate(attributes) {
+		return attributes;
+	},
+};
+
+// Version 3: Shape dividers with currentColor fallback (before background color inheritance)
+const v3 = {
+	supports: sharedSupports,
+	attributes: {
+		align: { type: 'string', default: 'full' },
+		tagName: { type: 'string', default: 'div' },
+		constrainWidth: { type: 'boolean', default: true },
+		contentWidth: { type: 'string', default: '' },
+		style: { type: 'object' },
+		hoverBackgroundColor: { type: 'string', default: '' },
+		hoverTextColor: { type: 'string', default: '' },
+		hoverIconBackgroundColor: { type: 'string', default: '' },
+		hoverButtonBackgroundColor: { type: 'string', default: '' },
+		overlayColor: { type: 'string', default: '' },
+		shapeDividerTop: { type: 'string', default: '' },
+		shapeDividerTopColor: { type: 'string', default: '' },
+		shapeDividerTopHeight: { type: 'number', default: 100 },
+		shapeDividerTopWidth: { type: 'number', default: 100 },
+		shapeDividerTopFlipX: { type: 'boolean', default: false },
+		shapeDividerTopFlipY: { type: 'boolean', default: false },
+		shapeDividerTopFront: { type: 'boolean', default: false },
+		shapeDividerTopBackgroundColor: { type: 'string', default: '' },
+		shapeDividerBottom: { type: 'string', default: '' },
+		shapeDividerBottomColor: { type: 'string', default: '' },
+		shapeDividerBottomHeight: { type: 'number', default: 100 },
+		shapeDividerBottomWidth: { type: 'number', default: 100 },
+		shapeDividerBottomFlipX: { type: 'boolean', default: false },
+		shapeDividerBottomFlipY: { type: 'boolean', default: false },
+		shapeDividerBottomFront: { type: 'boolean', default: false },
+		shapeDividerBottomBackgroundColor: { type: 'string', default: '' },
+	},
+	// No isEligible: markup-change deprecation, reached by save-matching on an
+	// INVALID block (WordPress skips isEligible for those). The old guard was
+	// just "has a shape divider", which is equally true of a CURRENT section —
+	// three separate versions shared it, so a divider claimed all three.
+	save({ attributes }) {
+		const {
+			tagName = 'div',
+			constrainWidth,
+			contentWidth,
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			overlayColor,
+			shapeDividerTop,
+			shapeDividerTopColor,
+			shapeDividerTopBackgroundColor,
+			shapeDividerTopHeight,
+			shapeDividerTopWidth,
+			shapeDividerTopFlipX,
+			shapeDividerTopFlipY,
+			shapeDividerTopFront,
+			shapeDividerBottom,
+			shapeDividerBottomColor,
+			shapeDividerBottomBackgroundColor,
+			shapeDividerBottomHeight,
+			shapeDividerBottomWidth,
+			shapeDividerBottomFlipX,
+			shapeDividerBottomFlipY,
+			shapeDividerBottomFront,
+		} = attributes;
+
+		const className = [
+			'airo-wp-stack',
+			!constrainWidth && 'airo-wp-no-width-constraint',
+			overlayColor && 'airo-wp-stack--has-overlay',
+			(shapeDividerTop || shapeDividerBottom) &&
+				'airo-wp-stack--has-shape-divider',
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		const TagName = tagName || 'div';
+		const blockProps = useBlockProps.save({
+			className,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertPresetToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertPresetToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertPresetToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertPresetToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+				...(overlayColor && {
+					'--airo-wp-overlay-color': convertPresetToCSSVar(overlayColor),
+					'--airo-wp-overlay-opacity': '0.8',
+				}),
+			},
+		});
+
+		const innerStyle = {};
+		if (constrainWidth) {
+			innerStyle.maxWidth =
+				contentWidth ||
+				'var(--wp--style--global--content-size, 1140px)';
+			innerStyle.marginLeft = 'auto';
+			innerStyle.marginRight = 'auto';
+		}
+
+		if (shapeDividerTop) {
+			innerStyle.paddingTop = `${shapeDividerTopHeight || 100}px`;
+		}
+		if (shapeDividerBottom) {
+			innerStyle.paddingBottom = `${shapeDividerBottomHeight || 100}px`;
+		}
+
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-stack__inner',
+			style: innerStyle,
+		});
+
+		return (
+			<TagName {...blockProps}>
+				<OldShapeDivider
+					shape={shapeDividerTop}
+					color={convertPresetToCSSVar(shapeDividerTopColor)}
+					backgroundColor={convertPresetToCSSVar(
+						shapeDividerTopBackgroundColor
+					)}
+					height={shapeDividerTopHeight}
+					width={shapeDividerTopWidth}
+					flipX={shapeDividerTopFlipX}
+					flipY={shapeDividerTopFlipY}
+					front={shapeDividerTopFront}
+					position="top"
+				/>
+				<div {...innerBlocksProps} />
+				<OldShapeDivider
+					shape={shapeDividerBottom}
+					color={convertPresetToCSSVar(shapeDividerBottomColor)}
+					backgroundColor={convertPresetToCSSVar(
+						shapeDividerBottomBackgroundColor
+					)}
+					height={shapeDividerBottomHeight}
+					width={shapeDividerBottomWidth}
+					flipX={shapeDividerBottomFlipX}
+					flipY={shapeDividerBottomFlipY}
+					front={shapeDividerBottomFront}
+					position="bottom"
+				/>
+			</TagName>
+		);
+	},
+	migrate(attributes) {
+		return attributes;
+	},
+};
+
+// Version 2: Before shape dividers - current save without shape dividers
+const v2 = {
+	supports: sharedSupports,
+	attributes: {
+		align: {
+			type: 'string',
+			default: 'full',
+		},
+		tagName: {
+			type: 'string',
+			default: 'div',
+		},
+		constrainWidth: {
+			type: 'boolean',
+			default: true,
+		},
+		contentWidth: {
+			type: 'string',
+			default: '',
+		},
+		style: {
+			type: 'object',
+		},
+		hoverBackgroundColor: {
+			type: 'string',
+			default: '',
+		},
+		hoverTextColor: {
+			type: 'string',
+			default: '',
+		},
+		hoverIconBackgroundColor: {
+			type: 'string',
+			default: '',
+		},
+		hoverButtonBackgroundColor: {
+			type: 'string',
+			default: '',
+		},
+		overlayColor: {
+			type: 'string',
+			default: '',
+		},
+	},
+	// Matches blocks created before shape dividers were added.
+	//
+	// No isEligible: markup-change deprecation, reached by save-matching on an
+	// INVALID block (WordPress skips isEligible for those). The old guard keyed on
+	// `constrainWidth` being present in the comment, which is true of any CURRENT
+	// section whose constrainWidth is non-default — so it claimed current content.
+	save({ attributes }) {
+		const {
+			tagName = 'div',
+			constrainWidth,
+			contentWidth,
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			overlayColor,
+		} = attributes;
+
+		// Build className with conditional no-width-constraint and overlay classes
+		const className = [
+			'airo-wp-stack',
+			!constrainWidth && 'airo-wp-no-width-constraint',
+			overlayColor && 'airo-wp-stack--has-overlay',
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		// Block wrapper props - outer div stays full width
+		const TagName = tagName || 'div';
+		const blockProps = useBlockProps.save({
+			className,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertPresetToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertPresetToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertPresetToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertPresetToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+				...(overlayColor && {
+					'--airo-wp-overlay-color': convertPresetToCSSVar(overlayColor),
+					'--airo-wp-overlay-opacity': '0.8',
+				}),
+			},
+		});
+
+		// Inner container props with width constraints
+		const innerStyle = {};
+		if (constrainWidth) {
+			innerStyle.maxWidth =
+				contentWidth ||
+				'var(--wp--style--global--content-size, 1140px)';
+			innerStyle.marginLeft = 'auto';
+			innerStyle.marginRight = 'auto';
+		}
+
+		// Merge inner blocks props without the outer block props
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-stack__inner',
+			style: innerStyle,
+		});
+
+		return (
+			<TagName {...blockProps}>
+				<div {...innerBlocksProps} />
+			</TagName>
+		);
+	},
+	migrate(attributes) {
+		// Shape divider attributes default to empty/false, so no transformation needed
+		return attributes;
+	},
+};
+
+// Version 1: Before align attribute - used className for alignment
+// Note: sharedSupports includes align, but it has no effect here because
+// v1 blocks have no align attribute value — WordPress only emits alignment
+// classes when the attribute is present and set.
+const v1 = {
+	supports: sharedSupports,
+	attributes: {
+		// Old blocks don't have align attribute, only className
+		style: {
+			type: 'object',
+		},
+		layout: {
+			type: 'object',
+		},
+		contentWidth: {
+			type: 'string',
+		},
+		hoverBackgroundColor: {
+			type: 'string',
+		},
+		hoverTextColor: {
+			type: 'string',
+		},
+		hoverIconBackgroundColor: {
+			type: 'string',
+		},
+		hoverButtonBackgroundColor: {
+			type: 'string',
+		},
+	},
+	// No isEligible: markup-change deprecation, reached by save-matching on an
+	// INVALID block (WordPress skips isEligible for those). The old guard,
+	// `attributes.align === undefined`, matched nearly every CURRENT section:
+	// `align` has no default, so it is absent from the raw comment attributes on
+	// any section the author never aligned wide/full.
+	save({ attributes }) {
+		const {
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			layout,
+			contentWidth,
+		} = attributes;
+
+		let contentSize;
+		if (layout && 'contentSize' in layout) {
+			contentSize = layout.contentSize;
+		} else {
+			contentSize = contentWidth || '1200px';
+		}
+
+		const className = [
+			'airo-wp-stack',
+			!contentSize && 'airo-wp-no-width-constraint',
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		const blockProps = useBlockProps.save({
+			className,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertPresetToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertPresetToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertPresetToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertPresetToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+			},
+		});
+
+		const innerStyle = {};
+		if (contentSize) {
+			innerStyle.maxWidth = contentSize;
+			innerStyle.marginLeft = 'auto';
+			innerStyle.marginRight = 'auto';
+		}
+
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-stack__inner',
+			style: innerStyle,
+		});
+
+		return (
+			<div {...blockProps}>
+				<div {...innerBlocksProps} />
+			</div>
+		);
+	},
+	migrate(oldAttributes) {
+		// Extract align from className if it exists
+		const className = oldAttributes.className || '';
+		let align;
+
+		if (className.includes('alignfull')) {
+			align = 'full';
+		} else if (className.includes('alignwide')) {
+			align = 'wide';
+		}
+
+		// Remove align classes from className since they'll be auto-added by WordPress
+		const cleanClassName = className
+			.split(' ')
+			.filter((cls) => cls !== 'alignfull' && cls !== 'alignwide')
+			.join(' ')
+			.trim();
+
+		// Return migrated attributes
+		return {
+			...oldAttributes,
+			align,
+			className: cleanClassName || undefined,
+		};
+	},
+};
+
+// Export deprecations in reverse chronological order (newest first)
+export default [v8, v7, v6, v5, v4, v3, v2, v1];

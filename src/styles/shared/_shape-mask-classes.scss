@@ -1,0 +1,33 @@
+/**
+ * Shape mask class assignment — shared, block-agnostic.
+ *
+ * Maps each `is-shape-<slug>` marker class to its `--airo-wp-shape-mask`
+ * custom property, and resolves `is-shape-inherit` to the theme.json
+ * shape-divider type token. @used by BOTH the section block's shape
+ * divider and the standalone section-divider block. The mask data-URIs
+ * themselves live in the companion `_shape-masks.scss`.
+ */
+
+@use 'shape-masks';
+
+// The ONLY SCSS copy of the slug list. One entry per getShapeDividerNames()
+// (src/blocks/section/utils/shape-dividers.js) — keep in sync.
+$airo-wp-shape-slugs: (
+	'wave', 'wave-double', 'wave-layered', 'wave-asymmetric',
+	'tilt', 'tilt-reverse', 'curve', 'curve-asymmetric',
+	'triangle', 'triangle-asymmetric', 'arrow', 'arrow-wide',
+	'peaks', 'peaks-soft', 'zigzag', 'book',
+	'clouds', 'drops', 'split', 'fan',
+	'steps', 'torn', 'slime'
+);
+
+@each $airo-wp-shape-slug in $airo-wp-shape-slugs {
+	:where(.airo-wp-shape-divider.is-shape-#{$airo-wp-shape-slug}) {
+		--airo-wp-shape-mask: var(--airo-wp-shape--#{$airo-wp-shape-slug});
+	}
+}
+
+// Theme-default shape → theme.json custom token, fallback wave.
+:where(.airo-wp-shape-divider.is-shape-inherit) {
+	--airo-wp-shape-mask: var(--wp--custom--airo-wp--shape-divider--type, var(--airo-wp-shape--wave));
+}

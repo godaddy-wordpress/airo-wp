@@ -1,0 +1,14 @@
+name: Publish Plugin
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+jobs:
+  publish:
+    name: Publish to WordPress.org
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4

@@ -1,0 +1,16 @@
+@use 'skeletons';
+
+// Post-restructure (v2.6): this block is a pure container. Grid + per-item
+// styling lives in airo-wp/query-results. The wrapper stays so filters,
+// pagination, and no-results have a consistent block-level ancestor and the
+// region can be targeted as one unit for AJAX refreshes.
+.wp-block-airo-wp-query {
+	box-sizing: border-box;
+
+	// Apply blockGap between all direct children (filters, results, pagination,
+	// no-results). WordPress sets --wp--style--block-gap on this wrapper when the
+	// author adjusts block spacing; this rule makes it visible on the frontend.
+	> * + * {
+		margin-block-start: var(--wp--style--block-gap, 0);
+	}
+}

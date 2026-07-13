@@ -1,0 +1,166 @@
+/**
+ * Row Block - Transforms
+ *
+ * Allows transforming to/from Section, Grid, and legacy Stack/Flex blocks.
+ *
+ * @since 1.0.0
+ */
+
+import { createBlock } from '@wordpress/blocks';
+
+const transforms = {
+	from: [
+		{
+			type: 'block',
+			blocks: ['airo-wp/flex'],
+			transform: (attributes, innerBlocks) => {
+				return createBlock(
+					'airo-wp/row',
+					{
+						// Transfer all attributes from legacy Flex block
+						...attributes,
+					},
+					innerBlocks
+				);
+			},
+		},
+		{
+			type: 'block',
+			blocks: ['airo-wp/stack', 'airo-wp/section'],
+			transform: (attributes, innerBlocks) => {
+				return createBlock(
+					'airo-wp/row',
+					{
+						// Preserve all attributes including layout
+						...attributes,
+						// mobileStack doesn't exist in Stack/Section, default to false
+						mobileStack: false,
+					},
+					innerBlocks
+				);
+			},
+		},
+		{
+			type: 'block',
+			blocks: ['airo-wp/grid'],
+			transform: (attributes, innerBlocks) => {
+				return createBlock(
+					'airo-wp/row',
+					{
+						// Preserve all attributes including layout
+						...attributes,
+						// Remove Grid-specific attributes
+						desktopColumns: undefined,
+						tabletColumns: undefined,
+						mobileColumns: undefined,
+						rowGap: undefined,
+						columnGap: undefined,
+						alignItems: undefined,
+						textAlign: undefined,
+						// mobileStack defaults to false
+						mobileStack: false,
+					},
+					innerBlocks
+				);
+			},
+		},
+	],
+	to: [
+		{
+			type: 'block',
+			blocks: ['airo-wp/section'],
+			transform: (attributes, innerBlocks) => {
+				return createBlock(
+					'airo-wp/section',
+					{
+						// Preserve all attributes including layout
+						...attributes,
+						// Remove mobileStack (Row-specific)
+						mobileStack: undefined,
+					},
+					innerBlocks
+				);
+			},
+		},
+		{
+			type: 'block',
+			blocks: ['airo-wp/grid'],
+			transform: (attributes, innerBlocks) => {
+				return createBlock(
+					'airo-wp/grid',
+					{
+						// Preserve all attributes including layout
+						...attributes,
+						// Remove mobileStack (Row-specific)
+						mobileStack: undefined,
+						// Set Grid-specific defaults
+						desktopColumns: 3,
+						tabletColumns: 2,
+						mobileColumns: 1,
+						rowGap: '',
+						columnGap: '',
+						alignItems: 'start',
+					},
+					innerBlocks
+				);
+			},
+		},
+		{
+			type: 'block',
+			blocks: ['core/group'],
+			// Prevent transform when overlay is active, since it has
+			// no core equivalent and would silently break the design.
+			isMatch: (attributes) => {
+				return !attributes.overlayColor;
+			},
+			transform: (attributes, innerBlocks) => {
+				const {
+					align,
+					tagName,
+					style,
+					layout: dsgLayout,
+					anchor,
+					backgroundColor,
+					textColor,
+					fontSize,
+				} = attributes;
+
+				// Map DSG row layout to core/group flex layout
+				// Note: layout is stored in block attributes via WP layout support
+				const layout = {
+					type: 'flex',
+					flexWrap: dsgLayout?.flexWrap || 'wrap',
+					...(dsgLayout?.justifyContent && {
+						justifyContent: dsgLayout.justifyContent,
+					}),
+					...(dsgLayout?.verticalAlignment && {
+						verticalAlignment: dsgLayout.verticalAlignment,
+					}),
+				};
+
+				// Note: DSG-specific features not available in core/group:
+				// - mobileStack (responsive stacking on mobile)
+				// - constrainWidth/contentWidth (inner width constraints)
+				// - hoverBackgroundColor, hoverTextColor (hover effects)
+				// - hoverIconBackgroundColor, hoverButtonBackgroundColor (child context)
+
+				return createBlock(
+					'core/group',
+					{
+						align,
+						tagName: tagName || 'div',
+						layout,
+						style,
+						...(anchor && { anchor }),
+						...(backgroundColor && { backgroundColor }),
+						...(textColor && { textColor }),
+						...(fontSize && { fontSize }),
+					},
+					innerBlocks
+				);
+			},
+		},
+	],
+};
+
+export default transforms;

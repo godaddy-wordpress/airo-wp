@@ -1,0 +1,112 @@
+/**
+ * Icon Block - Editor Styles
+ *
+ * Editor-specific styles and icon picker
+ */
+
+@use './components/icon-picker';
+
+.airo-wp-icon {
+	// Editor-specific styles to improve UX. `.airo-wp-justify` (shared, imported
+	// into src/styles/editor.scss) supplies display:flex + justify-content —
+	// no width/display duplicated here. See style.scss for the frontend
+	// rationale (positioning wrapper only, deliberately not shrink-wrapped).
+	position: relative;
+	align-items: center;
+	line-height: 1; // Prevent inherited line-height (1.4) from creating extra vertical space
+
+	// Selected state
+	&.is-selected {
+		outline: 1px solid var(--wp-admin-theme-color, #007cba);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+
+	// Hover state in editor
+	&.is-hovered {
+		outline: 1px dashed var(--wp-admin-theme-color, #007cba);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+
+	// Icon wrapper - matches frontend (style.scss)
+	// CRITICAL: Must be duplicated from style.scss for editor/frontend parity
+	&__wrapper {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		line-height: 1;
+		color: currentcolor;
+		transition: background-color 0.2s ease, color 0.2s ease;
+		width: fit-content;
+
+		// Ensure SVGs fill the wrapper (wrapper has explicit dimensions via inline styles)
+		svg {
+			display: block;
+			width: 100%;
+			height: 100%;
+		}
+
+		.dashicons {
+			display: block;
+			width: 1em;
+			height: 1em;
+			font-size: inherit;
+			line-height: 1;
+			transition: transform 0.2s ease;
+		}
+
+		// Ensure shapes are square (1:1 aspect ratio)
+		&.shape-circle,
+		&.shape-square,
+		&.shape-rounded {
+			aspect-ratio: 1;
+		}
+
+		// Shape variants
+		&.shape-circle {
+			border-radius: 50%;
+		}
+
+		&.shape-square {
+			border-radius: 0;
+		}
+
+		&.shape-rounded {
+			border-radius: 8px;
+		}
+	}
+
+	// Accessibility: Respect prefers-reduced-motion (editor context)
+	@media (prefers-reduced-motion: reduce) {
+
+		&__wrapper,
+		.dashicons {
+			transition: none;
+		}
+	}
+}
+
+// Outlined icon style (.airo-wp-icon-outlined) now lives in the shared global
+// editor bundle (src/styles/editor.scss @use 'icon-outlined'), so it no longer
+// needs duplicating here.
+
+// CRITICAL: Must duplicate from style.scss for editor/frontend parity
+// Parent container hover: apply icon background when parent is hovered
+// Uses CSS variable set by parent container (Flex, Grid, Stack)
+// CRITICAL: Check if PARENT container has the variable, not the icon itself
+// CRITICAL: Use __inner wrapper to avoid triggering on outer padding areas
+// CRITICAL: Exclude icons that are inside nested containers
+// Targets .airo-wp-icon__wrapper (shrink-wrapped visible icon box), NOT .airo-wp-icon
+// (the block-level positioning wrapper) — see style.scss for the rationale.
+// See style.scss: the --has-hover-icon selector adds Section style-variation
+// support alongside the inline-var (attribute) gate.
+.airo-wp-flex[style*="--airo-wp-parent-hover-icon-bg"]:hover .airo-wp-flex__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-grid[style*="--airo-wp-parent-hover-icon-bg"]:hover .airo-wp-grid__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-stack[style*="--airo-wp-parent-hover-icon-bg"]:hover .airo-wp-stack__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-flex--has-hover-icon:hover .airo-wp-flex__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-grid--has-hover-icon:hover .airo-wp-grid__inner > .airo-wp-icon .airo-wp-icon__wrapper,
+.airo-wp-stack--has-hover-icon:hover .airo-wp-stack__inner > .airo-wp-icon .airo-wp-icon__wrapper {
+	background-color: var(--airo-wp-parent-hover-icon-bg) !important;
+	transition: background-color 0.3s ease;
+}

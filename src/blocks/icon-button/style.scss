@@ -1,0 +1,600 @@
+/**
+ * Icon Button Block - Frontend Styles
+ *
+ * @since 1.0.0
+ */
+
+// Low-specificity default: allows theme.json Global Styles (.wp-element-button) to override
+// when user sets button element styles in Appearance > Editor > Styles > Elements > Buttons.
+// :where() has specificity (0,0,0), so WordPress's :root :where(.wp-element-button) at (0,1,0) wins.
+// Per-instance inline styles (block border controls) always win over both.
+:where(.airo-wp-icon-button) {
+	border-radius: 9999px; // Default pill shape, overridable by Global Styles
+}
+
+.airo-wp-icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: auto;
+	overflow: hidden; // Clip contents to border-radius (from any source)
+	text-decoration: none !important;
+
+	// Core prints `.wp-block-button__link { display: inline-block }` in an inline
+	// <style> that lands after this stylesheet. At equal specificity (0,1,0) it
+	// wins on source order, the anchor becomes a block box, and the icon span
+	// (display:flex) stacks above the text instead of sitting beside it. Chaining
+	// both classes takes this to (0,2,0) so the flex layout no longer depends on
+	// load order.
+	&.wp-block-button__link {
+		display: inline-flex;
+	}
+
+	&--icon-end {
+		flex-direction: row-reverse;
+	}
+
+	// Fill the positioning wrapper — which core has already capped at the
+	// content column. Replaces the old `align: full` "stretch the button"
+	// meaning; see `.airo-wp-justify` (src/styles/_justification.scss) for the
+	// wrapper itself.
+	&--full-width {
+		display: flex;
+		width: 100%;
+	}
+
+	// ============================================================================
+	// LEGACY SUPPORT: pre-justification-wrapper markup (deprecated.js v9 and
+	// older; align: left|center|right|full support removed from block.json)
+	// ============================================================================
+	// Before the justification wrapper, the block root WAS this element
+	// (`useBlockProps.save()` was called directly on the `<a>`/`<button>`),
+	// so WordPress's `align` support put `alignleft`/`aligncenter`/
+	// `alignright`/`alignfull` classes directly alongside `airo-wp-icon-button`
+	// on the same tag. Icon Button is a STATIC block (its own `save.js`
+	// output is what's stored), so that markup is exactly what's still in
+	// the database until the author re-opens and re-saves the block — there
+	// is no PHP re-render to migrate it on the frontend.
+
+	// New markup never reproduces this: the wrapper (`.wp-block-airo-wp-
+	// icon-button`, which can still carry `alignwide`/`alignfull` from the
+	// current `align: ["wide","full"]` support) and the button
+	// (`.airo-wp-icon-button`) are different elements, and the button itself
+	// never carries any align class. So these compound selectors — requiring
+	// BOTH classes on the same tag — only ever match old, un-migrated stored
+	// HTML.
+	&.alignfull:not([class*="airo-wp-hide-"]) {
+		display: flex !important;
+		width: 100% !important;
+		max-width: 100% !important;
+	}
+
+	&.aligncenter:not(.alignfull):not([class*="airo-wp-hide-"]) {
+		float: none !important;
+		display: flex !important;
+		width: fit-content !important;
+		margin-left: auto;
+		margin-right: auto;
+	}
+
+	&.alignleft:not(.alignfull):not([class*="airo-wp-hide-"]) {
+		float: none !important;
+		display: flex !important;
+		width: fit-content !important;
+		margin-right: auto;
+	}
+
+	&.alignright:not(.alignfull):not([class*="airo-wp-hide-"]) {
+		float: none !important;
+		display: flex !important;
+		width: fit-content !important;
+		margin-left: auto;
+	}
+
+	// Visual styles and interactions
+	// wp-element-button class inherits theme.json button styles
+	transition: all 0.2s ease;
+	cursor: pointer;
+	font-family: inherit;
+
+	&:hover {
+		opacity: 0.9;
+		transform: translateY(-1px);
+		text-decoration: none !important;
+	}
+
+	&:active {
+		transform: translateY(0);
+		text-decoration: none !important;
+	}
+
+	&:focus,
+	&:focus-within {
+		text-decoration: none !important;
+	}
+
+	// Single element structure
+	// All visual and layout styles are on the main button element
+
+	// Legacy v4 structure: inner wrapper is the focusable element
+	&__wrapper {
+
+		&:focus {
+			text-decoration: none !important;
+		}
+
+		&:active {
+			transform: translateY(0);
+			text-decoration: none !important;
+		}
+	}
+
+	// Icon↔text gap default. Emitted here (not inline) so kits and patterns can
+	// retheme it. Scoped to --has-icon so single-child (icon-less) buttons get
+	// no gap. Resolution order mirrors the icon size chain below:
+	//   1. --airo-wp-icon-button-gap — Style Kit CSS / semantic class hook.
+	//   2. --wp--custom--airo-wp--icon-button--gap — theme.json token.
+	//   3. 8px — literal fallback (the historical default).
+	// An explicit author gap is written inline by save() and wins by specificity.
+	&--has-icon {
+		gap: var(
+			--airo-wp-icon-button-gap,
+			var(--wp--custom--airo-wp--icon-button--gap, 8px)
+		);
+	}
+
+	&__icon {
+		// Layout constants. These used to be serialized into every saved
+		// button as an inline style (display/align-items/justify-content/
+		// flex-shrink never varied by attribute) — which bloated the markup
+		// and, because inline beats any stylesheet rule, made them
+		// unthemeable. They live here now; only an explicit iconSize is still
+		// written inline. Mirrors modal-trigger's `&__icon`, which has always
+		// done it this way.
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+
+		// Size falls back through a kit-controllable chain when no explicit
+		// iconSize is set inline. An inline width/height (explicit override)
+		// wins by specificity. Resolution order:
+		//   1. --airo-wp-icon-button-size — settable by a Style Kit's CSS or a
+		//      semantic class (kits that can only write --wp--preset--* / their
+		//      own vars use this hook).
+		//   2. --wp--custom--airo-wp--icon-button--default-size — theme.json
+		//      settings.custom.airowp.iconButton.defaultSize.
+		//   3. 20 — literal fallback. All are unitless numbers × 1px.
+		width: calc(
+			var(
+				--airo-wp-icon-button-size,
+				var(--wp--custom--airo-wp--icon-button--default-size, 20)
+			) * 1px
+		);
+		height: calc(
+			var(
+				--airo-wp-icon-button-size,
+				var(--wp--custom--airo-wp--icon-button--default-size, 20)
+			) * 1px
+		);
+
+		// Size and layout styles applied via inline styles
+		svg {
+			width: 100%;
+			height: 100%;
+			display: block;
+			fill: currentcolor;
+		}
+	}
+
+	&__text {
+		// Text content
+		flex: 1 0 auto;
+		white-space: nowrap;
+	}
+}
+
+// Outline style variation — mirrored from core Button (see
+// src/blocks/icon-button/mirror-button-styles.js, which lists it in the editor
+// Styles panel). Core's own `is-style-outline` CSS only loads when a core
+// button is present on the page (FSE per-block asset loading), so we reproduce
+// it here, scoped to the Icon Button, to guarantee the variation renders
+// everywhere. Matches core: transparent fill, 2px current-color border, and the
+// text/border colour reset to the inherited (theme) colour. A user-set colour
+// still wins via its higher-specificity inline style, mirroring core's
+// has-background / has-text-color behaviour.
+// `is-style-outline` (from the block's `className` attribute) lands on the
+// justification WRAPPER, not the button — useBlockProps.save() moved there
+// with the rest of the block root. The compound
+// `.wp-block-airo-wp-icon-button.is-style-outline .airo-wp-icon-button`
+// selector mirrors exactly what WP_Theme_JSON::get_block_style_variation_selector()
+// generates for theme.json-driven variations against a two-part
+// `selectors.root` (see block.json), so this hand-written rule stays
+// consistent with the native mechanism. The extra compounded classes push
+// specificity well past the generated default-colour rule (which now also
+// targets the wrapper+button pair via `selectors.root`), so `transparent` +
+// the inherited colour still win here; a user-set colour still wins via its
+// higher-specificity inline style, mirroring core's has-background /
+// has-text-color behaviour.
+:root .wp-block-airo-wp-icon-button.is-style-outline .airo-wp-icon-button.wp-block-button__link {
+	border: 2px solid currentcolor;
+	background-color: transparent;
+	color: currentcolor;
+}
+
+// CRITICAL: Must duplicate from icons pattern for container parent hover
+// Parent container hover: apply button background when parent is hovered
+// Uses CSS variable set by parent container (Flex, Grid, Stack)
+// CRITICAL: Check if PARENT container has the variable, not the button itself
+// CRITICAL: Use __inner wrapper to avoid triggering on outer padding areas
+// CRITICAL: Use direct child selector (>) to only affect direct children
+// The `--has-hover-button` selectors add Row, Grid, and Section style-variation
+// support (is-style-hover-button-*) alongside the inline-var (attribute) gate.
+// The class is only emitted for that variation, so the !important override
+// never clobbers a button whose parent has no hover-button color set.
+// The direct child of *__inner is now the justification wrapper
+// (`.wp-block-airo-wp-icon-button`, WP's own auto class — always present
+// regardless of the `airo-wp-icon-button` custom class, which now lives on the
+// inner button), so the actual `.airo-wp-icon-button` element being painted is a
+// descendant of that, not a direct child.
+.airo-wp-flex[style*="--airo-wp-parent-hover-button-bg"]:hover .airo-wp-flex__inner > .wp-block-airo-wp-icon-button .airo-wp-icon-button,
+.airo-wp-grid[style*="--airo-wp-parent-hover-button-bg"]:hover .airo-wp-grid__inner > .wp-block-airo-wp-icon-button .airo-wp-icon-button,
+.airo-wp-stack[style*="--airo-wp-parent-hover-button-bg"]:hover .airo-wp-stack__inner > .wp-block-airo-wp-icon-button .airo-wp-icon-button,
+.airo-wp-flex--has-hover-button:hover .airo-wp-flex__inner > .wp-block-airo-wp-icon-button .airo-wp-icon-button,
+.airo-wp-grid--has-hover-button:hover .airo-wp-grid__inner > .wp-block-airo-wp-icon-button .airo-wp-icon-button,
+.airo-wp-stack--has-hover-button:hover .airo-wp-stack__inner > .wp-block-airo-wp-icon-button .airo-wp-icon-button {
+	background-color: var(--airo-wp-parent-hover-button-bg) !important;
+	transition: background-color 0.3s ease;
+}
+
+// ============================================================================
+// HOVER COLORS
+// ============================================================================
+// Apply custom hover colors set via CSS variables
+// These override default hover styles when specified
+// Only apply instant background change when there's no animation (animations handle it themselves)
+// BACKWARD COMPATIBILITY: v4 had variables on .airo-wp-icon-button__wrapper, v5+ has them on .airo-wp-icon-button
+
+// No animation - just background color transition
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"]:not([class*="airo-wp-icon-button--"]):hover,
+.airo-wp-icon-button:not([class*="airo-wp-icon-button--"]):hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: background-color 0.3s ease;
+}
+
+// Zoom In - preserve transform transition
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"].airo-wp-icon-button--zoom-in:hover,
+.airo-wp-icon-button.airo-wp-icon-button--zoom-in:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+// Lift - preserve transform and box-shadow transitions
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"].airo-wp-icon-button--lift:hover,
+.airo-wp-icon-button.airo-wp-icon-button--lift:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: transform 0.5s ease, box-shadow 0.5s ease, background-color 0.3s ease;
+}
+
+// Shrink - preserve transform transition
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"].airo-wp-icon-button--shrink:hover,
+.airo-wp-icon-button.airo-wp-icon-button--shrink:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: transform 0.4s ease, background-color 0.3s ease;
+}
+
+// Border Pulse - preserve border-width transition
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"].airo-wp-icon-button--border-pulse:hover,
+.airo-wp-icon-button.airo-wp-icon-button--border-pulse:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: border-width 0.3s ease, background-color 0.3s ease;
+}
+
+// Border Glow - preserve box-shadow transition
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"].airo-wp-icon-button--border-glow:hover,
+.airo-wp-icon-button.airo-wp-icon-button--border-glow:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: all 0.3s ease, background-color 0.3s ease;
+}
+
+// Fill Diagonal - background doesn't need to change since pseudo-element covers it
+// The pseudo-element creates the fill effect by sliding across and staying in place
+
+// Slide Left - apply background color after slide animation completes
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"].airo-wp-icon-button--slide-left:hover,
+.airo-wp-icon-button.airo-wp-icon-button--slide-left:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: background-color 0.1s ease 0.3s; // Fade in after slide completes
+}
+
+// Slide Right - apply background color after slide animation completes
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"].airo-wp-icon-button--slide-right:hover,
+.airo-wp-icon-button.airo-wp-icon-button--slide-right:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: background-color 0.1s ease 0.3s; // Fade in after slide completes
+}
+
+// Slide Down - apply background color after slide animation completes
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"].airo-wp-icon-button--slide-down:hover,
+.airo-wp-icon-button.airo-wp-icon-button--slide-down:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: background-color 0.1s ease 0.3s; // Fade in after slide completes
+}
+
+// Slide Up - apply background color after slide animation completes
+.airo-wp-icon-button[style*="--airo-wp-button-hover-bg"].airo-wp-icon-button--slide-up:hover,
+.airo-wp-icon-button.airo-wp-icon-button--slide-up:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-bg"] {
+	background-color: var(--airo-wp-button-hover-bg) !important;
+	opacity: 1;
+	transition: background-color 0.1s ease 0.3s; // Fade in after slide completes
+}
+
+// Hover text color - supports both v4 (wrapper) and v5+ (button) structures
+.airo-wp-icon-button[style*="--airo-wp-button-hover-color"]:hover,
+.airo-wp-icon-button:hover .airo-wp-icon-button__wrapper[style*="--airo-wp-button-hover-color"] {
+	color: var(--airo-wp-button-hover-color) !important;
+	transition: color 0.3s ease; // Add smooth transition
+}
+
+// ============================================================================
+// HOVER ANIMATIONS
+// ============================================================================
+// Custom hover animations that override the default hover state
+// These use ::before or ::after pseudo-elements for advanced effects
+
+// Fill Diagonal - Diagonal sweep fill effect
+.airo-wp-icon-button.airo-wp-icon-button--fill-diagonal {
+	position: relative;
+
+	// Override default hover effects
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -150%; // Start further left to account for skew
+		width: 150%; // Wider to cover button when skewed
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: left 0.5s ease; // Smooth slide across
+		z-index: 0;
+		transform: skewX(-20deg);
+		transform-origin: top left;
+	}
+
+	// Ensure content stays above pseudo-element
+	.airo-wp-icon-button__icon,
+	.airo-wp-icon-button__text {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		left: 0; // Slide to cover entire button
+	}
+}
+
+// Zoom In - Scale up on hover (applies to entire block including borders)
+.airo-wp-icon-button.airo-wp-icon-button--zoom-in {
+	transform: scale(1); // Explicit initial state for smooth first hover
+	transition: transform 0.3s ease;
+
+	&:hover {
+		transform: scale(1.05);
+		opacity: 1; // Override default opacity change
+	}
+}
+
+// Slide Left - Background slides in from right
+.airo-wp-icon-button.airo-wp-icon-button--slide-left {
+	position: relative;
+
+	// Override default hover effects
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: -100%;
+		width: 100%;
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: right 0.3s ease;
+		z-index: 0;
+	}
+
+	.airo-wp-icon-button__icon,
+	.airo-wp-icon-button__text {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		right: 0;
+	}
+}
+
+// Slide Right - Background slides in from left
+.airo-wp-icon-button.airo-wp-icon-button--slide-right {
+	position: relative;
+
+	// Override default hover effects
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -100%;
+		width: 100%;
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: left 0.3s ease;
+		z-index: 0;
+	}
+
+	.airo-wp-icon-button__icon,
+	.airo-wp-icon-button__text {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		left: 0;
+	}
+}
+
+// Slide Down - Background slides down from top
+.airo-wp-icon-button.airo-wp-icon-button--slide-down {
+	position: relative;
+
+	// Override default hover effects
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: -100%;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: top 0.3s ease;
+		z-index: 0;
+	}
+
+	.airo-wp-icon-button__icon,
+	.airo-wp-icon-button__text {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		top: 0;
+	}
+}
+
+// Slide Up - Background slides up from bottom
+.airo-wp-icon-button.airo-wp-icon-button--slide-up {
+	position: relative;
+
+	// Override default hover effects
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		bottom: -100%;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: var(--airo-wp-button-hover-bg, rgba(0, 0, 0, 0.15));
+		transition: bottom 0.3s ease;
+		z-index: 0;
+	}
+
+	.airo-wp-icon-button__icon,
+	.airo-wp-icon-button__text {
+		position: relative;
+		z-index: 1;
+	}
+
+	&:hover::before {
+		bottom: 0;
+	}
+}
+
+// Border Pulse - Animated border effect using box-shadow
+// Creates a pulsing glow effect around the button using the current text color
+.airo-wp-icon-button.airo-wp-icon-button--border-pulse {
+	transition: box-shadow 0.3s ease;
+
+	&:hover {
+		animation: airo-wp-border-pulse 1s ease infinite;
+		opacity: 1; // Override default opacity change
+		transform: none; // Override default transform
+	}
+}
+
+@keyframes airo-wp-border-pulse {
+
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 currentcolor;
+	}
+
+	50% {
+		box-shadow: 0 0 0 4px currentcolor;
+	}
+}
+
+// Border Glow - Glowing border effect (applies to outer wrapper)
+.airo-wp-icon-button.airo-wp-icon-button--border-glow {
+	position: relative;
+	transition: all 0.3s ease;
+
+	&:hover {
+		opacity: 1;
+		transform: none;
+		box-shadow: 0 0 15px currentcolor, 0 0 30px currentcolor, 0 0 45px currentcolor;
+	}
+}
+
+// Lift - Elevate with shadow (applies to entire block including borders)
+.airo-wp-icon-button.airo-wp-icon-button--lift {
+	transform: translateY(0); // Explicit initial state for smooth first hover
+	transition: transform 0.5s ease, box-shadow 0.5s ease; // Slower, smoother transition
+
+	&:hover {
+		transform: translateY(-8px);
+		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2), 0 6px 12px rgba(0, 0, 0, 0.15);
+		opacity: 1; // Override default opacity change
+	}
+}
+
+// Shrink - Subtle scale down (applies to entire block including borders)
+.airo-wp-icon-button.airo-wp-icon-button--shrink {
+	transform: scale(1); // Explicit initial state for smooth first hover
+	transition: transform 0.4s ease; // Slower, smoother transition
+
+	&:hover {
+		transform: scale(0.95);
+		opacity: 1; // Override default opacity change
+	}
+}
+
+// No Hover - Explicit opt-out from hover animations
+// Used when user selects "None (No Animation)" to override a site-wide default
+.airo-wp-icon-button.airo-wp-icon-button--no-hover {
+
+	&:hover {
+		opacity: 1;
+		transform: none;
+	}
+}

@@ -1,0 +1,13 @@
+/**
+ * Heading Segment Block Frontend Styles
+ */
+
+.airo-wp-heading-segment {
+	// Display inline so segments sit next to each other within the heading
+	display: inline;
+
+	.airo-wp-heading-segment__text {
+		// Inherit display from parent so text flows naturally
+		display: inline;
+	}
+}

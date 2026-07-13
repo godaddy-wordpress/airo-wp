@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<ruleset name="airo-wp">
+	<description>PHPCS for airo-wp (WPCS + VIP-Go + PHPCompatibility)</description>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<file>airo-wp.php</file>
+	<file>functions</file>
+	<file>includes</file>
+
+	<exclude-pattern>vendor/*</exclude-pattern>
+	<exclude-pattern>dependencies/*</exclude-pattern>
+	<exclude-pattern>bin/*</exclude-pattern>
+	<exclude-pattern>includes/Internal/Testing/*</exclude-pattern>
+
+	<rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
+		<!-- DI container throws developer-facing exceptions; messages are not user output. -->
+		<exclude-pattern>includes/Internal/DependencyManagement/*</exclude-pattern>
+	</rule>
+
+	<rule ref="WordPress-Core">
+		<!-- Project convention uses short array syntax []; long form array() is not required. -->
+		<exclude name="Generic.Arrays.DisallowShortArraySyntax"/>
+		<!-- PSR-4 autoloading requires CamelCase class filenames; WordPress lowercase-hyphenated
+		     convention would break the Composer autoloader. -->
+		<exclude name="WordPress.Files.FileName"/>
+	</rule>
+
+	<rule ref="WordPress-Extra">
+		<!-- Same PSR-4 rationale as above; WordPress-Extra re-includes this sniff. -->
+		<exclude name="WordPress.Files.FileName"/>
+	</rule>
+
+	<rule ref="WordPress-Docs"/>
+
+	<!-- WordPress VIP platform coding standards -->
+	<rule ref="WordPressVIPMinimum">
+		<!-- Valid on activation/deactivation for rewrite rule cleanup -->
+		<exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules"/>
+		<!-- HTTP_USER_AGENT read only in POST REST/ajax handlers; not subject to page caching -->
+		<exclude name="WordPressVIPMinimum.Variables.RestrictedVariables.cache_constraints___SERVER__HTTP_USER_AGENT__"/>
+		<!-- REMOTE_ADDR used only for server-side rate limiting; no viable client-side alternative -->
+		<exclude name="WordPressVIPMinimum.Variables.RestrictedVariables.cache_constraints___SERVER__REMOTE_ADDR__"/>
+		<!-- wp_mail is used for single transactional form emails, not bulk mail -->
+		<exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.wp_mail_wp_mail"/>
+		<!-- setcookie() used only in admin-facing draft-mode toggle endpoint; not subject to page caching -->
+		<exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.cookies_setcookie"/>
+		<!-- JS scanning is deprecated in PHPCS 4.0; this ruleset only targets PHP files -->
+		<exclude name="WordPressVIPMinimum.JS.Window"/>
+	</rule>
+
+	<rule ref="Generic.PHP.RequireStrictTypes"/>
+
+	<!-- Variables starting with _ are intentionally unused ($_ prefix convention) -->
+	<rule ref="VariableAnalysis.CodeAnalysis.VariableAnalysis">
+		<properties>
+			<property name="ignoreUnusedRegexp" value="/^_/"/>
+		</properties>
+	</rule>
+
+	<config name="testVersion" value="7.4-8.3"/>
+	<rule ref="PHPCompatibilityWP"/>
+</ruleset>

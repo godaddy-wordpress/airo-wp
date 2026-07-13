@@ -1,0 +1,40 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/form-hidden-field",
+	"version": "1.0.0",
+	"title": "Hidden Field",
+	"category": "airo-wp",
+	"description": "A hidden field for passing data in forms.",
+	"keywords": [
+		"form",
+		"hidden",
+		"data",
+		"value"
+	],
+	"parent": [
+		"airo-wp/form-builder"
+	],
+	"textdomain": "airo-wp",
+	"icon": "hidden",
+	"supports": {
+		"html": false,
+		"anchor": false,
+		"customClassName": false,
+		"reusable": false
+	},
+	"attributes": {
+		"fieldName": {
+			"type": "string",
+			"default": ""
+		},
+		"value": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"render": "file:./render.php"
+}

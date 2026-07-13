@@ -1,0 +1,85 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/form-number-field",
+	"version": "1.0.0",
+	"title": "Number Field",
+	"category": "airo-wp",
+	"description": "A number input field for forms.",
+	"keywords": [
+		"form",
+		"number",
+		"input",
+		"integer",
+		"decimal"
+	],
+	"parent": [
+		"airo-wp/form-builder"
+	],
+	"textdomain": "airo-wp",
+	"icon": "calculator",
+	"supports": {
+		"html": false,
+		"anchor": false,
+		"customClassName": false,
+		"reusable": false
+	},
+	"usesContext": [
+		"airo-wp/form/fieldSpacing",
+		"airo-wp/form/fieldLabelColor",
+		"airo-wp/form/fieldBorderColor",
+		"airo-wp/form/fieldBackgroundColor",
+		"airo-wp/form/inputHeight",
+		"airo-wp/form/inputPadding"
+	],
+	"attributes": {
+		"fieldName": {
+			"type": "string",
+			"default": ""
+		},
+		"label": {
+			"type": "string",
+			"default": "Number"
+		},
+		"placeholder": {
+			"type": "string",
+			"default": ""
+		},
+		"helpText": {
+			"type": "string",
+			"default": ""
+		},
+		"required": {
+			"type": "boolean",
+			"default": false
+		},
+		"defaultValue": {
+			"type": "string",
+			"default": ""
+		},
+		"min": {
+			"type": "number",
+			"default": null
+		},
+		"max": {
+			"type": "number",
+			"default": null
+		},
+		"step": {
+			"type": "number",
+			"default": 1
+		},
+		"allowDecimals": {
+			"type": "boolean",
+			"default": false
+		},
+		"fieldWidth": {
+			"type": "string",
+			"default": "100"
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"render": "file:./render.php"
+}

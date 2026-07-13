@@ -1,0 +1,241 @@
+<?php
+/**
+ * UpdateNavigation MCP tool.
+ *
+ * @package airo-wp
+ */
+
+declare(strict_types=1);
+
+namespace GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Navigation;
+
+defined( 'ABSPATH' ) || exit;
+
+use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\BaseTool;
+
+/**
+ * Registers and executes the update-navigation MCP ability.
+ */
+class UpdateNavigation extends BaseTool {
+
+	public const TOOL_ID = 'airo-wp/update-navigation';
+
+	/**
+	 * Permission callback for wp_register_ability.
+	 *
+	 * @return bool Whether the current user has the required capability.
+	 */
+	public function check_permissions(): bool {
+		return current_user_can( 'edit_theme_options' );
+	}
+
+	/**
+	 * Register this tool as a WordPress ability.
+	 */
+	public function register(): void {
+		wp_register_ability(
+			self::TOOL_ID,
+			array(
+				'label'               => __( 'Update Navigation', 'airo-wp' ),
+				'description'         => __( 'Updates an existing navigation post', 'airo-wp' ),
+				'input_schema'        => $this->get_input_schema(),
+				'output_schema'       => $this->get_output_schema(),
+				'execute_callback'    => array( $this, 'execute' ),
+				'permission_callback' => array( $this, 'check_permissions' ),
+				'category'            => 'content-management',
+			)
+		);
+	}
+
+	/**
+	 * Execute the tool.
+	 *
+	 * @param array<string, mixed> $input Input parameters.
+	 * @return array<string, mixed>
+	 */
+	public function execute( array $input ): array {
+		if ( empty( $input['id'] ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'Navigation ID is required', 'airo-wp' ),
+			);
+		}
+
+		$navigation_id = (int) $input['id'];
+
+		$post = get_post( $navigation_id );
+		if ( ! $post || 'wp_navigation' !== $post->post_type ) {
+			return array(
+				'success' => false,
+				'message' => sprintf(
+					/* translators: %d: Navigation post ID */
+					__( 'Navigation with ID %d not found', 'airo-wp' ),
+					$navigation_id
+				),
+			);
+		}
+
+		if ( ! current_user_can( 'edit_post', $navigation_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to update this navigation', 'airo-wp' ),
+			);
+		}
+
+		$post_data = array(
+			'ID' => $navigation_id,
+		);
+
+		if ( isset( $input['title'] ) ) {
+			$post_data['post_title'] = sanitize_text_field( $input['title'] );
+		}
+
+		if ( isset( $input['content'] ) ) {
+			$post_data['post_content'] = $input['content'];
+		}
+
+		if ( isset( $input['slug'] ) ) {
+			$post_data['post_name'] = sanitize_title( $input['slug'] );
+		}
+
+		if ( isset( $input['status'] ) ) {
+			$post_data['post_status'] = $input['status'];
+		}
+
+		if ( isset( $input['password'] ) ) {
+			$post_data['post_password'] = $input['password'];
+		}
+
+		if ( isset( $input['date'] ) ) {
+			$post_data['post_date'] = $input['date'];
+		}
+
+		if ( isset( $input['date_gmt'] ) ) {
+			$post_data['post_date_gmt'] = $input['date_gmt'];
+		}
+
+		$result = wp_update_post( $post_data, true );
+
+		if ( is_wp_error( $result ) ) {
+			return array(
+				'success' => false,
+				'message' => $result->get_error_message(),
+			);
+		}
+
+		if ( isset( $input['template'] ) ) {
+			update_post_meta( $navigation_id, '_wp_page_template', sanitize_text_field( $input['template'] ) );
+		}
+
+		$updated_post = get_post( $navigation_id );
+
+		return array(
+			'success'    => true,
+			'navigation' => $this->build_navigation_data( $updated_post ),
+			'message'    => __( 'Navigation updated successfully', 'airo-wp' ),
+		);
+	}
+
+	/**
+	 * Build navigation data for response.
+	 *
+	 * @param \WP_Post $post Post object.
+	 * @return array<string, mixed> Navigation data.
+	 */
+	private function build_navigation_data( \WP_Post $post ): array {
+		return array(
+			'id'           => $post->ID,
+			'date'         => $post->post_date,
+			'date_gmt'     => $post->post_date_gmt,
+			'guid'         => array(
+				'rendered' => $post->guid,
+				'raw'      => $post->guid,
+			),
+			'modified'     => $post->post_modified,
+			'modified_gmt' => $post->post_modified_gmt,
+			'slug'         => $post->post_name,
+			'status'       => $post->post_status,
+			'type'         => $post->post_type,
+			'link'         => get_permalink( $post->ID ),
+			'title'        => array(
+				'rendered' => get_the_title( $post->ID ),
+				'raw'      => $post->post_title,
+			),
+			'content'      => array(
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- applying core WP filter.
+				'rendered' => apply_filters( 'the_content', $post->post_content ),
+				'raw'      => $post->post_content,
+			),
+			'template'     => get_page_template_slug( $post->ID ),
+		);
+	}
+
+	/**
+	 * Get input schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'id'       => array(
+					'type'        => 'integer',
+					'description' => __( 'Unique identifier for the post', 'airo-wp' ),
+					'minimum'     => 1,
+				),
+				'date'     => array(
+					'type'        => 'string',
+					'description' => __( 'The date the post was published, in the site\'s timezone', 'airo-wp' ),
+				),
+				'date_gmt' => array(
+					'type'        => 'string',
+					'description' => __( 'The date the post was published, as GMT', 'airo-wp' ),
+				),
+				'slug'     => array(
+					'type'        => 'string',
+					'description' => __( 'An alphanumeric identifier for the post unique to its type', 'airo-wp' ),
+				),
+				'status'   => array(
+					'type'        => 'string',
+					'description' => __( 'A named status for the post', 'airo-wp' ),
+					'enum'        => array( 'publish', 'future', 'draft', 'pending', 'private' ),
+				),
+				'password' => array(
+					'type'        => 'string',
+					'description' => __( 'A password to protect access to the content and excerpt', 'airo-wp' ),
+				),
+				'title'    => array(
+					'type'        => 'string',
+					'description' => __( 'The title for the post', 'airo-wp' ),
+				),
+				'content'  => array(
+					'type'        => 'string',
+					'description' => __( 'The content for the post', 'airo-wp' ),
+				),
+				'template' => array(
+					'type'        => 'string',
+					'description' => __( 'The theme file to use to display the post', 'airo-wp' ),
+				),
+			),
+			'required'   => array( 'id' ),
+		);
+	}
+
+	/**
+	 * Get output schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_output_schema(): array {
+		return $this->build_output_schema(
+			__( 'Navigation update result', 'airo-wp' ),
+			array(
+				'navigation' => array(
+					'type'        => 'object',
+					'description' => __( 'The updated navigation data', 'airo-wp' ),
+				),
+			)
+		);
+	}
+}

@@ -1,0 +1,146 @@
+<?php
+/**
+ * Dynamic Tags — user-family sources.
+ *
+ * Resolves values from the currently logged-in user. These sources
+ * produce nothing for anonymous visitors, which is the intended
+ * behavior for members-area UIs.
+ *
+ * @package airo-wp
+ * @since   2.2.0
+ */
+
+declare(strict_types=1);
+
+namespace GoDaddy\WordPress\Plugins\AiroWp\Blocks\Common\DynamicTags;
+
+defined( 'ABSPATH' ) || exit;
+/**
+ * Registers the `airo-wp/current-user-*` binding sources.
+ */
+class UserSources {
+
+	/**
+	 * Registers user-family sources.
+	 *
+	 * @param Registry $registry Metadata registry.
+	 */
+	public static function register( Registry $registry ) {
+		if ( ! function_exists( 'airowp_register_bindings_source' ) ) {
+			return;
+		}
+
+		self::register_one(
+			$registry,
+			'airo-wp/current-user-name',
+			__( 'Current user name', 'airo-wp' ),
+			array( 'text' ),
+			static function ( $_args, $_block, $_attr ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found,Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- required by register_block_bindings_source() callback signature
+				$user = wp_get_current_user();
+				if ( 0 === (int) $user->ID ) {
+					return null;
+				}
+				return (string) $user->display_name;
+			}
+		);
+
+		self::register_one(
+			$registry,
+			'airo-wp/current-user-avatar',
+			__( 'Current user avatar', 'airo-wp' ),
+			array( 'image', 'url' ),
+			static function ( $args, $_block, $_attr ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- required by register_block_bindings_source() callback signature
+				$user = wp_get_current_user();
+				if ( 0 === (int) $user->ID ) {
+					return null;
+				}
+				$size = isset( $args['size'] ) ? (int) $args['size'] : 96;
+				$url  = get_avatar_url( $user->ID, array( 'size' => max( 24, $size ) ) );
+				return $url ? (string) $url : null;
+			},
+			array(
+				'size' => array( 'type' => 'integer' ),
+			)
+		);
+
+		self::register_one(
+			$registry,
+			'airo-wp/current-user-url',
+			__( 'Current user website URL', 'airo-wp' ),
+			array( 'url' ),
+			static function ( $_args, $_block, $_attr ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found,Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- required by register_block_bindings_source() callback signature
+				$user = wp_get_current_user();
+				if ( 0 === (int) $user->ID ) {
+					return null;
+				}
+				// The profile URL is user-editable (contributors can set their
+				// own). Core's renderer escapes it, but this value also flows
+				// raw to the /dynamic-tags/preview REST JSON — enforce an
+				// http/https allowlist so a `javascript:` URL can never reach a
+				// consumer that assigns it to el.href.
+				$url = esc_url_raw( (string) $user->user_url, array( 'http', 'https' ) );
+				return '' === $url ? null : $url;
+			}
+		);
+
+		// Always register the email source so plugins hooking `init` at the
+		// default priority (10) can still enable it; the value callback
+		// evaluates `airowp_dynamic_tags_allow_email` lazily at render
+		// time. Disabled by default because exposing an email on the public
+		// frontend is almost always a privacy mistake.
+		self::register_one(
+			$registry,
+			'airo-wp/current-user-email',
+			__( 'Current user email', 'airo-wp' ),
+			array( 'text' ),
+			static function ( $_args, $_block, $_attr ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found,Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- required by register_block_bindings_source() callback signature
+				/**
+				 * Enables the `airo-wp/current-user-email` source.
+				 *
+				 * @since 2.2.0
+				 *
+				 * @param bool $enabled Whether to resolve the email source.
+				 */
+				if ( ! apply_filters( 'airowp_dynamic_tags_allow_email', false ) ) {
+					return null;
+				}
+				$user = wp_get_current_user();
+				if ( 0 === (int) $user->ID ) {
+					return null;
+				}
+				return (string) $user->user_email;
+			},
+			array(),
+			'read'
+		);
+	}
+
+	/**
+	 * Registers one source with both core Bindings and our metadata registry.
+	 *
+	 * @param Registry $registry    Metadata registry.
+	 * @param string   $slug        Binding source slug.
+	 * @param string   $label       Display label.
+	 * @param string[] $returns     Return types.
+	 * @param callable $callback    Value callback.
+	 * @param array    $args_schema Optional arg schema.
+	 * @param string   $capability  Optional capability gate.
+	 */
+	private static function register_one( Registry $registry, $slug, $label, array $returns, callable $callback, array $args_schema = array(), $capability = '' ) {
+		airowp_register_bindings_source(
+			$slug,
+			$callback,
+			array( 'label' => $label )
+		);
+		$registry->register_source(
+			$slug,
+			array(
+				'label'      => $label,
+				'group'      => 'user',
+				'returns'    => $returns,
+				'args'       => $args_schema,
+				'capability' => $capability,
+			)
+		);
+	}
+}

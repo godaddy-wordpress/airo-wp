@@ -1,0 +1,27 @@
+/**
+ * Pill Block Frontend Styles
+ *
+ * `.airo-wp-pill` is a positioning wrapper only — `.airo-wp-justify` (shared) gives it
+ * `display: flex` and the justify-content. It is deliberately NOT shrink-wrapped:
+ * a block-level, auto-width box is what lets core's constrained layout cap it at
+ * the content column. Colour/background/border/padding are routed to
+ * `.airo-wp-pill__content` in render.php.
+ */
+
+// Default text size. A pill is a badge, so it reads small unless the author says
+// otherwise. `:where()` drops it to zero specificity so any explicit choice wins.
+:where(.airo-wp-pill) {
+	font-size: var(--wp--preset--font-size--small, 0.875rem);
+}
+
+.airo-wp-pill__content {
+	display: inline-block;
+	border-radius: 999px;
+	transition: all 0.2s ease-in-out;
+	white-space: nowrap;
+	padding: 0.5em 1em;
+	background-color: var(--wp--preset--color--primary, #2563eb);
+	color: var(--wp--preset--color--base, #fff);
+	font-weight: 500;
+	line-height: 1.5;
+}

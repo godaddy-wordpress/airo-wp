@@ -1,0 +1,63 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/icon-list-item",
+	"version": "1.0.0",
+	"title": "Icon List Item",
+	"category": "airo-wp",
+	"description": "A single item in an icon list with icon, title, and description.",
+	"keywords": [
+		"icon",
+		"list item",
+		"feature"
+	],
+	"parent": [
+		"airo-wp/icon-list"
+	],
+	"textdomain": "airo-wp",
+	"icon": "marker",
+	"supports": {
+		"html": false,
+		"inserter": true,
+		"reusable": false,
+		"spacing": {
+			"margin": false,
+			"padding": false
+		}
+	},
+	"usesContext": [
+		"airo-wp/iconList/layout",
+		"airo-wp/iconList/iconSize",
+		"airo-wp/iconList/iconStyle",
+		"airo-wp/iconList/strokeWidth",
+		"airo-wp/iconList/iconColor",
+		"airo-wp/iconList/iconBackgroundColor",
+		"airo-wp/iconList/gap",
+		"airo-wp/iconList/iconPosition",
+		"airo-wp/iconList/iconVerticalAlignment"
+	],
+	"attributes": {
+		"icon": {
+			"type": "string",
+			"default": "star"
+		},
+		"contentGap": {
+			"type": "number"
+		},
+		"linkUrl": {
+			"type": "string",
+			"default": ""
+		},
+		"linkTarget": {
+			"type": "string",
+			"default": "_self"
+		},
+		"linkRel": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./index.css"
+}
