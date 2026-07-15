@@ -7,16 +7,17 @@ const REST_BASE    = '/wp-json/airo-wp/v1/drafts';
  * Helper: call a tool via the MCP JSON-RPC endpoint.
  */
 async function callTool(
-	request: import('@playwright/test').APIRequestContext,
+	requestUtils: import('@wordpress/e2e-test-utils-playwright').RequestUtils,
 	sessionId: string,
 	toolName: string,
 	args: Record<string, unknown>,
 	id = 2
 ) {
-	return request.post( `${ process.env.WP_BASE_URL }${ MCP_ENDPOINT }`, {
+	return requestUtils.request.post( `${ process.env.WP_BASE_URL }${ MCP_ENDPOINT }`, {
 		headers: {
-			'Content-Type':  'application/json',
+			'Content-Type':   'application/json',
 			'Mcp-Session-Id': sessionId,
+			'X-WP-Nonce':     requestUtils.storageState!.nonce,
 		},
 		data: {
 			jsonrpc: '2.0',
@@ -31,12 +32,12 @@ async function callTool(
  * Helper: create a published page and a draft via MCP, return { pageId, draftId }.
  */
 async function createPageWithDraft(
-	request: import('@playwright/test').APIRequestContext,
+	requestUtils: import('@wordpress/e2e-test-utils-playwright').RequestUtils,
 	sessionId: string,
 	title: string,
 	idBase = 10
 ): Promise<{ pageId: number; draftId: number }> {
-	const pageResp = await callTool( request, sessionId, 'airo-wp-create-post', {
+	const pageResp = await callTool( requestUtils, sessionId, 'airo-wp-create-post', {
 		title,
 		content:   '<p>Content</p>',
 		post_type: 'page',
@@ -45,7 +46,7 @@ async function createPageWithDraft(
 	const pageBody = await pageResp.json();
 	const pageId   = JSON.parse( pageBody.result.content[ 0 ].text ).post_id as number;
 
-	const draftResp = await callTool( request, sessionId, 'airo-wp-create-page-draft', {
+	const draftResp = await callTool( requestUtils, sessionId, 'airo-wp-create-page-draft', {
 		post_id: pageId,
 	}, idBase + 1 );
 	const draftBody = await draftResp.json();
@@ -61,7 +62,7 @@ test.describe( 'REST draft-pages endpoints', () => {
 		const initResponse = await requestUtils.request.post(
 			`${ process.env.WP_BASE_URL }${ MCP_ENDPOINT }`,
 			{
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': requestUtils.storageState!.nonce },
 				data: {
 					jsonrpc: '2.0',
 					id:      1,
@@ -90,7 +91,7 @@ test.describe( 'REST draft-pages endpoints', () => {
 
 	test( 'POST publish — returns 200 and success on happy path', async ( { requestUtils } ) => {
 		const { pageId, draftId } = await createPageWithDraft(
-			requestUtils.request, sessionId, 'E2E REST Publish Happy Path', 10
+			requestUtils, sessionId, 'E2E REST Publish Happy Path', 10
 		);
 
 		const body = await requestUtils.rest< { success: boolean; original_id: number; redirect_url: string } >( {
@@ -103,14 +104,14 @@ test.describe( 'REST draft-pages endpoints', () => {
 		expect( typeof body.redirect_url ).toBe( 'string' );
 	} );
 
-	test( 'POST publish — returns 401 or 403 when unauthenticated', async ( { requestUtils } ) => {
+	test( 'POST publish — returns 401 or 403 when unauthenticated', async ( { requestUtils, playwright } ) => {
 		const { draftId } = await createPageWithDraft(
-			requestUtils.request, sessionId, 'E2E REST Publish Unauth', 20
+			requestUtils, sessionId, 'E2E REST Publish Unauth', 20
 		);
 
 		// A truly unauthenticated call needs a fresh context with neither the
 		// storageState cookie nor the nonce header.
-		const anonCtx = await ( requestUtils.request as any )._playwright.request.newContext( {
+		const anonCtx = await playwright.request.newContext( {
 			storageState: { cookies: [], origins: [] },
 		} );
 		const response = await anonCtx.post(
@@ -133,7 +134,7 @@ test.describe( 'REST draft-pages endpoints', () => {
 
 	test( 'POST publish — returns 403 when post has no draft link', async ( { requestUtils } ) => {
 		// A published page has no META_DRAFT_OF — permissions check returns false (403).
-		const pageResp = await callTool( requestUtils.request, sessionId, 'airo-wp-create-post', {
+		const pageResp = await callTool( requestUtils, sessionId, 'airo-wp-create-post', {
 			title:     'E2E REST Publish Non-Draft',
 			content:   '<p>Content</p>',
 			post_type: 'page',
@@ -156,7 +157,7 @@ test.describe( 'REST draft-pages endpoints', () => {
 
 	test( 'DELETE discard — returns 200 and success on happy path', async ( { requestUtils } ) => {
 		const { pageId, draftId } = await createPageWithDraft(
-			requestUtils.request, sessionId, 'E2E REST Discard Happy Path', 30
+			requestUtils, sessionId, 'E2E REST Discard Happy Path', 30
 		);
 
 		// requestUtils.rest() does not support DELETE — use the underlying request context.
@@ -173,14 +174,14 @@ test.describe( 'REST draft-pages endpoints', () => {
 		expect( typeof body.redirect_url ).toBe( 'string' );
 	} );
 
-	test( 'DELETE discard — returns 401 or 403 when unauthenticated', async ( { requestUtils } ) => {
+	test( 'DELETE discard — returns 401 or 403 when unauthenticated', async ( { requestUtils, playwright } ) => {
 		const { draftId } = await createPageWithDraft(
-			requestUtils.request, sessionId, 'E2E REST Discard Unauth', 40
+			requestUtils, sessionId, 'E2E REST Discard Unauth', 40
 		);
 
 		// A truly unauthenticated call needs a fresh context with neither the
 		// storageState cookie nor the nonce header.
-		const anonCtx = await ( requestUtils.request as any )._playwright.request.newContext( {
+		const anonCtx = await playwright.request.newContext( {
 			storageState: { cookies: [], origins: [] },
 		} );
 		const response = await anonCtx.delete(
@@ -203,7 +204,7 @@ test.describe( 'REST draft-pages endpoints', () => {
 
 	test( 'DELETE discard — returns 400 when post is not a draft', async ( { requestUtils } ) => {
 		// A published page is not a draft — service returns not_a_draft (400).
-		const pageResp = await callTool( requestUtils.request, sessionId, 'airo-wp-create-post', {
+		const pageResp = await callTool( requestUtils, sessionId, 'airo-wp-create-post', {
 			title:     'E2E REST Discard Non-Draft',
 			content:   '<p>Content</p>',
 			post_type: 'page',

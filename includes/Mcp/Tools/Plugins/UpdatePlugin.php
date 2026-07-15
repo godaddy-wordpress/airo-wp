@@ -85,7 +85,6 @@ class UpdatePlugin extends BaseTool {
 				'plugin_slug' => array(
 					'type'        => 'string',
 					'description' => __( 'The plugin slug (e.g., "hello-dolly", "akismet")', 'airo-wp' ),
-					'minLength'   => 1,
 				),
 				'version'     => array(
 					'type'        => 'string',

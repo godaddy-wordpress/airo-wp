@@ -70,16 +70,6 @@ class ListGlobalStyles extends BaseTool {
 				'order'          => 'DESC',
 			);
 
-			if ( ! empty( $theme ) ) {
-				$query_args['meta_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-					array(
-						'key'     => 'theme',
-						'value'   => $theme,
-						'compare' => '=',
-					),
-				);
-			}
-
 			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_posts_get_posts
 			$global_styles = get_posts( $query_args );
 
@@ -97,15 +87,20 @@ class ListGlobalStyles extends BaseTool {
 				);
 			}
 
+			// WordPress stores the theme association in post_name
+			// (e.g. "wp-global-styles-twentytwentyfive"), not in post meta.
 			$styles = array();
 			foreach ( $global_styles as $style ) {
-				$theme_slug = get_post_meta( $style->ID, 'theme', true );
+				$theme_slug = '';
+				if ( preg_match( '/^wp-global-styles-(.+)$/', $style->post_name, $matches ) ) {
+					$theme_slug = $matches[1];
+				}
 
 				if ( empty( $theme ) || $theme_slug === $theme ) {
 					$styles[] = array(
 						'id'       => (int) $style->ID,
 						'title'    => $style->post_title,
-						'theme'    => $theme_slug ? $theme_slug : '',
+						'theme'    => $theme_slug,
 						'status'   => $style->post_status,
 						'date'     => $style->post_date,
 						'modified' => $style->post_modified,

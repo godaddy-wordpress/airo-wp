@@ -15,6 +15,14 @@ process.env.STORAGE_STATE_PATH = STORAGE_STATE_PATH;
 
 export default defineConfig( {
 	testDir: '.',
+	// Excluded: browser-based suites that open a Gutenberg editor session per
+	// block/pattern (60+ blocks, 100+ patterns). They are too slow for routine
+	// e2e runs and clutter results. Run them manually with --grep or by removing
+	// this exclusion after a bulk DSG sync or a Gutenberg/WP upgrade.
+	testIgnore: [
+		'**/specs/blocks-browser.spec.ts',
+		'**/specs/patterns-browser.spec.ts',
+	],
 	fullyParallel: false,
 	forbidOnly: !! process.env.CI,
 	timeout: process.env.CI ? 60_000 : 30_000,
@@ -53,7 +61,7 @@ export default defineConfig( {
 		command: 'sh tests/e2e/functional/environment/serve-wp.sh',
 		cwd: ROOT,
 		url: BASE_URL,
-		reuseExistingServer: ! process.env.CI,
+		reuseExistingServer: ! process.env.CI || !! process.env.WP_ENV,
 		timeout: 120_000,
 	},
 } );

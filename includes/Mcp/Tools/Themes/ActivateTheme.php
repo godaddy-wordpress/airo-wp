@@ -30,10 +30,26 @@ class ActivateTheme extends BaseTool {
 	/**
 	 * Permission callback for wp_register_ability.
 	 *
+	 * The abilities API passes input to this callback when an input_schema is defined,
+	 * so we can check whether the requested theme is already installed and require
+	 * install_themes only when an installation will actually be attempted.
+	 *
+	 * @param array<string, mixed> $input Input parameters (theme_slug).
 	 * @return bool Whether the current user has the required capability.
 	 */
-	public function check_permissions(): bool {
-		return current_user_can( 'switch_themes' );
+	public function check_permissions( array $input = array() ): bool {
+		if ( ! current_user_can( 'switch_themes' ) ) {
+			return false;
+		}
+
+		$slug = isset( $input['theme_slug'] ) ? sanitize_text_field( $input['theme_slug'] ) : '';
+
+		// If the theme is not yet installed, the install path requires install_themes too.
+		if ( ! empty( $slug ) && ! wp_get_theme( $slug )->exists() ) {
+			return current_user_can( 'install_themes' );
+		}
+
+		return true;
 	}
 
 	/**
@@ -160,7 +176,7 @@ class ActivateTheme extends BaseTool {
 		add_filter( 'filesystem_method', array( $this, 'filter_filesystem_method' ) );
 		WP_Filesystem();
 
-		$upgrader = new \Theme_Upgrader( new \Automatic_Upgrader_Skin() );
+		$upgrader = new \Theme_Upgrader( new \WP_Ajax_Upgrader_Skin() );
 		$result   = $upgrader->install( $api->download_link );
 
 		remove_filter( 'filesystem_method', array( $this, 'filter_filesystem_method' ) );

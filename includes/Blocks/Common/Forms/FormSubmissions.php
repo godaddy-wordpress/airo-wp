@@ -279,7 +279,7 @@ class FormSubmissions {
 	 *
 	 * @param string $hook Current admin page hook suffix.
 	 */
-	public function enqueue_submission_styles( string $hook ) : void {
+	public function enqueue_submission_styles( string $hook ): void {
 		if ( 'post.php' !== $hook && 'post-new.php' !== $hook ) {
 			return;
 		}

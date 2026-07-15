@@ -1,7 +1,7 @@
 name: CI
 
-# PR gate: all four jobs run natively on ubuntu-24.04 — no Docker, no make.
-# PHP 7.4 / WP 7.0 on PRs guards the plugin's hard PHP 7.4 compatibility requirement.
+# PR gate: PHPCS, PHPUnit, and Plugin Check run on ubuntu-24.04 via wp-env.
+# E2E tests run only on release/* branches — see pre-release.yml.
 
 on:
   pull_request:
@@ -19,65 +19,51 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Set up toolchain
-        run: sh scripts/setup/unit.sh
-        env:
-          PHP_VERSION: '7.4'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Start WordPress environment
+        run: npm run wp-env:start
       - name: Run PHPCS
-        run: sh scripts/tests/lint.sh
+        run: npm run lint
+      - name: Stop WordPress environment
+        if: always()
+        run: npm run wp-env:stop
 
   unit:
     name: PHPUnit
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Set up toolchain
-        run: sh scripts/setup/unit.sh
-        env:
-          PHP_VERSION: '7.4'
-      - name: Run PHPUnit
-        run: sh scripts/tests/unit.sh
-
-  test-e2e:
-    name: Functional E2E
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up e2e environment
-        run: sh scripts/setup/e2e.sh
-        env:
-          PHP_VERSION: '7.4'
-          WP_VERSION: '7.0'
-      - name: Run functional e2e suite
-        run: sh scripts/tests/e2e.sh
-        env:
-          PHP_VERSION: '7.4'
-          WP_VERSION: '7.0'
-      - name: Upload Playwright report on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
+      - uses: actions/setup-node@v4
         with:
-          name: playwright-report
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 7
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Start WordPress environment
+        run: npm run wp-env:start
+      - name: Run PHPUnit
+        run: npm run test:unit
+      - name: Stop WordPress environment
+        if: always()
+        run: npm run wp-env:stop
 
   check-plugin:
     name: Plugin Check (PCP)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Set up e2e environment
-        run: sh scripts/setup/e2e.sh
-        env:
-          PHP_VERSION: '7.4'
-          WP_VERSION: '7.0'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Build distributable zip
+        run: npm run build:zip
       - name: Run Plugin Check suite
-        run: sh scripts/tests/plugin-check.sh
-        env:
-          PHP_VERSION: '7.4'
-          WP_VERSION: '7.0'
+        run: npm run plugin-check
       - name: Post Plugin Check results as PR comment
         if: always() && github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2

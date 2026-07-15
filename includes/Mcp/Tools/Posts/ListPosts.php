@@ -55,6 +55,45 @@ class ListPosts extends BaseTool {
 	 */
 	public function execute( array $input ): array {
 		$query_args = $this->build_query_args( $input );
+		$post_type  = $query_args['post_type'];
+		$status     = $query_args['post_status'];
+
+		// check_permissions() only validates edit_posts for built-in types; custom post
+		// types may register different edit caps, so verify against the actual type cap.
+		$builtin_types = array( 'post', 'page', 'attachment', 'revision', 'nav_menu_item' );
+		if ( ! in_array( $post_type, $builtin_types, true ) ) {
+			$post_type_obj = get_post_type_object( $post_type );
+			if ( ! $post_type_obj ) {
+				return array(
+					'success' => false,
+					'message' => sprintf(
+						/* translators: %s: post type slug */
+						__( 'Invalid post type: %s', 'airo-wp' ),
+						$post_type
+					),
+				);
+			}
+			if ( ! current_user_can( $post_type_obj->cap->edit_posts ) ) {
+				return array(
+					'success' => false,
+					'message' => __( 'You do not have permission to query this post type.', 'airo-wp' ),
+				);
+			}
+		}
+
+		// Non-public statuses expose unpublished content across all authors, which
+		// requires edit_others_posts (or the type-specific equivalent).
+		$non_public = array( 'private', 'draft', 'pending', 'future', 'trash', 'any' );
+		if ( in_array( $status, $non_public, true ) ) {
+			$post_type_obj   = get_post_type_object( $post_type );
+			$edit_others_cap = $post_type_obj ? $post_type_obj->cap->edit_others_posts : 'edit_others_posts';
+			if ( ! current_user_can( $edit_others_cap ) ) {
+				return array(
+					'success' => false,
+					'message' => __( 'You do not have permission to query posts with this status.', 'airo-wp' ),
+				);
+			}
+		}
 
 		$query = new \WP_Query( $query_args );
 

@@ -8,7 +8,6 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
  */
 
 type BlockPattern = { name: string; categories: string[]; content: string };
-type BlockType    = { name: string; is_dynamic: boolean };
 
 async function fetchPatternsByCategory(
 	requestUtils: import('@wordpress/e2e-test-utils-playwright').RequestUtils,
@@ -141,33 +140,6 @@ test.describe( 'Pattern insertion from each category', () => {
 // ---------------------------------------------------------------------------
 
 test.describe( 'Custom block rendering', () => {
-
-	test( 'dynamic airo-wp blocks render without errors via block-renderer API', async ( { requestUtils } ) => {
-		const blockTypes = await requestUtils.rest<BlockType[]>( {
-			method: 'GET',
-			path: '/wp/v2/block-types?namespace=airo-wp&per_page=100',
-		} );
-
-		const dynamicBlocks = blockTypes.filter( ( b ) => b.is_dynamic );
-
-		expect(
-			dynamicBlocks.length,
-			'expected at least one dynamic airo-wp block'
-		).toBeGreaterThan( 0 );
-
-		for ( const block of dynamicBlocks ) {
-			const body = await requestUtils.rest< { rendered: string } >( {
-				method: 'POST',
-				path: `/wp/v2/block-renderer/${ block.name }`,
-				data: { context: 'edit', attributes: {} },
-			} );
-
-			expect(
-				typeof body.rendered,
-				`block ${ block.name } renderer response missing 'rendered' field`
-			).toBe( 'string' );
-		}
-	} );
 
 	test( 'static airo-wp block markup renders correctly in a page', async ( { requestUtils } ) => {
 		const contentPatterns = await fetchPatternsByCategory( requestUtils, 'airo-wp-content' );

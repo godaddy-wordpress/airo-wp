@@ -98,6 +98,57 @@ final class ActivateThemeTest extends TestCase {
 	}
 
 	/**
+	 * check_permissions returns true for an already-installed theme with only switch_themes.
+	 */
+	public function test_check_permissions_true_for_installed_theme_with_switch_themes_only(): void {
+		$theme = \Mockery::mock( 'WP_Theme' );
+		$theme->shouldReceive( 'exists' )->andReturn( true );
+
+		Functions\expect( 'current_user_can' )->with( 'switch_themes' )->andReturn( true );
+		Functions\expect( 'wp_get_theme' )->with( 'twentytwentyfour' )->andReturn( $theme );
+
+		$this->assertTrue( $this->tool->check_permissions( array( 'theme_slug' => 'twentytwentyfour' ) ) );
+	}
+
+	/**
+	 * check_permissions returns false for uninstalled theme when install_themes is missing.
+	 */
+	public function test_check_permissions_false_for_uninstalled_theme_without_install_themes(): void {
+		$theme = \Mockery::mock( 'WP_Theme' );
+		$theme->shouldReceive( 'exists' )->andReturn( false );
+
+		// andReturnUsing disambiguates two calls to current_user_can with different args.
+		Functions\expect( 'current_user_can' )->andReturnUsing(
+			fn( string $cap ) => 'switch_themes' === $cap
+		);
+		Functions\expect( 'wp_get_theme' )->with( 'new-theme' )->andReturn( $theme );
+
+		$this->assertFalse( $this->tool->check_permissions( array( 'theme_slug' => 'new-theme' ) ) );
+	}
+
+	/**
+	 * check_permissions returns true for uninstalled theme when both caps are present.
+	 */
+	public function test_check_permissions_true_for_uninstalled_theme_with_install_themes(): void {
+		$theme = \Mockery::mock( 'WP_Theme' );
+		$theme->shouldReceive( 'exists' )->andReturn( false );
+
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Functions\expect( 'wp_get_theme' )->with( 'new-theme' )->andReturn( $theme );
+
+		$this->assertTrue( $this->tool->check_permissions( array( 'theme_slug' => 'new-theme' ) ) );
+	}
+
+	/**
+	 * check_permissions returns true with no slug — only switch_themes needed.
+	 */
+	public function test_check_permissions_true_with_no_slug(): void {
+		Functions\expect( 'current_user_can' )->with( 'switch_themes' )->andReturn( true );
+
+		$this->assertTrue( $this->tool->check_permissions( array() ) );
+	}
+
+	/**
 	 * Successful activation of existing theme.
 	 */
 	public function test_successful_activation_of_existing_theme(): void {

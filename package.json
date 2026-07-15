@@ -1,8 +1,11 @@
 {
   "name": "airo-wp",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "files": [
+    "airo-wp.php",
+    "CHANGELOG.md",
+    "readme.txt",
     "data/",
     "dependencies/",
     "dist/",
@@ -11,22 +14,28 @@
     "patterns/",
     "src/",
     "vendor/",
-    "airo-wp.php",
-    "composer.json",
-    "readme.txt"
+    "composer.json"
   ],
   "scripts": {
     "build": "wp-scripts build",
+    "build:zip": "npm run build && node tests/e2e/setup/build-zip.mjs",
     "start": "wp-scripts start",
-    "test": "playwright test",
-    "test:debug": "playwright test --debug"
+    "test:unit": "node tests/scripts/wp-env-exec.mjs test",
+    "lint": "node tests/scripts/wp-env-exec.mjs lint",
+    "format": "wp-env run tests-cli --env-cwd=wp-content/plugins/airo-wp -- composer format || true",
+    "test:e2e": "node tests/scripts/e2e.mjs",
+    "test:e2e:debug": "node tests/scripts/e2e.mjs --debug",
+    "plugin-check": "node tests/scripts/plugin-check.mjs",
+    "wp-env:start": "wp-env start",
+    "wp-env:stop": "wp-env stop"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
+    "adm-zip": "^0.5.18",
     "@wordpress/e2e-test-utils-playwright": "^1.50.0",
+    "@wordpress/env": "^10.0.0",
     "@wordpress/icons": "^10.0.0",
     "@wordpress/scripts": "^30.0.0",
-    "@wp-playground/cli": "3.1.43",
     "classnames": "^2.3.2",
     "countup.js": "^2.9.0",
     "glob": "^11.0.0",

@@ -4,7 +4,7 @@ Tags: airo, godaddy, mcp, ai, block-patterns
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.4
+Stable tag: 0.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,7 +72,7 @@ Runtime Composer packages are namespace-prefixed with Strauss into `dependencies
 == Changelog ==
 
 = 0.2.5 =
-* Renamed plugin to "Airo AI Builder"
+* Hardened permission checks on four MCP tools
 
 = 0.2.4 =
 * Bundled block dynamic tags so shipped blocks resolve dynamic content correctly

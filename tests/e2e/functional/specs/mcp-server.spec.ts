@@ -3,9 +3,9 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 const MCP_ENDPOINT = '/wp-json/airo-wp/v1/mcp/streamable';
 
 test.describe( 'MCP server › auth enforcement', () => {
-	test( 'rejects requests with invalid credentials with 401', async ( { requestUtils } ) => {
+	test( 'rejects requests with invalid credentials with 401', async ( { playwright } ) => {
 		// Create an unauthenticated context with bad Basic auth credentials.
-		const invalidCtx = await ( requestUtils.request as any )._playwright.request.newContext( {
+		const invalidCtx = await playwright.request.newContext( {
 			baseURL: process.env.WP_BASE_URL,
 			extraHTTPHeaders: { Authorization: 'Basic invalid-credentials' },
 		} );

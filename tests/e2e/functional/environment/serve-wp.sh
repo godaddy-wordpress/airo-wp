@@ -25,13 +25,28 @@ provision_wp
 mkdir -p "$WP_DIR/wp-content/mu-plugins"
 cat > "$WP_DIR/wp-content/mu-plugins/airo-wp-e2e-pin-canonical.php" <<PHP
 <?php
+// Pin canonical URLs so wp server's host-rewriting doesn't break host-dependent tests.
 add_filter( 'pre_option_home', static fn() => '$WP_SITE_URL', PHP_INT_MAX );
 add_filter( 'pre_option_siteurl', static fn() => '$WP_SITE_URL', PHP_INT_MAX );
 add_filter( 'option_home', static fn() => '$WP_SITE_URL', PHP_INT_MAX );
 add_filter( 'option_siteurl', static fn() => '$WP_SITE_URL', PHP_INT_MAX );
 PHP
 
+# Disable WordPress auto-updates and pseudo-cron so Plugin_Upgrader never creates
+# .maintenance mid-run (which causes 503 responses in concurrent PHP workers).
+cat > "$WP_DIR/wp-content/mu-plugins/airo-wp-e2e-disable-updates.php" <<'PHP'
+<?php
+define( 'AUTOMATIC_UPDATER_DISABLED', true );
+define( 'DISABLE_WP_CRON', true );
+PHP
+
 wp plugin install "$ZIP" --activate --path="$WP_DIR" --allow-root
+# hello-dolly is used by mcp-update-plugin e2e tests; install it explicitly
+# because the e2e WordPress image does not bundle it by default.
+wp plugin install hello-dolly --path="$WP_DIR" --allow-root
+# Plugin_Upgrader creates .maintenance during installs; remove it before
+# the server starts so the first test requests don't see a 503.
+rm -f "$WP_DIR/.maintenance"
 wp rewrite structure '/%postname%/' --path="$WP_DIR" --allow-root
 wp rewrite flush --path="$WP_DIR" --allow-root
 

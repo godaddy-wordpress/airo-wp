@@ -473,7 +473,7 @@ class FilterIndex {
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		$table          = self::table_name();
+		$table = self::table_name();
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$charset        = $wpdb->get_charset_collate();
 		$stored_schema  = (string) get_option( self::OPTION_SCHEMA, '0' );

@@ -148,4 +148,41 @@ final class ListPostsTest extends TestCase {
 		$this->assertSame( 0, $result['total'] );
 		$this->assertSame( 999, \WP_Query::$last_args['meta_query'][0]['value'] );
 	}
+
+	public function test_non_public_status_denied_without_edit_others_posts(): void {
+		$type_obj                         = new \stdClass();
+		$type_obj->cap                    = new \stdClass();
+		$type_obj->cap->edit_others_posts = 'edit_others_posts';
+
+		Functions\expect( 'get_post_type_object' )->with( 'page' )->andReturn( $type_obj );
+		Functions\expect( 'current_user_can' )->with( 'edit_others_posts' )->andReturn( false );
+
+		$result = $this->tool->execute( array( 'status' => 'private' ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
+	}
+
+	public function test_invalid_custom_post_type_returns_error(): void {
+		Functions\expect( 'get_post_type_object' )->with( 'nonexistent_type' )->andReturn( null );
+
+		$result = $this->tool->execute( array( 'post_type' => 'nonexistent_type' ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'Invalid post type', $result['message'] );
+	}
+
+	public function test_custom_post_type_without_permission_returns_error(): void {
+		$type_obj              = new \stdClass();
+		$type_obj->cap         = new \stdClass();
+		$type_obj->cap->edit_posts = 'edit_products';
+
+		Functions\expect( 'get_post_type_object' )->with( 'product' )->andReturn( $type_obj );
+		Functions\expect( 'current_user_can' )->with( 'edit_products' )->andReturn( false );
+
+		$result = $this->tool->execute( array( 'post_type' => 'product' ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
+	}
 }
