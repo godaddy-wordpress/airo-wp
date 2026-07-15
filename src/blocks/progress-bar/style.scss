@@ -1,0 +1,117 @@
+/**
+ * Progress Bar Block - Frontend Styles
+ *
+ * @since 1.0.0
+ */
+
+.airo-wp-progress-bar {
+	// Block container
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	width: 100%; // Fill container width
+	max-width: 100%; // Prevent overflow in containers and on small screens
+
+	// Wide alignment - use negative margins to extend to wide width
+	&.alignwide {
+		width: var(--wp--style--global--wide-size);
+		max-width: 100%;
+	}
+
+	// Full alignment - use negative margins to extend edge-to-edge
+	&.alignfull {
+		width: 100%;
+		max-width: 100%;
+		margin-right: calc(var(--wp--style--root--padding-right) * -1);
+		margin-left: calc(var(--wp--style--root--padding-left) * -1);
+	}
+
+	// Progress bar container
+	&__container {
+		position: relative;
+		display: flex;
+		align-items: center;
+
+		// Default track color when the author has not chosen one. Kept at
+		// :where() (zero specificity) so an inline color, a block-level
+		// background, or an FSE global style all win. No clean preset maps to
+		// a muted track, so this stays a neutral literal — but because it is
+		// no longer baked into save() markup, Global Styles can override it.
+		&:where(:not([style*="background-color"])) {
+			background-color: #e5e7eb;
+		}
+	}
+
+	// Progress bar fill
+	&__fill {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		padding: 0 0.5rem;
+
+		// Default fill color when the author has not chosen one (see note on
+		// the container above).
+		&:where(:not([style*="background-color"])) {
+			background-color: var(--wp--preset--color--primary, #2563eb);
+		}
+
+		// Animated stripes
+		&--animated {
+			animation: airo-wp-progress-stripes 1s linear infinite;
+		}
+	}
+
+	// Label styles
+	&__label {
+		font-size: 0.875rem;
+		line-height: 1.43;
+		font-weight: 500;
+
+		// Label positions
+		&--top,
+		&--bottom {
+			color: currentcolor;
+		}
+
+		&--top {
+			margin-bottom: 0.25rem;
+		}
+
+		&--bottom {
+			margin-top: 0.25rem;
+		}
+
+		&--inside {
+			color: #fff;
+			font-weight: 600;
+			white-space: nowrap;
+			padding-right: 0.5rem;
+		}
+	}
+
+	// Hide inside label if bar is too narrow
+	&__fill[style*="width: 0%"],
+	&__fill[style*="width: 1%"],
+	&__fill[style*="width: 2%"],
+	&__fill[style*="width: 3%"],
+	&__fill[style*="width: 4%"],
+	&__fill[style*="width: 5%"] {
+
+		.airo-wp-progress-bar__label--inside {
+			display: none;
+		}
+	}
+}
+
+// Striped animation keyframes
+@keyframes airo-wp-progress-stripes {
+
+	0% {
+		background-position: 1rem 0;
+	}
+
+	100% {
+		background-position: 0 0;
+	}
+}

@@ -1,0 +1,211 @@
+/**
+ * Icon List Item Block - Frontend Styles
+ *
+ * @since 1.0.0
+ */
+
+.airo-wp-icon-list-item {
+	// Layout styles (display, flex-direction, align-items) applied via inline
+	// styles. The icon↔content gap is owned here (not inline) so Style Kits and
+	// patterns can retheme it. Default: 16px inline layout, 12px stacked
+	// (--icon-top, below). Resolution order mirrors the icon size chain:
+	//   1. --airo-wp-icon-list-gap — Style Kit CSS / semantic class hook.
+	//   2. --wp--custom--airo-wp--icon-list--gap — theme.json token.
+	//   3. 16px — literal fallback (the historical default).
+	position: relative;
+	gap: var(
+		--airo-wp-icon-list-gap,
+		var(--wp--custom--airo-wp--icon-list--gap, 16px)
+	);
+	transition: opacity 0.2s ease;
+
+	&__icon {
+		// Layout constants. These used to be serialized into every saved item
+		// (display/align-items/justify-content never varied by attribute),
+		// which bloated the markup and — because inline beats any stylesheet
+		// rule — made the icon box unthemeable. Size and colour are still
+		// applied inline, since those ARE attribute-driven.
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+
+		// Use CSS custom property if set, otherwise inherit from parent
+		// This prevents section style variations from overriding manually set icon colors
+		color: var(--airo-wp-icon-color, inherit);
+
+		// When custom property is set, force it to take precedence
+		&[style*="--airo-wp-icon-color"] {
+			color: var(--airo-wp-icon-color) !important;
+		}
+
+		svg {
+			width: 100%;
+			height: 100%;
+			display: block;
+			fill: currentcolor; // Ensure SVG inherits color from wrapper
+		}
+
+		// Size inherited from the theme default token when the parent icon-list
+		// leaves iconSize unset. save() no longer bakes --airo-wp-icon-list-size
+		// inline; the stylesheet owns it here so kits and patterns can retheme
+		// it. The consuming rules below still read var(--airo-wp-icon-list-size);
+		// its default is now sourced from a kit hook + the theme token:
+		//   1. --airo-wp-icon-list-icon-size — Style Kit CSS / semantic class hook.
+		//   2. --wp--custom--airo-wp--icon-list--default-size — theme.json
+		//      token (unitless number × 1px).
+		//   3. 32 — literal fallback (the historical default).
+		// Plain icon box: exact token size. Background box: token size + the
+		// same 16px padding allowance used for explicit sizes so the +16 math
+		// stays correct in both cases.
+		&--inherit-size {
+			--airo-wp-icon-list-size: var(
+				--airo-wp-icon-list-icon-size,
+				calc(
+					var(
+						--wp--custom--airo-wp--icon-list--default-size,
+						32
+					) * 1px
+				)
+			);
+
+			width: var(--airo-wp-icon-list-size);
+			height: var(--airo-wp-icon-list-size);
+			min-width: var(--airo-wp-icon-list-size);
+
+			&[style*="background-color"] {
+				width: calc(var(--airo-wp-icon-list-size) + 16px);
+				height: calc(var(--airo-wp-icon-list-size) + 16px);
+				min-width: calc(var(--airo-wp-icon-list-size) + 16px);
+			}
+		}
+	}
+
+	&__content {
+		flex: 1;
+		min-width: 0; // Prevent flex item overflow
+		width: 100%; // Ensure content fills available space
+
+		// Gap between content blocks. Owned here (not inline) unless the author
+		// sets an explicit contentGap, which save() writes inline and wins by
+		// specificity. Resolution order:
+		//   1. --airo-wp-icon-list-content-gap — Style Kit CSS / semantic class.
+		//   2. --wp--custom--airo-wp--icon-list--content-gap — theme.json.
+		//   3. 8px — literal fallback (the historical default).
+		gap: var(
+			--airo-wp-icon-list-content-gap,
+			var(--wp--custom--airo-wp--icon-list--content-gap, 8px)
+		);
+
+		// Remove margins from all blocks in content area (InnerBlocks)
+		// This prevents excessive spacing since icon list item has its own gap setting
+		> * {
+			margin-block-start: 0;
+			margin-block-end: 0;
+		}
+
+		// Remove margins from headings
+		h1, h2, h3, h4, h5, h6 {
+			margin-top: 0;
+			margin-bottom: 0;
+		}
+
+		// Remove margins from paragraphs
+		p {
+			margin-top: 0;
+			margin-bottom: 0;
+		}
+
+		// Remove margins from lists
+		ul, ol {
+			margin-top: 0;
+			margin-bottom: 0;
+		}
+	}
+
+	&__title {
+		font-weight: 600;
+		font-size: 1.1em;
+		line-height: 1.4;
+		margin-block-start: 0; // Remove default heading top margin
+		margin-block-end: 0.25em;
+
+		// Remove default margins for all possible tags
+		margin: 0 0 0.25em 0;
+
+		&:last-child {
+			margin-block-end: 0;
+			margin-bottom: 0;
+		}
+	}
+
+	&__description {
+		font-size: 0.95em;
+		line-height: 1.6;
+		opacity: 0.9;
+		margin-block-start: 0; // Remove default top margin
+		margin-block-end: 0;
+
+		// Remove default margins for all possible tags
+		margin: 0;
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
+
+	// Link indicator
+	&__link-indicator {
+		position: absolute;
+		top: 4px;
+		right: 4px;
+		font-size: 12px;
+		opacity: 0.3;
+	}
+
+	// When item is a link
+	&[href] {
+		text-decoration: none;
+		color: inherit;
+		cursor: pointer;
+
+		&:hover {
+			opacity: 0.8;
+
+			.airo-wp-icon-list-item__icon {
+				transform: scale(1.05);
+			}
+		}
+
+		&:focus {
+			outline: none;
+		}
+	}
+
+	// Icon position variations
+	&--icon-top {
+		// Stacked layout uses a tighter default gap (12px). Same layered chain
+		// as the base gap, with its own kit hook / token so a stacked list can
+		// be rethemed independently. Placed after the base rule so it wins by
+		// source order at equal specificity.
+		gap: var(
+			--airo-wp-icon-list-gap-top,
+			var(--wp--custom--airo-wp--icon-list--gap-top, 12px)
+		);
+
+		.airo-wp-icon-list-item__content {
+			width: 100%;
+		}
+	}
+
+	&--icon-left {
+		// Default styles
+	}
+
+	&--icon-right {
+
+		.airo-wp-icon-list-item__content {
+			width: 100%;
+		}
+	}
+}

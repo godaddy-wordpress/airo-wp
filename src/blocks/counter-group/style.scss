@@ -1,0 +1,73 @@
+/**
+ * Counter Group Block - Frontend Styles
+ *
+ * Responsive grid layout using CSS custom properties
+ */
+
+.airo-wp-counter-group {
+	box-sizing: border-box;
+	max-width: 100%; // Prevent overflow in containers and on small screens
+
+	// Wide alignment - use negative margins to extend to wide width
+	&.alignwide {
+		width: var(--wp--style--global--wide-size);
+		max-width: 100%;
+	}
+
+	// Full alignment - use negative margins to extend edge-to-edge
+	&.alignfull {
+		width: 100%;
+		max-width: 100%;
+		margin-right: calc(var(--wp--style--root--padding-right) * -1);
+		margin-left: calc(var(--wp--style--root--padding-left) * -1);
+	}
+
+	// Default text color that child Counter blocks will inherit
+	// WordPress applies inline style when user chooses a color, which takes precedence
+	color: var(--wp--preset--color--contrast);
+
+	&__inner {
+		display: grid;
+		grid-template-columns: repeat(var(--airo-wp-counter-columns-desktop, 3), 1fr);
+		gap: var(--airo-wp-counter-gap, 32px);
+		box-sizing: border-box;
+
+		// WordPress may wrap inner blocks - make wrapper transparent so grid applies to counter blocks
+		> .wp-block-post-content,
+		> div:not([class]) {
+			display: contents;
+		}
+
+		// Alignment classes (match class names from save.js/index.js)
+		&--align-left {
+			justify-items: start;
+			text-align: left;
+		}
+
+		&--align-center {
+			justify-items: center;
+			text-align: center;
+		}
+
+		&--align-right {
+			justify-items: end;
+			text-align: right;
+		}
+	}
+
+	// Tablet breakpoint (768px - 1023px)
+	@media (max-width: 1023px) {
+
+		&__inner {
+			grid-template-columns: repeat(var(--airo-wp-counter-columns-tablet, 2), 1fr);
+		}
+	}
+
+	// Mobile breakpoint (<768px)
+	@media (max-width: 767px) {
+
+		&__inner {
+			grid-template-columns: repeat(var(--airo-wp-counter-columns-mobile, 1), 1fr);
+		}
+	}
+}

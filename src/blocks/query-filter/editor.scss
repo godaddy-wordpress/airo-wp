@@ -1,0 +1,31 @@
+// Editor styles for airo-wp/query-filter.
+
+.wp-block-airo-wp-query-filter {
+
+	// Prevent pointer events on preview controls so they're non-interactive
+	// in the editor (clicking selects the block instead).
+	&.airo-wp-query-filter--preview,
+	.airo-wp-query-filter--preview {
+
+		input,
+		select,
+		button,
+		a {
+			pointer-events: none;
+		}
+	}
+
+	// Preview chips need a visible background in the editor context.
+	.airo-wp-query-filter__chip {
+		background: rgba(0, 0, 0, 0.08);
+		color: inherit;
+	}
+
+	// Visual affordance that these are editor placeholders.
+	.airo-wp-query-filter__checkbox-item input[type="checkbox"],
+	.airo-wp-query-filter__search-input,
+	.airo-wp-query-filter__select,
+	.airo-wp-query-filter__sort {
+		opacity: 0.7;
+	}
+}

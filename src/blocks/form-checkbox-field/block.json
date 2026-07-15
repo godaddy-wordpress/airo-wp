@@ -1,0 +1,62 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/form-checkbox-field",
+	"version": "1.0.0",
+	"title": "Checkbox Field",
+	"category": "airo-wp",
+	"description": "A single checkbox field for forms.",
+	"keywords": [
+		"form",
+		"checkbox",
+		"check",
+		"toggle",
+		"agree"
+	],
+	"parent": [
+		"airo-wp/form-builder"
+	],
+	"textdomain": "airo-wp",
+	"icon": "yes-alt",
+	"supports": {
+		"html": false,
+		"anchor": false,
+		"customClassName": false,
+		"reusable": false
+	},
+	"usesContext": [
+		"airo-wp/form/fieldSpacing",
+		"airo-wp/form/fieldLabelColor",
+		"airo-wp/form/fieldBorderColor"
+	],
+	"attributes": {
+		"fieldName": {
+			"type": "string",
+			"default": ""
+		},
+		"label": {
+			"type": "string",
+			"default": "I agree to the terms and conditions"
+		},
+		"helpText": {
+			"type": "string",
+			"default": ""
+		},
+		"required": {
+			"type": "boolean",
+			"default": false
+		},
+		"checkedByDefault": {
+			"type": "boolean",
+			"default": false
+		},
+		"value": {
+			"type": "string",
+			"default": "1"
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"render": "file:./render.php"
+}

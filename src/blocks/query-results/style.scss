@@ -1,0 +1,71 @@
+@use 'layout-variants';
+
+// Frontend grid layout. Scoped to `[data-airo-wp-query-results-role="container"]`
+// so the grid attaches only to the rendered <ul>/<ol>/<div> list and doesn't
+// apply to the editor wrapper (which would turn template blocks into columns
+// instead of items).
+.airo-wp-query-results[data-airo-wp-query-results-role="container"] {
+	display: grid;
+	grid-template-columns: repeat(var(--airo-wp-query-columns, 1), minmax(0, 1fr));
+	gap: var(--wp--style--block-gap, 1.5rem);
+	list-style: none;
+	margin: 0;
+	padding: 0;
+
+	// Featured first item — optional callout that spans extra columns/rows.
+	// The span is already clamped server-side to the desktop column count;
+	// responsive rules below clamp again for tablet/mobile so the callout
+	// doesn't overflow a narrower grid.
+	> .airo-wp-query__item:first-child {
+		grid-column: span min(var(--airo-wp-query-first-col-span, 1), var(--airo-wp-query-columns, 1));
+		grid-row: span var(--airo-wp-query-first-row-span, 1);
+	}
+}
+
+.airo-wp-query__item {
+	margin: 0;
+	transition: opacity 0.2s ease;
+}
+
+@media (max-width: 900px) {
+
+	.airo-wp-query-results[data-airo-wp-query-results-role="container"] {
+		grid-template-columns: repeat(var(--airo-wp-query-columns-tablet, var(--airo-wp-query-columns, 1)), minmax(0, 1fr));
+
+		> .airo-wp-query__item:first-child {
+			grid-column: span min(var(--airo-wp-query-first-col-span, 1), var(--airo-wp-query-columns-tablet, var(--airo-wp-query-columns, 1)));
+		}
+	}
+}
+
+@media (max-width: 600px) {
+
+	.airo-wp-query-results[data-airo-wp-query-results-role="container"] {
+		grid-template-columns: repeat(var(--airo-wp-query-columns-mobile, 1), minmax(0, 1fr));
+
+		> .airo-wp-query__item:first-child {
+			grid-column: span min(var(--airo-wp-query-first-col-span, 1), var(--airo-wp-query-columns-mobile, 1));
+			grid-row: auto;
+		}
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-query__item {
+		transition: none;
+	}
+}
+
+.airo-wp-query-group {
+	display: block;
+	margin-block-end: var(--wp--preset--spacing--40, 1.5rem);
+
+	&:last-child {
+		margin-block-end: 0;
+	}
+}
+
+.wp-block-airo-wp-query-group-header {
+	margin-block-end: var(--wp--preset--spacing--20, 0.75rem);
+}

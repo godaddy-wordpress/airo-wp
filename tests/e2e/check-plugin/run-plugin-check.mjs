@@ -1,0 +1,278 @@
+#!/usr/bin/env node
+/**
+ * Plugin Check (PCP) suite — runs WordPress.org's official Plugin Check against
+ * the packaged airo-wp-test.zip via Plugin Check's WP-CLI runner (not the AJAX
+ * flow, which silently skips the 5 runtime checks due to unauthenticated table
+ * set swap).
+ *
+ * Two runs: full default check set + an explicit runtime-checks canary.
+ * ERROR-type findings gate; WARNING-type are reported only. Structural failures
+ * (missing runs, early_init=no, fatals, wp-cli Error: lines, unparseable lines)
+ * always gate. wp plugin check's own exit code is NOT trusted — parsed output
+ * is the source of truth.
+ */
+
+import { spawnSync } from 'node:child_process';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname( fileURLToPath( import.meta.url ) );
+const ROOT = path.resolve( HERE, '../../..' );
+const PLUGIN_SLUG = 'airo-wp';
+const ZIP_PATH = path.join( ROOT, 'builds', 'airo-wp-test.zip' );
+const RESULTS_FILE = path.join( ROOT, 'builds', 'plugin-check-results.txt' );
+const MARKER_REQUIRE = path.join( HERE, 'pcp-early-init-marker.php' );
+
+/**
+ * Findings with these codes are displayed in the report but do NOT gate the
+ * suite. A documented reason is required for every entry.
+ */
+const IGNORED_CODES = new Map( [
+	[
+		'trademarked_term',
+		'False positive; "WP" is only restricted as a first word (e.g. "WP Airo"), not as a suffix.',
+	],
+] );
+
+const RUNTIME_CHECKS = [
+	'enqueued_scripts_size',
+	'enqueued_styles_size',
+	'enqueued_styles_scope',
+	'enqueued_scripts_scope',
+	'non_blocking_scripts',
+];
+
+const failures = [];
+
+function fail( message ) {
+	failures.push( message );
+	console.error( `✗ ${ message }` );
+}
+
+if ( ! existsSync( ZIP_PATH ) ) {
+	console.error(
+		`✗ Missing ${ path.relative( ROOT, ZIP_PATH ) } — run via scripts/tests/plugin-check.sh (or make check-plugin), which builds it.`
+	);
+	process.exit( 1 );
+}
+
+rmSync( RESULTS_FILE, { force: true } );
+
+console.log( 'Provisioning ephemeral WordPress (native PHP + SQLite drop-in)…' );
+const prov = spawnSync( 'sh', [ path.join( HERE, 'provision-pcp-wp.sh' ) ], {
+	cwd: ROOT,
+	encoding: 'utf8',
+	timeout: 5 * 60_000,
+	maxBuffer: 64 * 1024 * 1024,
+} );
+const provLog = `${ prov.stdout ?? '' }${ prov.stderr ?? '' }`;
+if ( prov.error || prov.status !== 0 ) {
+	console.error( provLog );
+	console.error(
+		`✗ Provisioning failed${ prov.error ? `: ${ prov.error.message }` : ` (exit ${ prov.status })` }`
+	);
+	process.exit( 1 );
+}
+const WP_DIR = ( prov.stdout ?? '' ).match( /^WP_DIR=(.+)$/m )?.[ 1 ];
+if ( ! WP_DIR ) {
+	console.error( provLog );
+	console.error( '✗ provision-pcp-wp.sh did not report WP_DIR.' );
+	process.exit( 1 );
+}
+
+const DROPIN_SRC = path.join(
+	WP_DIR,
+	'wp-content/plugins/plugin-check/drop-ins/object-cache.copy.php'
+);
+const DROPIN_DST = path.join( WP_DIR, 'wp-content/object-cache.php' );
+
+function runCheck( extraArgs ) {
+	// PCP's per-run cleanup deletes the drop-in — re-place before each run.
+	const cp = spawnSync( 'cp', [ DROPIN_SRC, DROPIN_DST ], { encoding: 'utf8' } );
+	if ( cp.status !== 0 ) {
+		fail( `Could not place PCP's object-cache drop-in: ${ cp.stderr }` );
+		return null;
+	}
+
+	const args = [
+		'plugin', 'check', PLUGIN_SLUG,
+		'--format=json',
+		`--require=${ MARKER_REQUIRE }`,
+		`--path=${ WP_DIR }`,
+		'--allow-root',
+		'--no-color',
+		// Strauss-prefixed vendor deps have their own text domains / WP compat declarations.
+		'--exclude-directories=dependencies',
+		...extraArgs,
+	];
+	const cmd = `wp ${ args.join( ' ' ) }`;
+	console.log( `Running: ${ cmd }` );
+	const run = spawnSync( 'wp', args, {
+		cwd: ROOT,
+		encoding: 'utf8',
+		timeout: 10 * 60_000,
+		maxBuffer: 64 * 1024 * 1024,
+	} );
+	if ( run.error ) {
+		fail( `Failed to run wp-cli: ${ run.error.message }` );
+		return null;
+	}
+	return {
+		cmd,
+		stdout: run.stdout ?? '',
+		stderr: run.stderr ?? '',
+		earlyInit: /pcp_early_init=yes/.test( run.stdout ?? '' ),
+	};
+}
+
+const runs = [
+	runCheck( [] ),
+	runCheck( [ `--checks=${ RUNTIME_CHECKS.join( ',' ) }` ] ),
+].filter( Boolean );
+
+
+if ( runs.length !== 2 ) {
+	fail( `Expected 2 Plugin Check runs (full set + runtime canary), completed ${ runs.length }.` );
+}
+
+const canary = runs.find( ( r ) => r.cmd.includes( '--checks=' ) );
+if ( ! canary ) {
+	fail( 'The runtime-checks canary run (--checks=…) is missing.' );
+} else {
+	for ( const slug of RUNTIME_CHECKS ) {
+		if ( ! canary.cmd.includes( slug ) ) {
+			fail( `Runtime canary run does not include the "${ slug }" check.` );
+		}
+	}
+}
+
+for ( const run of runs ) {
+	if ( ! run.earlyInit ) {
+		fail( `Plugin Check did NOT early-initialize for "${ run.cmd }" — runtime checks cannot have run.` );
+	}
+	for ( const line of run.stderr.split( '\n' ) ) {
+		if ( /Fatal error/.test( line ) && ! /Deprecated/.test( line ) ) {
+			fail( `PHP fatal error during "${ run.cmd }": ${ line.slice( 0, 300 ) }` );
+		}
+		if ( /^Error:/.test( line.trim() ) ) {
+			fail( `wp-cli error during "${ run.cmd }": ${ line.slice( 0, 300 ) }` );
+		}
+	}
+}
+
+function parseFindings( body, cmd ) {
+	const findings = [];
+	let currentFile = '(unknown file)';
+	for ( const rawLine of body.split( '\n' ) ) {
+		const line = rawLine.replace( /<br\s*\/?>/g, '' ).trim();
+		const fileMatch = line.match( /^FILE: (.+)$/ );
+		if ( fileMatch ) { currentFile = fileMatch[ 1 ].trim(); continue; }
+		if ( line.startsWith( '[' ) ) {
+			try {
+				for ( const finding of JSON.parse( line ) ) {
+					findings.push( { file: currentFile, ...finding } );
+				}
+			} catch {
+				fail( `Unparseable report line from "${ cmd }": ${ line.slice( 0, 200 ) }` );
+			}
+			continue;
+		}
+		if ( /Fatal error/.test( line ) ) { fail( `PHP fatal error during "${ cmd }": ${ line }` ); continue; }
+		if (
+			/(Warning|Notice|Deprecated)(<\/b>)?:/.test( line ) &&
+			line.includes( `plugins/${ PLUGIN_SLUG }/` )
+		) {
+			fail( `PHP problem in plugin code during "${ cmd }": ${ line.slice( 0, 300 ) }` );
+		}
+	}
+	return findings;
+}
+
+const allFindings = runs.flatMap( ( r ) => parseFindings( r.stdout, r.cmd ) );
+const seen = new Set();
+const findings = allFindings.filter( ( f ) => {
+	const key = `${ f.file }|${ f.code }|${ f.line }|${ f.column }|${ f.message }`;
+	if ( seen.has( key ) ) return false;
+	seen.add( key );
+	return true;
+} );
+
+const gatingFindings = findings.filter( ( f ) => ! IGNORED_CODES.has( f.code ) );
+const ignoredFindings = findings.filter( ( f ) => IGNORED_CODES.has( f.code ) );
+const errors = gatingFindings.filter( ( f ) => f.type === 'ERROR' );
+const warnings = gatingFindings.filter( ( f ) => f.type !== 'ERROR' );
+
+console.log( `\nPlugin Check: ${ errors.length } error(s), ${ warnings.length } warning(s), ${ ignoredFindings.length } ignored` );
+for ( const f of [ ...gatingFindings, ...ignoredFindings ] ) {
+	const tag = IGNORED_CODES.has( f.code ) ? 'IGNORED' : f.type;
+	console.log( `  [${ tag }] ${ f.file }:${ f.line } ${ f.code } — ${ f.message }` );
+}
+
+function mdCell( s ) {
+	return String( s ?? '' ).replace( /\|/g, '\\|' ).replace( /\n/g, ' ' );
+}
+
+function findingsByFile( list ) {
+	const map = new Map();
+	for ( const f of list ) {
+		if ( ! map.has( f.file ) ) map.set( f.file, [] );
+		map.get( f.file ).push( f );
+	}
+	return map;
+}
+
+function renderFindingsTable( byFile ) {
+	let out = '';
+	for ( const [ file, fileFindings ] of byFile ) {
+		out += `\n> ${ file }\n\n`;
+		out += '| Level | Line | Code | Message |\n';
+		out += '|-------|------|------|----------|\n';
+		for ( const f of fileFindings ) {
+			out += `| ${ mdCell( f.type ) } | ${ mdCell( f.line ) } | ${ mdCell( f.code ) } | ${ mdCell( f.message ) } |\n`;
+		}
+	}
+	return out;
+}
+
+let md = '';
+
+if ( gatingFindings.length === 0 && failures.length === 0 ) {
+	md += '✓ No blocking issues found.\n';
+} else if ( gatingFindings.length > 0 ) {
+	const noun = gatingFindings.length === 1 ? 'issue' : 'issues';
+	md += `Found ${ gatingFindings.length } ${ noun } (${ errors.length } error${ errors.length === 1 ? '' : 's' }, ${ warnings.length } warning${ warnings.length === 1 ? '' : 's' })\n`;
+	md += renderFindingsTable( findingsByFile( gatingFindings ) );
+}
+
+if ( ignoredFindings.length > 0 ) {
+	md += `\n**Ignored (${ ignoredFindings.length })**\n`;
+	md += renderFindingsTable( findingsByFile( ignoredFindings ) );
+	md += '\n| Code | Message |\n';
+	md += '|------|---------|\n';
+	for ( const [ code, reason ] of IGNORED_CODES ) {
+		if ( ignoredFindings.some( ( f ) => f.code === code ) ) {
+			md += `| ${ mdCell( code ) } | ${ mdCell( reason ) } |\n`;
+		}
+	}
+}
+
+if ( failures.length > 0 ) {
+	md += '\n**Suite failures (structural)**\n';
+	for ( const msg of failures ) {
+		md += `- ${ msg }\n`;
+	}
+}
+
+writeFileSync( RESULTS_FILE, md );
+
+if ( gatingFindings.length > 0 ) {
+	fail( `Plugin Check found ${ gatingFindings.length } blocking issue(s) (see above).` );
+}
+
+if ( failures.length > 0 ) {
+	console.error( `\n✗ Plugin Check suite FAILED (${ failures.length } failure(s)).` );
+	process.exit( 1 );
+}
+console.log( '\n✓ Plugin Check suite passed.' );
+process.exit( 0 );

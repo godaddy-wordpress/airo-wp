@@ -1,0 +1,83 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/heading-segment",
+	"version": "1.0.0",
+	"title": "Heading Segment",
+	"category": "airo-wp",
+	"parent": [
+		"airo-wp/advanced-heading"
+	],
+	"description": "A text segment within an Advanced Heading — each segment can use a different font, weight, or color.",
+	"keywords": [
+		"heading",
+		"segment",
+		"font",
+		"typography"
+	],
+	"textdomain": "airo-wp",
+	"icon": "editor-textcolor",
+	"attributes": {
+		"content": {
+			"type": "string",
+			"source": "html",
+			"selector": ".airo-wp-heading-segment__text",
+			"default": ""
+		}
+	},
+	"usesContext": [
+		"airo-wp/advancedHeading/level"
+	],
+	"supports": {
+		"html": false,
+		"inserter": true,
+		"reusable": false,
+		"color": {
+			"text": true,
+			"background": true,
+			"gradients": true,
+			"__experimentalDefaultControls": {
+				"text": true,
+				"background": false
+			}
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalDefaultControls": {
+				"fontSize": true,
+				"lineHeight": true,
+				"fontFamily": true,
+				"fontWeight": true,
+				"fontStyle": true,
+				"textTransform": true,
+				"textDecoration": true,
+				"letterSpacing": true
+			},
+			"__experimentalFontFamily": true,
+			"__experimentalFontWeight": true,
+			"__experimentalFontStyle": true,
+			"__experimentalTextTransform": true,
+			"__experimentalTextDecoration": true,
+			"__experimentalLetterSpacing": true
+		},
+		"spacing": {
+			"padding": true,
+			"__experimentalDefaultControls": {
+				"padding": false
+			}
+		},
+		"__experimentalBorder": {
+			"color": true,
+			"radius": true,
+			"style": true,
+			"width": true,
+			"__experimentalDefaultControls": {
+				"radius": false
+			}
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./index.css"
+}

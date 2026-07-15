@@ -1,0 +1,38 @@
+/**
+ * Icon List Block - Editor Styles
+ *
+ * @since 1.0.0
+ */
+
+.wp-block-airo-wp-icon-list {
+	// Editor-specific styles if needed
+
+	.airo-wp-icon-list__items {
+		// Ensure proper spacing in editor
+		> .block-list-appender {
+			margin-top: 1rem;
+		}
+	}
+
+	// Stack horizontal layout on tablet for editor/frontend parity
+	&.airo-wp-icon-list--horizontal {
+
+		@media (max-width: 1024px) {
+
+			.airo-wp-icon-list__items {
+				flex-direction: column !important;
+			}
+		}
+	}
+
+	// Stack grid to single column on mobile for editor/frontend parity
+	&.airo-wp-icon-list--grid {
+
+		@media (max-width: 600px) {
+
+			.airo-wp-icon-list__items {
+				grid-template-columns: 1fr !important;
+			}
+		}
+	}
+}

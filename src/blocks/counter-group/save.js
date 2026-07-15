@@ -1,0 +1,64 @@
+/**
+ * Counter Group Block - Save Function
+ *
+ * WordPress Best Practice Approach:
+ * - Uses useInnerBlocksProps.save() for proper inner blocks integration
+ * - Declarative style application (matches edit.js exactly)
+ * - CSS custom properties for responsive grid
+ */
+
+import { useBlockProps, useInnerBlocksProps } from '@wordpress/block-editor';
+import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+
+export default function CounterGroupSave({ attributes }) {
+	const {
+		columns,
+		columnsTablet,
+		columnsMobile,
+		gap,
+		alignContent,
+		animationDuration,
+		animationDelay,
+		animationEasing,
+		useGrouping,
+		separator,
+		decimal,
+		hoverColor,
+	} = attributes;
+
+	// Block wrapper props with CSS custom properties
+	const blockProps = useBlockProps.save({
+		className: 'airo-wp-counter-group',
+		style: {
+			// CRITICAL: Use align-self: stretch to fill parent width (must match index.js)
+			alignSelf: 'stretch',
+			// Cast to string to prevent React from adding "px" suffix
+			'--airo-wp-counter-columns-desktop': String(columns),
+			'--airo-wp-counter-columns-tablet': String(columnsTablet),
+			'--airo-wp-counter-columns-mobile': String(columnsMobile),
+			'--airo-wp-counter-gap': gap,
+			// Apply hover color for child Counter blocks to inherit
+			...(hoverColor && {
+				'--airo-wp-counter-hover-color': convertColorToCSSVar(hoverColor),
+			}),
+		},
+		// Data attributes for frontend JavaScript
+		'data-animation-duration': animationDuration,
+		'data-animation-delay': animationDelay,
+		'data-animation-easing': animationEasing,
+		'data-use-grouping': useGrouping ? 'true' : 'false',
+		'data-separator': separator,
+		'data-decimal': decimal,
+	});
+
+	// Inner blocks props (WordPress best practice)
+	const innerBlocksProps = useInnerBlocksProps.save({
+		className: `airo-wp-counter-group__inner airo-wp-counter-group__inner--align-${alignContent}`,
+	});
+
+	return (
+		<div {...blockProps}>
+			<div {...innerBlocksProps} />
+		</div>
+	);
+}

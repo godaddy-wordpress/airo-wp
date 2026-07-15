@@ -1,0 +1,69 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/form-url-field",
+	"version": "1.0.0",
+	"title": "URL Field",
+	"category": "airo-wp",
+	"description": "A URL/website address input field for forms.",
+	"keywords": [
+		"form",
+		"url",
+		"website",
+		"link",
+		"address"
+	],
+	"parent": [
+		"airo-wp/form-builder"
+	],
+	"textdomain": "airo-wp",
+	"icon": "admin-links",
+	"supports": {
+		"html": false,
+		"anchor": false,
+		"customClassName": false,
+		"reusable": false
+	},
+	"usesContext": [
+		"airo-wp/form/fieldSpacing",
+		"airo-wp/form/fieldLabelColor",
+		"airo-wp/form/fieldBorderColor",
+		"airo-wp/form/fieldBackgroundColor",
+		"airo-wp/form/inputHeight",
+		"airo-wp/form/inputPadding"
+	],
+	"attributes": {
+		"fieldName": {
+			"type": "string",
+			"default": ""
+		},
+		"label": {
+			"type": "string",
+			"default": "Website URL"
+		},
+		"placeholder": {
+			"type": "string",
+			"default": "https://example.com"
+		},
+		"helpText": {
+			"type": "string",
+			"default": ""
+		},
+		"required": {
+			"type": "boolean",
+			"default": false
+		},
+		"defaultValue": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldWidth": {
+			"type": "string",
+			"default": "100"
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"render": "file:./render.php"
+}

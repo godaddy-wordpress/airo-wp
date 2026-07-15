@@ -1,0 +1,202 @@
+/**
+ * Image Accordion Item - Frontend Styles
+ *
+ * Implements expandable panels with background images and overlays
+ */
+
+.airo-wp-image-accordion-item {
+	// Position and layout
+	position: relative;
+	flex: 1;
+	overflow: hidden;
+	cursor: pointer;
+
+	// Smooth transition on flex property
+	transition: flex var(--transition-duration, 0.5s) cubic-bezier(0.4, 0, 0.2, 1);
+
+	// Background image must always cover the item regardless of what the Styles
+	// panel sets inline — allowing `auto`/`contain` breaks the accordion layout.
+	background-size: cover !important;
+	background-position: center;
+	background-repeat: no-repeat !important;
+
+	// Overlay (pseudo-element).
+	// Color/opacity resolve through a four-layer cascade, highest priority first:
+	//   1. --airo-wp-overlay-*                        (short vars: PHP block inserter)
+	//   2. --airo-wp-image-accordion-overlay-*        (parent inline, when explicit)
+	//   3. --wp--custom--airo-wp--image-accordion--overlay-*  (theme token)
+	//   4. solid #000 / numeric literal            (shipped fallback)
+	// The color literal is solid (not rgba) so the separate opacity var is not
+	// double-applied.
+	&--has-overlay::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background-color: var(
+			--airo-wp-overlay-color,
+			var(
+				--airo-wp-image-accordion-overlay-color,
+				var(
+					--wp--custom--airo-wp--image-accordion--overlay-color,
+					#000
+				)
+			)
+		);
+		opacity: var(
+			--airo-wp-overlay-opacity,
+			var(
+				--airo-wp-image-accordion-overlay-opacity,
+				var(
+					--wp--custom--airo-wp--image-accordion--overlay-opacity,
+					0.4
+				)
+			)
+		);
+		transition: opacity 0.3s ease;
+		pointer-events: none;
+		z-index: 1;
+	}
+
+	// Enable Overlay = off. The item still carries the `--has-overlay` class in
+	// its static save() markup because block context is unavailable at save time
+	// (see image-accordion-item/save.js), so the scrim is suppressed here, keyed
+	// off the parent accordion's `data-enable-overlay="false"` marker rather than
+	// off a class the item can't drop. `display: none` is the only `display`
+	// declaration on this pseudo-element, so it wins outright today regardless of
+	// specificity — no other rule competes for the property. It is deliberately
+	// left un-`:where()`'d so that specificity stays defensive: if a competing
+	// `display` on `::before` is ever added elsewhere, this ancestor-scoped
+	// selector (0,3,1) still wins on specificity rather than depending on source
+	// order. Editor parity is automatic — the editor never emits `--has-overlay`
+	// when the overlay is off, because context IS available in edit.js.
+	.airo-wp-image-accordion[data-enable-overlay='false'] &--has-overlay::before {
+		display: none;
+	}
+
+	// Content wrapper
+	&__content {
+		position: relative;
+		z-index: 2;
+		// Default padding: L (top/bottom), M (left/right)
+		padding-top: var(--wp--preset--spacing--large, 2rem);
+		padding-bottom: var(--wp--preset--spacing--large, 2rem);
+		padding-left: var(--wp--preset--spacing--medium, 1.5rem);
+		padding-right: var(--wp--preset--spacing--medium, 1.5rem);
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		// Use alignment from attributes
+		justify-content: var(--airo-wp-vertical-alignment, center);
+		align-items: var(--airo-wp-horizontal-alignment, center);
+		color: #fff;
+
+		// Smooth content opacity transition
+		opacity: 0.9;
+		transition: opacity 0.3s ease;
+
+		// Make all text white for readability over images
+		h1, h2, h3, h4, h5, h6,
+		p, a, span, li {
+			color: inherit;
+		}
+
+		// Ensure links are visible
+		a {
+			text-decoration: underline;
+
+			&:hover {
+				opacity: 0.9;
+			}
+		}
+
+		// Prevent buttons and blocks from wrapping/breaking
+		.wp-block-button,
+		.wp-block-buttons {
+			flex-shrink: 0;
+		}
+
+		// Ensure proper spacing for block elements
+		> * + * {
+			margin-top: var(--wp--preset--spacing--small, 1rem);
+		}
+	}
+
+	// Expanded state
+	&.is-expanded {
+		flex: var(--expanded-ratio, 3);
+
+		&.airo-wp-image-accordion-item--has-overlay::before {
+			opacity: var(
+				--airo-wp-overlay-opacity-expanded,
+				var(
+					--airo-wp-image-accordion-overlay-opacity-expanded,
+					var(
+						--wp--custom--airo-wp--image-accordion--overlay-opacity-expanded,
+						0.2
+					)
+				)
+			);
+		}
+
+		.airo-wp-image-accordion-item__content {
+			opacity: 1;
+		}
+	}
+
+	// Collapsed state (normal size)
+	&.is-collapsed {
+		flex: 1;
+
+		&.airo-wp-image-accordion-item--has-overlay::before {
+			// Darker when collapsed
+			opacity: calc(
+				var(
+						--airo-wp-overlay-opacity,
+						var(
+							--airo-wp-image-accordion-overlay-opacity,
+							var(
+								--wp--custom--airo-wp--image-accordion--overlay-opacity,
+								0.4
+							)
+						)
+					) + 0.2
+			);
+		}
+
+		.airo-wp-image-accordion-item__content {
+			opacity: 0.7;
+		}
+	}
+
+	&:focus {
+		outline: none;
+	}
+
+	// Note: Hover interactions are handled by JavaScript (view.js)
+	// which adds/removes is-expanded and is-collapsed classes
+}
+
+// Accessibility: Reduce motion
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-image-accordion-item {
+		transition: flex 0.1s ease;
+
+		&--has-overlay::before {
+			transition: opacity 0.1s ease;
+		}
+
+		&__content {
+			transition: opacity 0.1s ease;
+		}
+	}
+}
+
+// Print styles: Expand all items
+@media print {
+
+	.airo-wp-image-accordion-item {
+		flex: 1 !important;
+		page-break-inside: avoid;
+	}
+}

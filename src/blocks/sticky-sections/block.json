@@ -1,0 +1,89 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/sticky-sections",
+	"version": "1.0.0",
+	"title": "Sticky Sections",
+	"category": "airo-wp",
+	"description": "Sections that stick and stack as you scroll, creating a card-stacking reveal effect",
+	"keywords": [
+		"sticky",
+		"stack",
+		"scroll",
+		"cards",
+		"pin",
+		"reveal",
+		"sections"
+	],
+	"textdomain": "airo-wp",
+	"icon": "align-full-width",
+	"attributes": {
+		"align": {
+			"type": "string",
+			"default": "full"
+		},
+		"stickyOffset": {
+			"type": "string",
+			"default": "0px"
+		}
+	},
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": false
+		},
+		"layout": {
+			"allowEditing": false
+		}
+	},
+	"allowedBlocks": [
+		"airo-wp/section"
+	],
+	"example": {
+		"attributes": {
+			"align": "full"
+		},
+		"innerBlocks": [
+			{
+				"name": "airo-wp/section",
+				"attributes": {
+					"style": {
+						"color": {
+							"background": "#1a1a2e"
+						}
+					}
+				}
+			},
+			{
+				"name": "airo-wp/section",
+				"attributes": {
+					"style": {
+						"color": {
+							"background": "#16213e"
+						}
+					}
+				}
+			},
+			{
+				"name": "airo-wp/section",
+				"attributes": {
+					"style": {
+						"color": {
+							"background": "#0f3460"
+						}
+					}
+				}
+			}
+		]
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"viewScript": "file:./view.js"
+}

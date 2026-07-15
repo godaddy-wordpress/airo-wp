@@ -1,0 +1,765 @@
+/**
+ * DSG Grid Block - Edit Component
+ *
+ * Responsive multi-column grid layouts.
+ *
+ * @since 1.0.0
+ */
+
+import { __, _n, sprintf } from '@wordpress/i18n';
+import {
+	useBlockProps,
+	useInnerBlocksProps,
+	InnerBlocks,
+	InspectorControls,
+	BlockControls,
+	AlignmentControl,
+	store as blockEditorStore,
+	useSettings,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
+} from '@wordpress/block-editor';
+import {
+	RangeControl,
+	SelectControl,
+	ToggleControl,
+	ToolbarGroup,
+	ToolbarDropdownMenu,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalUnitControl as UnitControl,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalUseCustomUnits as useCustomUnits,
+} from '@wordpress/components';
+import { grid as gridIcon } from '@wordpress/icons';
+import { DsgoInspectorPanel } from '../../components/shared';
+import { useState, useEffect } from '@wordpress/element';
+import { useSelect } from '@wordpress/data';
+import {
+	convertPresetToCSSVar,
+	convertColorToCSSVar,
+} from '../../utils/convert-preset-to-css-var';
+import {
+	encodeColorValue,
+	decodeColorValue,
+} from '../../utils/encode-color-value';
+import {
+	hasOverlayStyleClass,
+	hoverVariationClasses,
+} from '../../utils/style-variation-classes';
+
+/**
+ * Grid Container Edit Component
+ *
+ * @param {Object}   props               Component props
+ * @param {Object}   props.attributes    Block attributes
+ * @param {Function} props.setAttributes Function to update attributes
+ * @param {string}   props.clientId      Block client ID
+ * @return {JSX.Element} Edit component
+ */
+export default function GridEdit({ attributes, setAttributes, clientId }) {
+	const {
+		align,
+		className,
+		tagName = 'div',
+		constrainWidth,
+		contentWidth,
+		columnMinWidth,
+		desktopColumns,
+		tabletColumns,
+		mobileColumns,
+		rowGap,
+		columnGap,
+		alignItems,
+		textAlign,
+		overlayColor,
+		hoverBackgroundColor,
+		hoverTextColor,
+		hoverIconBackgroundColor,
+		hoverButtonBackgroundColor,
+		style,
+	} = attributes;
+
+	// Auto-migrate old blocks that use className for alignment
+	useEffect(() => {
+		if (!align && className) {
+			let newAlign;
+			if (className.includes('alignfull')) {
+				newAlign = 'full';
+			} else if (className.includes('alignwide')) {
+				newAlign = 'wide';
+			}
+
+			if (newAlign) {
+				const cleanClassName = className
+					.split(' ')
+					.filter((cls) => cls !== 'alignfull' && cls !== 'alignwide')
+					.join(' ')
+					.trim();
+
+				setAttributes({
+					align: newAlign,
+					className: cleanClassName || undefined,
+				});
+			}
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []); // Run only once on mount
+
+	// Get theme settings (WP 6.5+)
+	const [themeContentSize] = useSettings('layout.contentSize');
+
+	// Get theme color palette and gradient settings
+	const colorGradientSettings = useMultipleOriginColorsAndGradients();
+
+	// Get available spacing units
+	const units = useCustomUnits({
+		availableUnits: ['px', 'em', 'rem', 'vh', 'vw', '%'],
+	});
+
+	const [useCustomGaps, setUseCustomGaps] = useState(!!(rowGap || columnGap));
+
+	// Get inner blocks to determine if container is empty
+	const hasInnerBlocks = useSelect(
+		(select) => {
+			const { getBlock } = select(blockEditorStore);
+			const block = getBlock(clientId);
+			return block?.innerBlocks?.length > 0;
+		},
+		[clientId]
+	);
+
+	// Block wrapper props - outer div stays full width (must match save.js EXACTLY)
+	const hasOverlay = !!overlayColor || hasOverlayStyleClass(className);
+	const TagName = tagName || 'div';
+	const blockProps = useBlockProps({
+		className: [
+			'airo-wp-grid',
+			`airo-wp-grid-cols-${desktopColumns}`,
+			`airo-wp-grid-cols-tablet-${tabletColumns}`,
+			`airo-wp-grid-cols-mobile-${mobileColumns}`,
+			hasOverlay && 'airo-wp-grid--has-overlay',
+			...hoverVariationClasses(className, 'airo-wp-grid'),
+		]
+			.filter(Boolean)
+			.join(' '),
+		style: {
+			...(hoverBackgroundColor && {
+				'--airo-wp-hover-bg-color':
+					convertColorToCSSVar(hoverBackgroundColor),
+			}),
+			...(hoverTextColor && {
+				'--airo-wp-hover-text-color': convertColorToCSSVar(hoverTextColor),
+			}),
+			...(hoverIconBackgroundColor && {
+				'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
+					hoverIconBackgroundColor
+				),
+			}),
+			...(hoverButtonBackgroundColor && {
+				'--airo-wp-parent-hover-button-bg': convertColorToCSSVar(
+					hoverButtonBackgroundColor
+				),
+			}),
+			...(overlayColor && {
+				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+				'--airo-wp-overlay-opacity': '0.8',
+			}),
+		},
+	});
+
+	// Calculate inner styles declaratively (must match save.js EXACTLY)
+	// IMPORTANT: Always provide a default gap to prevent overlapping items
+	// Priority: blockGap (WordPress spacing) → custom rowGap/columnGap → preset fallback
+	// WordPress 6.1+ stores blockGap as object {top, left} for separate row/column gaps
+	// Also need to convert preset format (var:preset|spacing|X) to CSS variable
+	const blockGapValue = style?.spacing?.blockGap;
+	const isBlockGapObject =
+		typeof blockGapValue === 'object' && blockGapValue !== null;
+	const blockGapRow = convertPresetToCSSVar(
+		isBlockGapObject ? blockGapValue?.top : blockGapValue
+	);
+	const blockGapColumn = convertPresetToCSSVar(
+		isBlockGapObject ? blockGapValue?.left : blockGapValue
+	);
+	const defaultGap = 'var(--wp--preset--spacing--50)';
+
+	const innerStyles = {
+		display: 'grid',
+		gridTemplateColumns: columnMinWidth
+			? `repeat(${desktopColumns || 3}, minmax(${columnMinWidth}, 1fr))`
+			: `repeat(${desktopColumns || 3}, 1fr)`,
+		alignItems: alignItems || 'stretch',
+		rowGap: blockGapRow || rowGap || defaultGap,
+		columnGap: blockGapColumn || columnGap || defaultGap,
+	};
+
+	// Apply width constraints if enabled
+	// Use custom contentWidth if set, otherwise fallback to theme's contentSize
+	if (constrainWidth) {
+		innerStyles.maxWidth = contentWidth || themeContentSize || '1140px';
+		innerStyles.marginLeft = 'auto';
+		innerStyles.marginRight = 'auto';
+	}
+
+	// Merge inner blocks props with inner styles
+	const innerBlocksProps = useInnerBlocksProps(
+		{
+			className: 'airo-wp-grid__inner',
+			style: innerStyles,
+		},
+		{
+			templateLock: false,
+			renderAppender: hasInnerBlocks
+				? undefined
+				: InnerBlocks.ButtonBlockAppender,
+		}
+	);
+
+	return (
+		<>
+			<BlockControls>
+				<ToolbarGroup>
+					<ToolbarDropdownMenu
+						icon={gridIcon}
+						label={__('Desktop columns', 'airo-wp')}
+						controls={Array.from(
+							{ length: 12 },
+							(_unused, i) => i + 1
+						).map((count) => ({
+							title: sprintf(
+								/* translators: %d: number of columns */
+								_n(
+									'%d Column',
+									'%d Columns',
+									count,
+									'airo-wp'
+								),
+								count
+							),
+							isActive: desktopColumns === count,
+							onClick: () => {
+								const newTabletCols = Math.min(
+									tabletColumns,
+									count
+								);
+								const newMobileCols = Math.min(
+									mobileColumns,
+									newTabletCols
+								);
+								setAttributes({
+									desktopColumns: count,
+									...(newTabletCols !== tabletColumns && {
+										tabletColumns: newTabletCols,
+									}),
+									...(newMobileCols !== mobileColumns && {
+										mobileColumns: newMobileCols,
+									}),
+								});
+							},
+						}))}
+					/>
+				</ToolbarGroup>
+				<AlignmentControl
+					value={textAlign}
+					onChange={(newAlign) =>
+						setAttributes({ textAlign: newAlign })
+					}
+				/>
+			</BlockControls>
+
+			<InspectorControls group="advanced">
+				<SelectControl
+					label={__('HTML Element', 'airo-wp')}
+					value={tagName}
+					options={[
+						{
+							label: __('Default (<div>)', 'airo-wp'),
+							value: 'div',
+						},
+						{ label: '<section>', value: 'section' },
+						{ label: '<article>', value: 'article' },
+						{ label: '<aside>', value: 'aside' },
+						{ label: '<header>', value: 'header' },
+						{ label: '<footer>', value: 'footer' },
+						{ label: '<main>', value: 'main' },
+					]}
+					onChange={(value) => setAttributes({ tagName: value })}
+					help={__(
+						'Choose the HTML element for this block. Use semantic elements when appropriate for better accessibility.',
+						'airo-wp'
+					)}
+					__nextHasNoMarginBottom
+				/>
+			</InspectorControls>
+
+			<InspectorControls group="color">
+				<ColorGradientSettingsDropdown
+					panelId={clientId}
+					title={__('Hover Settings', 'airo-wp')}
+					settings={[
+						{
+							label: __('Overlay Color', 'airo-wp'),
+							colorValue: decodeColorValue(
+								overlayColor,
+								colorGradientSettings
+							),
+							onColorChange: (color) =>
+								setAttributes({
+									overlayColor:
+										encodeColorValue(
+											color,
+											colorGradientSettings
+										) || '',
+								}),
+							enableAlpha: true,
+							clearable: true,
+						},
+						{
+							label: __('Hover Background Color', 'airo-wp'),
+							colorValue: decodeColorValue(
+								hoverBackgroundColor,
+								colorGradientSettings
+							),
+							onColorChange: (color) =>
+								setAttributes({
+									hoverBackgroundColor:
+										encodeColorValue(
+											color,
+											colorGradientSettings
+										) || '',
+								}),
+							enableAlpha: true,
+							clearable: true,
+						},
+						{
+							label: __('Hover Text Color', 'airo-wp'),
+							colorValue: decodeColorValue(
+								hoverTextColor,
+								colorGradientSettings
+							),
+							onColorChange: (color) =>
+								setAttributes({
+									hoverTextColor:
+										encodeColorValue(
+											color,
+											colorGradientSettings
+										) || '',
+								}),
+							enableAlpha: true,
+							clearable: true,
+						},
+						// Only show icon background control if hover background is set
+						...(hoverBackgroundColor
+							? [
+									{
+										label: __(
+											'Hover Icon Background Color',
+											'airo-wp'
+										),
+										colorValue: decodeColorValue(
+											hoverIconBackgroundColor,
+											colorGradientSettings
+										),
+										onColorChange: (color) =>
+											setAttributes({
+												hoverIconBackgroundColor:
+													encodeColorValue(
+														color,
+														colorGradientSettings
+													) || '',
+											}),
+										enableAlpha: true,
+										clearable: true,
+									},
+								]
+							: []),
+						// Only show button background control if hover background is set
+						...(hoverBackgroundColor
+							? [
+									{
+										label: __(
+											'Hover Button Background Color',
+											'airo-wp'
+										),
+										colorValue: decodeColorValue(
+											hoverButtonBackgroundColor,
+											colorGradientSettings
+										),
+										onColorChange: (color) =>
+											setAttributes({
+												hoverButtonBackgroundColor:
+													encodeColorValue(
+														color,
+														colorGradientSettings
+													) || '',
+											}),
+										enableAlpha: true,
+										clearable: true,
+									},
+								]
+							: []),
+					]}
+					{...colorGradientSettings}
+				/>
+			</InspectorControls>
+
+			<InspectorControls>
+				<DsgoInspectorPanel
+					title={__('Settings', 'airo-wp')}
+					panelName="settings"
+					panelId={clientId}
+					resetAll={() => {
+						setUseCustomGaps(false);
+						setAttributes({
+							desktopColumns: 3,
+							tabletColumns: 2,
+							mobileColumns: 1,
+							alignItems: 'stretch',
+							rowGap: '',
+							columnGap: '',
+							constrainWidth: false,
+							contentWidth: '',
+							columnMinWidth: '',
+						});
+					}}
+				>
+					<DsgoInspectorPanel.Item
+						label={__('Desktop Columns', 'airo-wp')}
+						hasValue={() => desktopColumns !== 3}
+						onDeselect={() =>
+							setAttributes({
+								desktopColumns: 3,
+								tabletColumns: Math.min(tabletColumns, 3),
+								mobileColumns: Math.min(
+									mobileColumns,
+									Math.min(tabletColumns, 3)
+								),
+							})
+						}
+						isShownByDefault
+					>
+						<RangeControl
+							label={__('Desktop Columns', 'airo-wp')}
+							value={desktopColumns}
+							onChange={(value) => {
+								// Ensure tablet columns don't exceed desktop
+								const newTabletCols = Math.min(
+									tabletColumns,
+									value
+								);
+								// Ensure mobile columns don't exceed tablet
+								const newMobileCols = Math.min(
+									mobileColumns,
+									newTabletCols
+								);
+
+								setAttributes({
+									desktopColumns: value,
+									...(newTabletCols !== tabletColumns && {
+										tabletColumns: newTabletCols,
+									}),
+									...(newMobileCols !== mobileColumns && {
+										mobileColumns: newMobileCols,
+									}),
+								});
+							}}
+							min={1}
+							max={12}
+							help={__(
+								'Number of columns on desktop screens',
+								'airo-wp'
+							)}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
+
+					<DsgoInspectorPanel.Item
+						label={__('Tablet Columns', 'airo-wp')}
+						hasValue={() => tabletColumns !== 2}
+						onDeselect={() =>
+							setAttributes({
+								tabletColumns: 2,
+								mobileColumns: Math.min(mobileColumns, 2),
+							})
+						}
+						isShownByDefault
+					>
+						<RangeControl
+							label={__('Tablet Columns', 'airo-wp')}
+							value={tabletColumns}
+							onChange={(value) => {
+								// Ensure mobile columns don't exceed tablet
+								const newMobileCols = Math.min(
+									mobileColumns,
+									value
+								);
+
+								setAttributes({
+									tabletColumns: value,
+									...(newMobileCols !== mobileColumns && {
+										mobileColumns: newMobileCols,
+									}),
+								});
+							}}
+							min={1}
+							max={desktopColumns}
+							help={__(
+								'Number of columns on tablet screens (≤ 1024px)',
+								'airo-wp'
+							)}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
+
+					<DsgoInspectorPanel.Item
+						label={__('Mobile Columns', 'airo-wp')}
+						hasValue={() => mobileColumns !== 1}
+						onDeselect={() => setAttributes({ mobileColumns: 1 })}
+						isShownByDefault
+					>
+						<RangeControl
+							label={__('Mobile Columns', 'airo-wp')}
+							value={mobileColumns}
+							onChange={(value) =>
+								setAttributes({ mobileColumns: value })
+							}
+							min={1}
+							max={tabletColumns}
+							help={__(
+								'Number of columns on mobile screens (≤ 767px)',
+								'airo-wp'
+							)}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
+
+					<DsgoInspectorPanel.Item
+						label={__('Align Items', 'airo-wp')}
+						hasValue={() => alignItems !== 'stretch'}
+						onDeselect={() =>
+							setAttributes({ alignItems: 'stretch' })
+						}
+						isShownByDefault
+					>
+						<SelectControl
+							label={__('Align Items', 'airo-wp')}
+							value={alignItems}
+							options={[
+								{
+									label: __('Start', 'airo-wp'),
+									value: 'start',
+								},
+								{
+									label: __('Center', 'airo-wp'),
+									value: 'center',
+								},
+								{
+									label: __('End', 'airo-wp'),
+									value: 'end',
+								},
+								{
+									label: __('Stretch', 'airo-wp'),
+									value: 'stretch',
+								},
+							]}
+							onChange={(value) =>
+								setAttributes({ alignItems: value })
+							}
+							help={__(
+								'Vertical alignment of grid items',
+								'airo-wp'
+							)}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
+
+					<DsgoInspectorPanel.Item
+						label={__('Custom Row/Column Gaps', 'airo-wp')}
+						hasValue={() => useCustomGaps}
+						onDeselect={() => {
+							setUseCustomGaps(false);
+							setAttributes({ rowGap: '', columnGap: '' });
+						}}
+						isShownByDefault
+					>
+						<ToggleControl
+							label={__('Custom Row/Column Gaps', 'airo-wp')}
+							checked={useCustomGaps}
+							onChange={(value) => {
+								setUseCustomGaps(value);
+								if (!value) {
+									// Reset to WordPress blockGap
+									setAttributes({
+										rowGap: '',
+										columnGap: '',
+									});
+								}
+							}}
+							help={
+								useCustomGaps
+									? __(
+											'Using separate row and column gaps',
+											'airo-wp'
+										)
+									: __(
+											'Using WordPress blockGap (configure in Spacing panel)',
+											'airo-wp'
+										)
+							}
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
+
+					{useCustomGaps && (
+						<DsgoInspectorPanel.Item
+							label={__('Row Gap', 'airo-wp')}
+							hasValue={() => rowGap !== ''}
+							onDeselect={() => setAttributes({ rowGap: '' })}
+							isShownByDefault
+						>
+							<UnitControl
+								label={__('Row Gap', 'airo-wp')}
+								value={rowGap}
+								onChange={(value) =>
+									setAttributes({ rowGap: value })
+								}
+								units={units}
+								isResetValueOnUnitChange
+								__unstableInputWidth="80px"
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+							/>
+						</DsgoInspectorPanel.Item>
+					)}
+
+					{useCustomGaps && (
+						<DsgoInspectorPanel.Item
+							label={__('Column Gap', 'airo-wp')}
+							hasValue={() => columnGap !== ''}
+							onDeselect={() => setAttributes({ columnGap: '' })}
+							isShownByDefault
+						>
+							<UnitControl
+								label={__('Column Gap', 'airo-wp')}
+								value={columnGap}
+								onChange={(value) =>
+									setAttributes({ columnGap: value })
+								}
+								units={units}
+								isResetValueOnUnitChange
+								__unstableInputWidth="80px"
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+							/>
+						</DsgoInspectorPanel.Item>
+					)}
+
+					<DsgoInspectorPanel.Item
+						label={__('Constrain Inner Width', 'airo-wp')}
+						hasValue={() => constrainWidth !== false}
+						onDeselect={() =>
+							setAttributes({
+								constrainWidth: false,
+								contentWidth: '',
+							})
+						}
+						isShownByDefault
+					>
+						<ToggleControl
+							label={__('Constrain Inner Width', 'airo-wp')}
+							checked={constrainWidth}
+							onChange={(value) =>
+								setAttributes({ constrainWidth: value })
+							}
+							help={
+								constrainWidth
+									? __(
+											'Inner content is constrained to max width',
+											'airo-wp'
+										)
+									: __(
+											'Inner content spans full container width',
+											'airo-wp'
+										)
+							}
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
+
+					{constrainWidth && (
+						<DsgoInspectorPanel.Item
+							label={__('Max Content Width', 'airo-wp')}
+							hasValue={() => contentWidth !== ''}
+							onDeselect={() =>
+								setAttributes({ contentWidth: '' })
+							}
+							isShownByDefault
+						>
+							<UnitControl
+								label={__('Max Content Width', 'airo-wp')}
+								value={contentWidth}
+								onChange={(value) =>
+									setAttributes({ contentWidth: value })
+								}
+								placeholder={
+									themeContentSize ||
+									__('Theme default', 'airo-wp')
+								}
+								units={units}
+								__unstableInputWidth="80px"
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+								help={
+									!contentWidth && themeContentSize
+										? sprintf(
+												/* translators: %s: theme content size value */
+												__(
+													'Using theme default: %s',
+													'airo-wp'
+												),
+												themeContentSize
+											)
+										: ''
+								}
+							/>
+						</DsgoInspectorPanel.Item>
+					)}
+
+					<DsgoInspectorPanel.Item
+						label={__('Column Min Width', 'airo-wp')}
+						hasValue={() => columnMinWidth !== ''}
+						onDeselect={() => setAttributes({ columnMinWidth: '' })}
+						isShownByDefault
+					>
+						<UnitControl
+							label={__('Column Min Width', 'airo-wp')}
+							value={columnMinWidth}
+							onChange={(value) =>
+								setAttributes({ columnMinWidth: value || '' })
+							}
+							units={units}
+							isResetValueOnUnitChange
+							__unstableInputWidth="80px"
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+							help={__(
+								'Sets a minimum width for each column via minmax(value, 1fr) so columns never get narrower than this. Columns still drop to the tablet/mobile counts on smaller screens.',
+								'airo-wp'
+							)}
+						/>
+					</DsgoInspectorPanel.Item>
+				</DsgoInspectorPanel>
+			</InspectorControls>
+
+			<TagName {...blockProps}>
+				<div {...innerBlocksProps} />
+			</TagName>
+		</>
+	);
+}

@@ -1,0 +1,57 @@
+/**
+ * Icon List Block - Frontend Styles
+ *
+ * @since 1.0.0
+ */
+
+.airo-wp-icon-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+
+	&__items {
+		// Styles applied via inline styles (display, gap, grid-template-columns)
+		// This ensures editor and frontend match exactly
+	}
+
+	// Vertical layout
+	&--vertical {
+
+		.airo-wp-icon-list__items {
+			// flex-direction: column applied via inline styles
+		}
+	}
+
+	// Horizontal layout
+	&--horizontal {
+
+		.airo-wp-icon-list__items {
+			// flex-direction: row applied via inline styles
+			flex-wrap: wrap;
+		}
+
+		// Stack vertically on tablet (≤ 1024px)
+		@media (max-width: 1024px) {
+
+			.airo-wp-icon-list__items {
+				flex-direction: column !important;
+			}
+		}
+	}
+
+	// Grid layout
+	&--grid {
+
+		.airo-wp-icon-list__items {
+			// display: grid and grid-template-columns applied via inline styles
+		}
+
+		// Stack to single column on mobile (≤ 600px)
+		@media (max-width: 600px) {
+
+			.airo-wp-icon-list__items {
+				grid-template-columns: 1fr !important;
+			}
+		}
+	}
+}

@@ -1,0 +1,383 @@
+/**
+ * Sticky Header Utility Styles
+ *
+ * Provides comprehensive sticky header support for WordPress template parts.
+ * Works in conjunction with WordPress's position:sticky support.
+ *
+ * @package airo-wp
+ * @since 1.0.0
+ */
+
+/**
+ * Core Sticky Header Support
+ * Only applies when enabled globally (body class) OR per-block (template part class)
+ * Targets semantic headers or explicitly enabled template parts
+ * Note: Excludes footer elements to prevent unintended stickiness
+ */
+body:not(.block-editor-page).airo-wp-sticky-header-enabled .wp-block-template-part:not(footer):first-of-type,
+body:not(.block-editor-page).airo-wp-sticky-header-enabled header.wp-block-template-part,
+body:not(.block-editor-page) .wp-block-template-part.airo-wp-sticky-header-enabled {
+	position: sticky;
+	top: 0;
+	z-index: var(--airo-wp-sticky-header-z-index, 100);
+	transition: all var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+}
+
+/**
+ * Admin Bar Offset
+ * Account for WordPress admin bar when user is logged in
+ */
+/* stylelint-disable selector-class-pattern */
+body:not(.block-editor-page).admin-bar.airo-wp-sticky-header-enabled .wp-block-template-part:not(footer):first-of-type,
+body:not(.block-editor-page).admin-bar.airo-wp-sticky-header-enabled header.wp-block-template-part,
+body:not(.block-editor-page).admin-bar .wp-block-template-part.airo-wp-sticky-header-enabled {
+	top: 32px; /* WordPress admin bar height on desktop */
+}
+
+@media screen and (max-width: 782px) {
+
+	body:not(.block-editor-page).admin-bar.airo-wp-sticky-header-enabled .wp-block-template-part:not(footer):first-of-type,
+	body:not(.block-editor-page).admin-bar.airo-wp-sticky-header-enabled header.wp-block-template-part,
+	body:not(.block-editor-page).admin-bar .wp-block-template-part.airo-wp-sticky-header-enabled {
+		top: 46px; /* WordPress admin bar height on mobile */
+	}
+}
+/* stylelint-enable selector-class-pattern */
+
+/* Remove sticky from inner block to avoid conflicts */
+.wp-block-template-part .is-position-sticky {
+	position: relative;
+}
+
+/**
+ * Shadow on Scroll
+ * Adds depth to the sticky header when scrolling
+ */
+.airo-wp-sticky-shadow-small.wp-block-template-part.airo-wp-scrolled {
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.airo-wp-sticky-shadow-medium.wp-block-template-part.airo-wp-scrolled {
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.airo-wp-sticky-shadow-large.wp-block-template-part.airo-wp-scrolled {
+	box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/**
+ * Shrink Logo on Scroll
+ * Scales down logo images (site logo + image blocks) inside the sticky header
+ * once scrolled past the threshold. The JS measures each image's natural
+ * rendered size and stores it as CSS custom properties on the image element,
+ * so aspect ratio is preserved for wide or tall logos alike.
+ *
+ * --airo-wp-sticky-logo-scale comes from the header element (0..1, set by JS).
+ * --airo-wp-sticky-logo-original-width / -height come from each image inline.
+ */
+.airo-wp-sticky-shrink-logo.wp-block-template-part :where(.wp-block-image img, .wp-block-site-logo img) {
+	// Set explicit px values so the transition animates in both directions.
+	// Without this, the non-scrolled state has max-width: none (∞), and
+	// CSS cannot interpolate ∞ → px, causing an instant snap on scroll-down.
+	max-width: var(--airo-wp-sticky-logo-original-width);
+	max-height: var(--airo-wp-sticky-logo-original-height);
+	transition:
+		max-width var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out,
+		max-height var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+}
+
+.airo-wp-sticky-shrink-logo.wp-block-template-part.airo-wp-scrolled :where(.wp-block-image img, .wp-block-site-logo img) {
+	max-width: calc(var(--airo-wp-sticky-logo-original-width, 100%) * var(--airo-wp-sticky-logo-scale, 0.5));
+	max-height: calc(var(--airo-wp-sticky-logo-original-height, 100%) * var(--airo-wp-sticky-logo-scale, 0.5));
+	width: auto;
+	height: auto;
+}
+
+/**
+ * Hide on Scroll Down
+ * Auto-hides header when scrolling down, shows when scrolling up
+ */
+.airo-wp-sticky-hide-on-scroll-down.wp-block-template-part {
+	transition: transform var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+}
+
+.airo-wp-sticky-hide-on-scroll-down.wp-block-template-part.airo-wp-scroll-down {
+	transform: translateY(-100%);
+}
+
+.airo-wp-sticky-hide-on-scroll-down.wp-block-template-part.airo-wp-scroll-up {
+	transform: translateY(0);
+}
+
+/**
+ * Background on Scroll
+ * Changes/adds background color when scrolling
+ */
+.airo-wp-sticky-bg-on-scroll.wp-block-template-part {
+	transition: background-color var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out,
+		color var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+}
+
+.airo-wp-sticky-bg-on-scroll.wp-block-template-part.airo-wp-scrolled {
+	background-color: var(--airo-wp-sticky-scroll-bg-color, rgba(255, 255, 255, 0.95));
+	color: var(--airo-wp-sticky-scroll-text-color, inherit);
+
+	/* Apply text color to navigation elements only — excludes buttons with user-set colors */
+	.wp-block-navigation a,
+	.wp-block-navigation a:hover,
+	.wp-block-navigation a:focus,
+	.wp-block-navigation a:focus-visible,
+	.wp-block-navigation a:visited,
+	.wp-block-navigation a:active,
+	.wp-block-navigation-item__content,
+	.wp-block-navigation-item__label,
+	.wp-block-navigation__submenu-icon,
+	.wp-block-site-title a,
+	.wp-block-site-title a:hover,
+	.wp-block-site-title a:focus,
+	.wp-block-site-title a:focus-visible,
+	.wp-block-site-title a:visited,
+	.wp-block-site-title a:active {
+		color: var(--airo-wp-sticky-scroll-text-color, inherit);
+		transition: color var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+	}
+
+	/* Navigation SVG icons (hamburger, submenu arrows) */
+	.wp-block-navigation__submenu-icon svg,
+	.wp-block-navigation__responsive-container-open svg {
+		fill: var(--airo-wp-sticky-scroll-text-color, currentColor);
+		transition: fill var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+	}
+}
+
+/**
+ * Mobile Responsive Behavior
+ * Disable sticky on mobile if configured
+ */
+@media (max-width: 767px) {
+
+	.airo-wp-sticky-mobile-disabled.wp-block-template-part {
+		position: relative !important;
+	}
+}
+
+/**
+ * Accessibility: Respect prefers-reduced-motion
+ */
+@media (prefers-reduced-motion: reduce) {
+
+	.wp-block-template-part,
+	.airo-wp-sticky-shrink-logo.wp-block-template-part .wp-block-image img,
+	.airo-wp-sticky-shrink-logo.wp-block-template-part .wp-block-site-logo img,
+	.airo-wp-sticky-hide-on-scroll-down.wp-block-template-part,
+	.airo-wp-sticky-bg-on-scroll.wp-block-template-part,
+	.airo-wp-sticky-bg-on-scroll.wp-block-template-part .wp-block-navigation a,
+	.airo-wp-sticky-bg-on-scroll.wp-block-template-part .wp-block-navigation-item__content,
+	.airo-wp-sticky-bg-on-scroll.wp-block-template-part .wp-block-navigation-item__label,
+	.airo-wp-sticky-bg-on-scroll.wp-block-template-part .wp-block-navigation__submenu-icon,
+	.airo-wp-sticky-bg-on-scroll.wp-block-template-part .wp-block-site-title a,
+	.airo-wp-sticky-bg-on-scroll.wp-block-template-part svg,
+	/* Overlay header text color transitions */
+	body.airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type,
+	body.airo-wp-page-overlay-header header.wp-block-template-part,
+	body.airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type .wp-block-navigation a,
+	body.airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type .wp-block-navigation-item__content,
+	body.airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type .wp-block-navigation-item__label,
+	body.airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type .wp-block-navigation__submenu-icon,
+	body.airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type .wp-block-site-title a,
+	body.airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type svg {
+		transition: none !important;
+	}
+}
+
+/**
+ * Dark Mode Support
+ */
+@media (prefers-color-scheme: dark) {
+
+	.airo-wp-sticky-shadow-small.wp-block-template-part.airo-wp-scrolled {
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+	}
+
+	.airo-wp-sticky-shadow-medium.wp-block-template-part.airo-wp-scrolled {
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+	}
+
+	.airo-wp-sticky-shadow-large.wp-block-template-part.airo-wp-scrolled {
+		box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+	}
+
+	.airo-wp-sticky-bg-on-scroll.wp-block-template-part.airo-wp-scrolled {
+		background-color: var(--airo-wp-sticky-scroll-bg-color, rgba(0, 0, 0, 0.95));
+		color: var(--airo-wp-sticky-scroll-text-color, rgba(255, 255, 255, 0.95));
+
+		.wp-block-navigation a,
+		.wp-block-navigation a:hover,
+		.wp-block-navigation a:focus,
+		.wp-block-navigation a:focus-visible,
+		.wp-block-navigation a:visited,
+		.wp-block-navigation a:active,
+		.wp-block-navigation-item__content,
+		.wp-block-navigation-item__label,
+		.wp-block-navigation__submenu-icon,
+		.wp-block-site-title a,
+		.wp-block-site-title a:hover,
+		.wp-block-site-title a:focus,
+		.wp-block-site-title a:focus-visible,
+		.wp-block-site-title a:visited,
+		.wp-block-site-title a:active {
+			color: var(--airo-wp-sticky-scroll-text-color, rgba(255, 255, 255, 0.95));
+		}
+
+		.wp-block-navigation__submenu-icon svg,
+		.wp-block-navigation__responsive-container-open svg {
+			fill: var(--airo-wp-sticky-scroll-text-color, rgba(255, 255, 255, 0.95));
+		}
+	}
+}
+
+/**
+ * Print Styles
+ * Remove sticky behavior for printing
+ */
+@media print {
+
+	.wp-block-template-part {
+		position: relative !important;
+		box-shadow: none !important;
+	}
+}
+
+/**
+ * Overlay Header
+ * Positions the header absolutely over page content when enabled via post meta.
+ * The page must have the `airo-wp-page-overlay-header` body class.
+ */
+
+/* stylelint-disable selector-class-pattern */
+
+/**
+ * Overlay: fix the header at the top of the viewport so it never scrolls
+ * away. Background starts transparent and transitions to opaque on scroll
+ * without any position change, avoiding the absolute→sticky jolt.
+ */
+body:not(.block-editor-page).airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type,
+body:not(.block-editor-page).airo-wp-page-overlay-header header.wp-block-template-part {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: var(--airo-wp-sticky-header-z-index, 100);
+	background-color: transparent;
+	transition: background-color var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out,
+		box-shadow var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+}
+
+/**
+ * Overlay: force inner header sections transparent so they don't show
+ * through over the hero. Uses :where() for zero specificity.
+ */
+body:not(.block-editor-page).airo-wp-page-overlay-header:not(.airo-wp-page-overlay-skip-top-bar) :where(header.wp-block-template-part, .wp-block-template-part:not(footer):first-of-type) .has-background {
+	background-color: transparent !important;
+	background-image: none !important;
+}
+
+/**
+ * Overlay + Skip Top Bar: only strip backgrounds from the nav row area
+ * (second child onwards), preserving the top bar's background.
+ */
+body:not(.block-editor-page).airo-wp-page-overlay-header.airo-wp-page-overlay-skip-top-bar :where(header.wp-block-template-part, .wp-block-template-part:not(footer):first-of-type) > * > :not(:first-child) .has-background,
+body:not(.block-editor-page).airo-wp-page-overlay-header.airo-wp-page-overlay-skip-top-bar :where(header.wp-block-template-part, .wp-block-template-part:not(footer):first-of-type) > * > :not(:first-child).has-background {
+	background-color: transparent !important;
+	background-image: none !important;
+}
+
+/**
+ * Overlay Content Pull-Up
+ * Uses a negative margin equal to the header height (set by JS as a CSS
+ * custom property) so the content slides up underneath the overlay header
+ * regardless of what spacing the template applies between header and content.
+ */
+body:not(.block-editor-page).airo-wp-page-overlay-header .wp-site-blocks > header.wp-block-template-part + *,
+body:not(.block-editor-page).airo-wp-page-overlay-header .wp-site-blocks > .wp-block-template-part:not(footer):first-of-type + * {
+	margin-top: calc(-1 * var(--airo-wp-overlay-header-height, 0px)) !important;
+}
+
+/**
+ * Overlay Header + Admin Bar Offset
+ */
+body:not(.block-editor-page).admin-bar.airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type,
+body:not(.block-editor-page).admin-bar.airo-wp-page-overlay-header header.wp-block-template-part {
+	top: 32px;
+}
+
+@media screen and (max-width: 782px) {
+
+	body:not(.block-editor-page).admin-bar.airo-wp-page-overlay-header .wp-block-template-part:not(footer):first-of-type,
+	body:not(.block-editor-page).admin-bar.airo-wp-page-overlay-header header.wp-block-template-part {
+		top: 46px;
+	}
+}
+
+/**
+ * Overlay Scroll Background
+ * When scrolled past threshold, fade in the solid background.
+ * Position stays fixed — only background-color transitions.
+ */
+body:not(.block-editor-page).airo-wp-page-overlay-header .wp-block-template-part.airo-wp-scrolled:not(footer):first-of-type,
+body:not(.block-editor-page).airo-wp-page-overlay-header header.wp-block-template-part.airo-wp-scrolled {
+	background-color: var(--airo-wp-sticky-scroll-bg-color, rgba(255, 255, 255, 0.95));
+}
+
+/**
+ * Overlay Text Color
+ * When a per-page overlay text color is set via the Header Display panel,
+ * apply it to navigation links, site title, and SVG icons.
+ * Only in the non-scrolled state — scroll text color takes over via
+ * the airo-wp-sticky-bg-on-scroll.airo-wp-scrolled rules above.
+ */
+body:not(.block-editor-page).airo-wp-page-overlay-header .wp-block-template-part:not(footer):not(.airo-wp-scrolled):first-of-type,
+body:not(.block-editor-page).airo-wp-page-overlay-header header.wp-block-template-part:not(.airo-wp-scrolled) {
+	color: var(--airo-wp-overlay-header-text-color, inherit);
+	transition: color var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+
+	/* Navigation links */
+	.wp-block-navigation a,
+	.wp-block-navigation a:hover,
+	.wp-block-navigation a:focus,
+	.wp-block-navigation a:focus-visible,
+	.wp-block-navigation a:visited,
+	.wp-block-navigation a:active,
+	.wp-block-navigation-item__content,
+	.wp-block-navigation-item__label,
+	.wp-block-navigation__submenu-icon,
+	/* Site title */
+	.wp-block-site-title a,
+	.wp-block-site-title a:hover,
+	.wp-block-site-title a:focus,
+	.wp-block-site-title a:focus-visible,
+	.wp-block-site-title a:visited,
+	.wp-block-site-title a:active {
+		color: var(--airo-wp-overlay-header-text-color, inherit);
+		transition: color var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+	}
+
+	/* Navigation SVG icons (hamburger, submenu arrows) */
+	.wp-block-navigation__submenu-icon svg,
+	.wp-block-navigation__responsive-container-open svg {
+		fill: var(--airo-wp-overlay-header-text-color, currentColor);
+		transition: fill var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+	}
+}
+
+/**
+ * Overlay Header Print Styles
+ */
+@media print {
+
+	body.airo-wp-page-overlay-header .wp-block-template-part {
+		position: relative !important;
+		background-color: transparent !important;
+	}
+}
+/* stylelint-enable selector-class-pattern */

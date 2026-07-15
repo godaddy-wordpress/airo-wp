@@ -1,0 +1,1076 @@
+/**
+ * Form Builder Block - Deprecations
+ *
+ * Handles migration from older save formats.
+ *
+ * @since 2.3.0
+ */
+
+import { useBlockProps, useInnerBlocksProps } from '@wordpress/block-editor';
+import classnames from 'classnames';
+import {
+	convertColorToCSSVar,
+	convertPresetToCSSVar,
+} from '../../utils/convert-preset-to-css-var';
+import { validateCSSLength } from '../../utils/css-generator';
+import metadata from './block.json';
+import { getDeprecatedBlockHTML } from '../../utils/deprecated-block-html';
+
+/**
+ * V4 deprecation: Before the border-color fallback moved from inline style to CSS.
+ *
+ * Previously save() always forced a `--airo-wp-form-border-color` custom property
+ * onto the wrapper — falling back to the literal `#d1d5db` whenever
+ * fieldBorderColor was empty. That made it impossible for hand-authored markup
+ * (patterns) to omit the property and simply inherit the block's CSS default.
+ * The fix drops the inline fallback; `.airo-wp-form-builder` in style.scss now
+ * supplies `#d1d5db` as the CSS default instead.
+ */
+// Attribute schema frozen at the spacing / sizing defaults that were baked into
+// the wrapper + submit button UNCONDITIONALLY before those tokens became
+// nullable and theme-inheritable. Every deprecation below parses implicit
+// (unset) forms with these, so its save() reproduces the values actually
+// present in the stored HTML — even though the live block.json now defaults them
+// to '' (inherit).
+const legacyAttributes = {
+	...metadata.attributes,
+	fieldSpacing: { type: 'string', default: '1.5rem' },
+	inputHeight: { type: 'string', default: '44px' },
+	inputPadding: { type: 'string', default: '0.75rem' },
+	submitButtonHeight: { type: 'string', default: '44px' },
+	submitButtonPaddingVertical: { type: 'string', default: '0.75rem' },
+	submitButtonPaddingHorizontal: { type: 'string', default: '2rem' },
+};
+
+/**
+ * V5 deprecation: before the spacing / sizing tokens became nullable
+ * (removable) and the submit button inherited the theme's global button styles.
+ *
+ * The old save() wrote --airo-wp-form-field-spacing / --airo-wp-form-input-height /
+ * --airo-wp-form-input-padding on the wrapper and min-height / padding on the
+ * button for every form, even at their defaults. The current save() omits them
+ * at their defaults so the form inherits the theme. isEligible matches any form
+ * that baked the input-height token (all pre-change forms did); migrate strips
+ * values that equal the old defaults so they inherit, keeping real overrides.
+ */
+const v5 = {
+	attributes: legacyAttributes,
+	supports: metadata.supports,
+	isEligible(attributes, innerBlocks, extra) {
+		const innerHTML = getDeprecatedBlockHTML(extra);
+		// The var alone does NOT mean "legacy": the current save() emits it too,
+		// as soon as inputHeight is set. The old save() wrote it UNCONDITIONALLY,
+		// with a baked default, which is why legacy content carries it while the
+		// block comment has no inputHeight. Current content that renders the var
+		// always carries the attribute (non-default, so WordPress serializes it),
+		// so requiring its absence excludes current content only.
+		return (
+			Boolean(innerHTML) &&
+			!attributes.inputHeight &&
+			innerHTML.includes('--airo-wp-form-input-height')
+		);
+	},
+	migrate(attributes) {
+		const strip = (value, def) => (value === def ? '' : value);
+		return {
+			...attributes,
+			fieldSpacing: strip(attributes.fieldSpacing, '1.5rem'),
+			inputHeight: strip(attributes.inputHeight, '44px'),
+			inputPadding: strip(attributes.inputPadding, '0.75rem'),
+			submitButtonHeight: strip(attributes.submitButtonHeight, '44px'),
+			submitButtonPaddingVertical: strip(
+				attributes.submitButtonPaddingVertical,
+				'0.75rem'
+			),
+			submitButtonPaddingHorizontal: strip(
+				attributes.submitButtonPaddingHorizontal,
+				'2rem'
+			),
+		};
+	},
+	save({ attributes }) {
+		const {
+			formId,
+			hasFields,
+			submitButtonText,
+			submitButtonAlignment,
+			submitButtonPosition,
+			ajaxSubmit,
+			successMessage,
+			errorMessage,
+			fieldSpacing,
+			inputHeight,
+			inputPadding,
+			fieldLabelColor,
+			fieldBorderColor,
+			fieldBackgroundColor,
+			fieldBorderRadius,
+			submitButtonColor,
+			submitButtonBackgroundColor,
+			submitButtonPaddingVertical,
+			submitButtonPaddingHorizontal,
+			submitButtonFontSize,
+			submitButtonHeight,
+			submitButtonHoverColor,
+			submitButtonHoverBackgroundColor,
+			enableHoneypot,
+			enableTurnstile,
+			redirectUrl,
+		} = attributes;
+
+		if (!hasFields) {
+			return null;
+		}
+
+		const formClasses = classnames('airo-wp-form-builder', {
+			[`airo-wp-form-builder--align-${submitButtonAlignment}`]:
+				submitButtonAlignment && submitButtonPosition === 'below',
+			'airo-wp-form-builder--button-inline':
+				submitButtonPosition === 'inline',
+		});
+
+		const formStyles = {
+			'--airo-wp-form-field-spacing': fieldSpacing,
+			'--airo-wp-form-input-height': inputHeight,
+			'--airo-wp-form-input-padding': inputPadding,
+			'--airo-wp-form-label-color': convertColorToCSSVar(fieldLabelColor),
+			'--airo-wp-form-border-color': convertColorToCSSVar(fieldBorderColor),
+			'--airo-wp-form-field-bg': convertColorToCSSVar(fieldBackgroundColor),
+			'--airo-wp-form-border-radius': validateCSSLength(fieldBorderRadius),
+		};
+
+		const submitButtonStyle = {
+			...(submitButtonColor && {
+				color: convertColorToCSSVar(submitButtonColor),
+			}),
+			...(submitButtonBackgroundColor && {
+				backgroundColor: convertColorToCSSVar(
+					submitButtonBackgroundColor
+				),
+			}),
+			minHeight: submitButtonHeight,
+			paddingTop: submitButtonPaddingVertical,
+			paddingBottom: submitButtonPaddingVertical,
+			paddingLeft: submitButtonPaddingHorizontal,
+			paddingRight: submitButtonPaddingHorizontal,
+			...(submitButtonFontSize && { fontSize: submitButtonFontSize }),
+			...(submitButtonHoverBackgroundColor && {
+				'--airo-wp-button-hover-bg': convertColorToCSSVar(
+					submitButtonHoverBackgroundColor
+				),
+			}),
+			...(submitButtonHoverColor && {
+				'--airo-wp-button-hover-color': convertColorToCSSVar(
+					submitButtonHoverColor
+				),
+			}),
+		};
+
+		const blockProps = useBlockProps.save({
+			className: formClasses,
+			style: formStyles,
+			'data-form-id': formId,
+			'data-ajax-submit': ajaxSubmit,
+			'data-success-message': successMessage,
+			'data-error-message': errorMessage,
+			'data-submit-text': submitButtonText,
+			...(enableTurnstile && {
+				'data-airo-wp-turnstile': 'true',
+			}),
+			...(redirectUrl && {
+				'data-redirect-url': redirectUrl,
+			}),
+		});
+
+		const { children, ...innerBlocksPropsWithoutChildren } =
+			useInnerBlocksProps.save({
+				className: 'airo-wp-form__fields',
+			});
+
+		return (
+			<div {...blockProps}>
+				<form className="airo-wp-form" method="post" noValidate>
+					<div {...innerBlocksPropsWithoutChildren}>
+						{children}
+						{submitButtonPosition === 'inline' && (
+							<button
+								type="submit"
+								className="airo-wp-form__submit airo-wp-form__submit--inline wp-element-button"
+								style={submitButtonStyle}
+							>
+								{submitButtonText}
+							</button>
+						)}
+					</div>
+
+					{enableHoneypot && (
+						<input
+							type="text"
+							name="dsg_website"
+							value=""
+							tabIndex="-1"
+							autoComplete="off"
+							aria-hidden="true"
+							style={{
+								position: 'absolute',
+								left: '-9999px',
+								width: '1px',
+								height: '1px',
+								overflow: 'hidden',
+							}}
+						/>
+					)}
+
+					<input type="hidden" name="dsg_form_id" value={formId} />
+
+					{enableTurnstile && (
+						<div
+							className="airo-wp-turnstile-widget"
+							data-airo-wp-turnstile-container="true"
+						/>
+					)}
+
+					{submitButtonPosition === 'below' && (
+						<div className="airo-wp-form__footer">
+							<button
+								type="submit"
+								className="airo-wp-form__submit wp-element-button"
+								style={submitButtonStyle}
+							>
+								{submitButtonText}
+							</button>
+						</div>
+					)}
+
+					<div
+						className="airo-wp-form__message"
+						role="status"
+						aria-live="polite"
+						aria-atomic="true"
+						style={{ display: 'none' }}
+					/>
+				</form>
+			</div>
+		);
+	},
+};
+
+const v4 = {
+	attributes: legacyAttributes,
+	supports: metadata.supports,
+	// No isEligible: markup-change deprecation, reached by save-matching on an
+	// INVALID block (WordPress skips isEligible for those). The old guard,
+	// `!attributes.fieldBorderColor`, was true of every CURRENT form that simply
+	// never customised the border colour, so it claimed current content. Whether
+	// the old forced-fallback markup is actually present is decided by matching
+	// this version's save() against the stored HTML, which is the real test.
+	migrate(attributes) {
+		return attributes;
+	},
+	save({ attributes }) {
+		const {
+			formId,
+			hasFields,
+			submitButtonText,
+			submitButtonAlignment,
+			submitButtonPosition,
+			ajaxSubmit,
+			successMessage,
+			errorMessage,
+			fieldSpacing,
+			inputHeight,
+			inputPadding,
+			fieldLabelColor,
+			fieldBorderColor,
+			fieldBackgroundColor,
+			fieldBorderRadius,
+			submitButtonColor,
+			submitButtonBackgroundColor,
+			submitButtonPaddingVertical,
+			submitButtonPaddingHorizontal,
+			submitButtonFontSize,
+			submitButtonHeight,
+			submitButtonHoverColor,
+			submitButtonHoverBackgroundColor,
+			enableHoneypot,
+			enableTurnstile,
+			redirectUrl,
+		} = attributes;
+
+		if (!hasFields) {
+			return null;
+		}
+
+		const formClasses = classnames('airo-wp-form-builder', {
+			[`airo-wp-form-builder--align-${submitButtonAlignment}`]:
+				submitButtonAlignment && submitButtonPosition === 'below',
+			'airo-wp-form-builder--button-inline':
+				submitButtonPosition === 'inline',
+		});
+
+		const formStyles = {
+			'--airo-wp-form-field-spacing': fieldSpacing,
+			'--airo-wp-form-input-height': inputHeight,
+			'--airo-wp-form-input-padding': inputPadding,
+			'--airo-wp-form-label-color': convertColorToCSSVar(fieldLabelColor),
+			'--airo-wp-form-border-color':
+				convertColorToCSSVar(fieldBorderColor) || '#d1d5db',
+			'--airo-wp-form-field-bg': convertColorToCSSVar(fieldBackgroundColor),
+			'--airo-wp-form-border-radius': validateCSSLength(fieldBorderRadius),
+		};
+
+		const blockProps = useBlockProps.save({
+			className: formClasses,
+			style: formStyles,
+			'data-form-id': formId,
+			'data-ajax-submit': ajaxSubmit,
+			'data-success-message': successMessage,
+			'data-error-message': errorMessage,
+			'data-submit-text': submitButtonText,
+			...(enableTurnstile && {
+				'data-airo-wp-turnstile': 'true',
+			}),
+			...(redirectUrl && {
+				'data-redirect-url': redirectUrl,
+			}),
+		});
+
+		const { children, ...innerBlocksPropsWithoutChildren } =
+			useInnerBlocksProps.save({
+				className: 'airo-wp-form__fields',
+			});
+
+		return (
+			<div {...blockProps}>
+				<form className="airo-wp-form" method="post" noValidate>
+					<div {...innerBlocksPropsWithoutChildren}>
+						{children}
+						{submitButtonPosition === 'inline' && (
+							<button
+								type="submit"
+								className="airo-wp-form__submit airo-wp-form__submit--inline wp-element-button"
+								style={{
+									...(submitButtonColor && {
+										color: convertColorToCSSVar(
+											submitButtonColor
+										),
+									}),
+									...(submitButtonBackgroundColor && {
+										backgroundColor: convertColorToCSSVar(
+											submitButtonBackgroundColor
+										),
+									}),
+									minHeight: submitButtonHeight,
+									paddingTop: submitButtonPaddingVertical,
+									paddingBottom: submitButtonPaddingVertical,
+									paddingLeft: submitButtonPaddingHorizontal,
+									paddingRight: submitButtonPaddingHorizontal,
+									...(submitButtonFontSize && {
+										fontSize: submitButtonFontSize,
+									}),
+									...(submitButtonHoverBackgroundColor && {
+										'--airo-wp-button-hover-bg':
+											convertColorToCSSVar(
+												submitButtonHoverBackgroundColor
+											),
+									}),
+									...(submitButtonHoverColor && {
+										'--airo-wp-button-hover-color':
+											convertColorToCSSVar(
+												submitButtonHoverColor
+											),
+									}),
+								}}
+							>
+								{submitButtonText}
+							</button>
+						)}
+					</div>
+
+					{enableHoneypot && (
+						<input
+							type="text"
+							name="dsg_website"
+							value=""
+							tabIndex="-1"
+							autoComplete="off"
+							aria-hidden="true"
+							style={{
+								position: 'absolute',
+								left: '-9999px',
+								width: '1px',
+								height: '1px',
+								overflow: 'hidden',
+							}}
+						/>
+					)}
+
+					<input type="hidden" name="dsg_form_id" value={formId} />
+
+					{enableTurnstile && (
+						<div
+							className="airo-wp-turnstile-widget"
+							data-airo-wp-turnstile-container="true"
+						/>
+					)}
+
+					{submitButtonPosition === 'below' && (
+						<div className="airo-wp-form__footer">
+							<button
+								type="submit"
+								className="airo-wp-form__submit wp-element-button"
+								style={{
+									...(submitButtonColor && {
+										color: convertColorToCSSVar(
+											submitButtonColor
+										),
+									}),
+									...(submitButtonBackgroundColor && {
+										backgroundColor: convertColorToCSSVar(
+											submitButtonBackgroundColor
+										),
+									}),
+									minHeight: submitButtonHeight,
+									paddingTop: submitButtonPaddingVertical,
+									paddingBottom: submitButtonPaddingVertical,
+									paddingLeft: submitButtonPaddingHorizontal,
+									paddingRight: submitButtonPaddingHorizontal,
+									...(submitButtonFontSize && {
+										fontSize: submitButtonFontSize,
+									}),
+									...(submitButtonHoverBackgroundColor && {
+										'--airo-wp-button-hover-bg':
+											convertColorToCSSVar(
+												submitButtonHoverBackgroundColor
+											),
+									}),
+									...(submitButtonHoverColor && {
+										'--airo-wp-button-hover-color':
+											convertColorToCSSVar(
+												submitButtonHoverColor
+											),
+									}),
+								}}
+							>
+								{submitButtonText}
+							</button>
+						</div>
+					)}
+
+					<div
+						className="airo-wp-form__message"
+						role="status"
+						aria-live="polite"
+						aria-atomic="true"
+						style={{ display: 'none' }}
+					/>
+				</form>
+			</div>
+		);
+	},
+};
+
+/**
+ * V3 deprecation: Before convertColorToCSSVar was applied to form style properties.
+ *
+ * Raw empty-string attribute values were passed directly into inline CSS custom
+ * properties, producing `--airo-wp-form-label-color:;` and `--airo-wp-form-field-bg:`
+ * in the serialised markup. After the fix, convertColorToCSSVar/convertPresetToCSSVar
+ * returns undefined for empty strings, so React omits those properties entirely.
+ *
+ * This version also predates: fieldBorderRadius / --airo-wp-form-border-radius,
+ * redirectUrl / data-redirect-url, submitButtonHoverColor /
+ * submitButtonHoverBackgroundColor on the button, and the hasFields early-return.
+ */
+const v3 = {
+	attributes: legacyAttributes,
+	supports: metadata.supports,
+	isEligible(attributes, innerBlocks, extra) {
+		const innerHTML = getDeprecatedBlockHTML(extra);
+		// v3 blocks have raw empty CSS vars rendered as `--airo-wp-form-label-color:;`
+		return innerHTML && innerHTML.includes('--airo-wp-form-label-color:;');
+	},
+	migrate(attributes) {
+		return attributes;
+	},
+	save({ attributes }) {
+		const {
+			formId,
+			submitButtonText,
+			submitButtonAlignment,
+			submitButtonPosition,
+			ajaxSubmit,
+			successMessage,
+			errorMessage,
+			fieldSpacing,
+			inputHeight,
+			inputPadding,
+			fieldLabelColor,
+			fieldBorderColor,
+			fieldBackgroundColor,
+			submitButtonColor,
+			submitButtonBackgroundColor,
+			submitButtonPaddingVertical,
+			submitButtonPaddingHorizontal,
+			submitButtonFontSize,
+			submitButtonHeight,
+			enableHoneypot,
+			enableTurnstile,
+		} = attributes;
+
+		const formClasses = classnames('airo-wp-form-builder', {
+			[`airo-wp-form-builder--align-${submitButtonAlignment}`]:
+				submitButtonAlignment && submitButtonPosition === 'below',
+			'airo-wp-form-builder--button-inline':
+				submitButtonPosition === 'inline',
+		});
+
+		// Raw values — no convertColorToCSSVar; empty strings render as empty CSS vars.
+		const formStyles = {
+			'--airo-wp-form-field-spacing': fieldSpacing,
+			'--airo-wp-form-input-height': inputHeight,
+			'--airo-wp-form-input-padding': inputPadding,
+			'--airo-wp-form-label-color': fieldLabelColor,
+			'--airo-wp-form-border-color': fieldBorderColor || '#d1d5db',
+			'--airo-wp-form-field-bg': fieldBackgroundColor,
+		};
+
+		const blockProps = useBlockProps.save({
+			className: formClasses,
+			style: formStyles,
+			'data-form-id': formId,
+			'data-ajax-submit': ajaxSubmit,
+			'data-success-message': successMessage,
+			'data-error-message': errorMessage,
+			'data-submit-text': submitButtonText,
+			...(enableTurnstile && {
+				'data-airo-wp-turnstile': 'true',
+			}),
+		});
+
+		const { children, ...innerBlocksPropsWithoutChildren } =
+			useInnerBlocksProps.save({
+				className: 'airo-wp-form__fields',
+			});
+
+		return (
+			<div {...blockProps}>
+				<form className="airo-wp-form" method="post" noValidate>
+					<div {...innerBlocksPropsWithoutChildren}>
+						{children}
+						{submitButtonPosition === 'inline' && (
+							<button
+								type="submit"
+								className="airo-wp-form__submit airo-wp-form__submit--inline wp-element-button"
+								style={{
+									...(submitButtonColor && {
+										color: submitButtonColor,
+									}),
+									...(submitButtonBackgroundColor && {
+										backgroundColor:
+											submitButtonBackgroundColor,
+									}),
+									minHeight: submitButtonHeight,
+									paddingTop: submitButtonPaddingVertical,
+									paddingBottom: submitButtonPaddingVertical,
+									paddingLeft: submitButtonPaddingHorizontal,
+									paddingRight: submitButtonPaddingHorizontal,
+									...(submitButtonFontSize && {
+										fontSize: submitButtonFontSize,
+									}),
+								}}
+							>
+								{submitButtonText}
+							</button>
+						)}
+					</div>
+
+					{enableHoneypot && (
+						<input
+							type="text"
+							name="dsg_website"
+							value=""
+							tabIndex="-1"
+							autoComplete="off"
+							aria-hidden="true"
+							style={{
+								position: 'absolute',
+								left: '-9999px',
+								width: '1px',
+								height: '1px',
+								overflow: 'hidden',
+							}}
+						/>
+					)}
+
+					<input type="hidden" name="dsg_form_id" value={formId} />
+
+					{enableTurnstile && (
+						<div
+							className="airo-wp-turnstile-widget"
+							data-airo-wp-turnstile-container="true"
+						/>
+					)}
+
+					{submitButtonPosition === 'below' && (
+						<div className="airo-wp-form__footer">
+							<button
+								type="submit"
+								className="airo-wp-form__submit wp-element-button"
+								style={{
+									...(submitButtonColor && {
+										color: submitButtonColor,
+									}),
+									...(submitButtonBackgroundColor && {
+										backgroundColor:
+											submitButtonBackgroundColor,
+									}),
+									minHeight: submitButtonHeight,
+									paddingTop: submitButtonPaddingVertical,
+									paddingBottom: submitButtonPaddingVertical,
+									paddingLeft: submitButtonPaddingHorizontal,
+									paddingRight: submitButtonPaddingHorizontal,
+									...(submitButtonFontSize && {
+										fontSize: submitButtonFontSize,
+									}),
+								}}
+							>
+								{submitButtonText}
+							</button>
+						</div>
+					)}
+
+					<div
+						className="airo-wp-form__message"
+						role="status"
+						aria-live="polite"
+						aria-atomic="true"
+						style={{ display: 'none' }}
+					/>
+				</form>
+			</div>
+		);
+	},
+};
+
+/**
+ * V2 deprecation: Before aria-hidden and aria-atomic were added.
+ *
+ * The honeypot input lacked aria-hidden="true" and the message div lacked
+ * aria-atomic="true". These were added for accessibility improvements but
+ * content generated by the site-designer-api predates these additions.
+ */
+const v2 = {
+	attributes: legacyAttributes,
+	supports: metadata.supports,
+	isEligible(attributes, innerBlocks, extra) {
+		const innerHTML = getDeprecatedBlockHTML(extra);
+		// v2 blocks lack aria-hidden on honeypot and aria-atomic on message div
+		return (
+			innerHTML &&
+			((innerHTML.includes('dsg_website') &&
+				!innerHTML.includes('aria-hidden')) ||
+				(innerHTML.includes('airo-wp-form__message') &&
+					!innerHTML.includes('aria-atomic')))
+		);
+	},
+	migrate(attributes) {
+		return attributes;
+	},
+	save({ attributes }) {
+		const {
+			formId,
+			submitButtonText,
+			submitButtonAlignment,
+			submitButtonPosition,
+			ajaxSubmit,
+			successMessage,
+			errorMessage,
+			fieldSpacing,
+			inputHeight,
+			inputPadding,
+			fieldLabelColor,
+			fieldBorderColor,
+			fieldBackgroundColor,
+			submitButtonColor,
+			submitButtonBackgroundColor,
+			submitButtonPaddingVertical,
+			submitButtonPaddingHorizontal,
+			submitButtonFontSize,
+			submitButtonHeight,
+			submitButtonHoverColor,
+			submitButtonHoverBackgroundColor,
+			enableHoneypot,
+			enableTurnstile,
+		} = attributes;
+
+		const formClasses = classnames('airo-wp-form-builder', {
+			[`airo-wp-form-builder--align-${submitButtonAlignment}`]:
+				submitButtonAlignment && submitButtonPosition === 'below',
+			'airo-wp-form-builder--button-inline':
+				submitButtonPosition === 'inline',
+		});
+
+		const formStyles = {
+			'--airo-wp-form-field-spacing': fieldSpacing,
+			'--airo-wp-form-input-height': inputHeight,
+			'--airo-wp-form-input-padding': inputPadding,
+			'--airo-wp-form-label-color': convertPresetToCSSVar(fieldLabelColor),
+			'--airo-wp-form-border-color':
+				convertPresetToCSSVar(fieldBorderColor) || '#d1d5db',
+			'--airo-wp-form-field-bg': convertPresetToCSSVar(fieldBackgroundColor),
+		};
+
+		const blockProps = useBlockProps.save({
+			className: formClasses,
+			style: formStyles,
+			'data-form-id': formId,
+			'data-ajax-submit': ajaxSubmit,
+			'data-success-message': successMessage,
+			'data-error-message': errorMessage,
+			'data-submit-text': submitButtonText,
+			...(enableTurnstile && {
+				'data-airo-wp-turnstile': 'true',
+			}),
+		});
+
+		const { children, ...innerBlocksPropsWithoutChildren } =
+			useInnerBlocksProps.save({
+				className: 'airo-wp-form__fields',
+			});
+
+		return (
+			<div {...blockProps}>
+				<form className="airo-wp-form" method="post" noValidate>
+					<div {...innerBlocksPropsWithoutChildren}>
+						{children}
+						{submitButtonPosition === 'inline' && (
+							<button
+								type="submit"
+								className="airo-wp-form__submit airo-wp-form__submit--inline wp-element-button"
+								style={{
+									...(submitButtonColor && {
+										color: convertPresetToCSSVar(
+											submitButtonColor
+										),
+									}),
+									...(submitButtonBackgroundColor && {
+										backgroundColor: convertPresetToCSSVar(
+											submitButtonBackgroundColor
+										),
+									}),
+									minHeight: submitButtonHeight,
+									paddingTop: submitButtonPaddingVertical,
+									paddingBottom: submitButtonPaddingVertical,
+									paddingLeft: submitButtonPaddingHorizontal,
+									paddingRight: submitButtonPaddingHorizontal,
+									...(submitButtonFontSize && {
+										fontSize: submitButtonFontSize,
+									}),
+									...(submitButtonHoverBackgroundColor && {
+										'--airo-wp-button-hover-bg':
+											convertPresetToCSSVar(
+												submitButtonHoverBackgroundColor
+											),
+									}),
+									...(submitButtonHoverColor && {
+										'--airo-wp-button-hover-color':
+											convertPresetToCSSVar(
+												submitButtonHoverColor
+											),
+									}),
+								}}
+							>
+								{submitButtonText}
+							</button>
+						)}
+					</div>
+
+					{enableHoneypot && (
+						<input
+							type="text"
+							name="dsg_website"
+							value=""
+							tabIndex="-1"
+							autoComplete="off"
+							style={{
+								position: 'absolute',
+								left: '-9999px',
+								width: '1px',
+								height: '1px',
+								overflow: 'hidden',
+							}}
+						/>
+					)}
+
+					<input type="hidden" name="dsg_form_id" value={formId} />
+
+					{enableTurnstile && (
+						<div
+							className="airo-wp-turnstile-widget"
+							data-airo-wp-turnstile-container="true"
+						/>
+					)}
+
+					{submitButtonPosition === 'below' && (
+						<div className="airo-wp-form__footer">
+							<button
+								type="submit"
+								className="airo-wp-form__submit wp-element-button"
+								style={{
+									...(submitButtonColor && {
+										color: convertPresetToCSSVar(
+											submitButtonColor
+										),
+									}),
+									...(submitButtonBackgroundColor && {
+										backgroundColor: convertPresetToCSSVar(
+											submitButtonBackgroundColor
+										),
+									}),
+									minHeight: submitButtonHeight,
+									paddingTop: submitButtonPaddingVertical,
+									paddingBottom: submitButtonPaddingVertical,
+									paddingLeft: submitButtonPaddingHorizontal,
+									paddingRight: submitButtonPaddingHorizontal,
+									...(submitButtonFontSize && {
+										fontSize: submitButtonFontSize,
+									}),
+									...(submitButtonHoverBackgroundColor && {
+										'--airo-wp-button-hover-bg':
+											convertPresetToCSSVar(
+												submitButtonHoverBackgroundColor
+											),
+									}),
+									...(submitButtonHoverColor && {
+										'--airo-wp-button-hover-color':
+											convertPresetToCSSVar(
+												submitButtonHoverColor
+											),
+									}),
+								}}
+							>
+								{submitButtonText}
+							</button>
+						</div>
+					)}
+
+					<div
+						className="airo-wp-form__message"
+						role="status"
+						aria-live="polite"
+						style={{ display: 'none' }}
+					/>
+				</form>
+			</div>
+		);
+	},
+};
+
+/**
+ * V1 deprecation: Email config was exposed as data attributes.
+ *
+ * Email settings (data-enable-email, data-email-to, data-email-subject, etc.)
+ * were rendered as HTML data attributes on the block wrapper. This was a
+ * deliverability and security concern because:
+ * - Email configuration was visible in page source
+ * - Client-side JavaScript sent these values in the REST API request
+ * - An attacker could modify the request to send email to arbitrary addresses
+ *
+ * The fix moves email configuration to server-side-only: the PHP handler looks
+ * up block attributes directly from post content when processing submissions.
+ */
+const v1 = {
+	attributes: legacyAttributes,
+	supports: metadata.supports,
+	isEligible(attributes, innerBlocks, extra) {
+		const innerHTML = getDeprecatedBlockHTML(extra);
+		// v1 blocks have email config exposed as data attributes
+		return innerHTML && innerHTML.includes('data-enable-email');
+	},
+	migrate(attributes) {
+		return attributes;
+	},
+	save({ attributes }) {
+		const {
+			formId,
+			submitButtonText,
+			submitButtonAlignment,
+			submitButtonPosition,
+			ajaxSubmit,
+			successMessage,
+			errorMessage,
+			fieldSpacing,
+			inputHeight,
+			inputPadding,
+			fieldLabelColor,
+			fieldBorderColor,
+			fieldBackgroundColor,
+			submitButtonColor,
+			submitButtonBackgroundColor,
+			submitButtonPaddingVertical,
+			submitButtonPaddingHorizontal,
+			submitButtonFontSize,
+			submitButtonHeight,
+			enableHoneypot,
+			enableTurnstile,
+			enableEmail,
+			emailTo,
+			emailSubject,
+			emailFromName,
+			emailFromEmail,
+			emailReplyTo,
+			emailBody,
+		} = attributes;
+
+		const formClasses = classnames('airo-wp-form-builder', {
+			[`airo-wp-form-builder--align-${submitButtonAlignment}`]:
+				submitButtonAlignment && submitButtonPosition === 'below',
+			'airo-wp-form-builder--button-inline':
+				submitButtonPosition === 'inline',
+		});
+
+		const formStyles = {
+			'--airo-wp-form-field-spacing': fieldSpacing,
+			'--airo-wp-form-input-height': inputHeight,
+			'--airo-wp-form-input-padding': inputPadding,
+			'--airo-wp-form-label-color': convertPresetToCSSVar(fieldLabelColor),
+			'--airo-wp-form-border-color':
+				convertPresetToCSSVar(fieldBorderColor) || '#d1d5db',
+			'--airo-wp-form-field-bg': convertPresetToCSSVar(fieldBackgroundColor),
+		};
+
+		const blockProps = useBlockProps.save({
+			className: formClasses,
+			style: formStyles,
+			'data-form-id': formId,
+			'data-ajax-submit': ajaxSubmit,
+			'data-success-message': successMessage,
+			'data-error-message': errorMessage,
+			'data-submit-text': submitButtonText,
+			'data-enable-email': enableEmail,
+			'data-email-to': emailTo,
+			'data-email-subject': emailSubject,
+			'data-email-from-name': emailFromName,
+			'data-email-from-email': emailFromEmail,
+			'data-email-reply-to': emailReplyTo,
+			'data-email-body': emailBody,
+			...(enableTurnstile && {
+				'data-airo-wp-turnstile': 'true',
+			}),
+		});
+
+		const { children, ...innerBlocksPropsWithoutChildren } =
+			useInnerBlocksProps.save({
+				className: 'airo-wp-form__fields',
+			});
+
+		return (
+			<div {...blockProps}>
+				<form className="airo-wp-form" method="post" noValidate>
+					<div {...innerBlocksPropsWithoutChildren}>
+						{children}
+						{submitButtonPosition === 'inline' && (
+							<button
+								type="submit"
+								className="airo-wp-form__submit airo-wp-form__submit--inline wp-element-button"
+								style={{
+									...(submitButtonColor && {
+										color: convertPresetToCSSVar(
+											submitButtonColor
+										),
+									}),
+									...(submitButtonBackgroundColor && {
+										backgroundColor: convertPresetToCSSVar(
+											submitButtonBackgroundColor
+										),
+									}),
+									minHeight: submitButtonHeight,
+									paddingTop: submitButtonPaddingVertical,
+									paddingBottom: submitButtonPaddingVertical,
+									paddingLeft: submitButtonPaddingHorizontal,
+									paddingRight: submitButtonPaddingHorizontal,
+									...(submitButtonFontSize && {
+										fontSize: submitButtonFontSize,
+									}),
+								}}
+							>
+								{submitButtonText}
+							</button>
+						)}
+					</div>
+
+					{enableHoneypot && (
+						<input
+							type="text"
+							name="dsg_website"
+							value=""
+							tabIndex="-1"
+							autoComplete="off"
+							aria-hidden="true"
+							style={{
+								position: 'absolute',
+								left: '-9999px',
+								width: '1px',
+								height: '1px',
+								overflow: 'hidden',
+							}}
+						/>
+					)}
+
+					<input type="hidden" name="dsg_form_id" value={formId} />
+
+					{enableTurnstile && (
+						<div
+							className="airo-wp-turnstile-widget"
+							data-airo-wp-turnstile-container="true"
+						/>
+					)}
+
+					{submitButtonPosition === 'below' && (
+						<div className="airo-wp-form__footer">
+							<button
+								type="submit"
+								className="airo-wp-form__submit wp-element-button"
+								style={{
+									...(submitButtonColor && {
+										color: convertPresetToCSSVar(
+											submitButtonColor
+										),
+									}),
+									...(submitButtonBackgroundColor && {
+										backgroundColor: convertPresetToCSSVar(
+											submitButtonBackgroundColor
+										),
+									}),
+									minHeight: submitButtonHeight,
+									paddingTop: submitButtonPaddingVertical,
+									paddingBottom: submitButtonPaddingVertical,
+									paddingLeft: submitButtonPaddingHorizontal,
+									paddingRight: submitButtonPaddingHorizontal,
+									...(submitButtonFontSize && {
+										fontSize: submitButtonFontSize,
+									}),
+								}}
+							>
+								{submitButtonText}
+							</button>
+						</div>
+					)}
+
+					<div
+						className="airo-wp-form__message"
+						role="status"
+						aria-live="polite"
+						aria-atomic="true"
+						style={{ display: 'none' }}
+					/>
+				</form>
+			</div>
+		);
+	},
+};
+
+const deprecated = [v5, v4, v3, v2, v1];
+
+export default deprecated;

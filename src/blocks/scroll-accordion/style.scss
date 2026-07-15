@@ -1,0 +1,35 @@
+/**
+ * Scroll Accordion - Frontend Styles
+ * Stacking cards with sticky positioning - Apple-style scroll effect
+ */
+
+.airo-wp-scroll-accordion {
+	--airo-wp-scroll-accordion-gap: var(--wp--preset--spacing--40, 1.5rem);
+	--airo-wp-scroll-accordion-duration: 600ms;
+	--airo-wp-scroll-accordion-sticky-offset: clamp(6rem, 30vh, 12rem);
+
+	position: relative;
+	width: 100%;
+	align-self: stretch;
+
+	/**
+	 * Container height is determined by content - no min-height needed
+	 * CRITICAL: NO overflow:hidden - it breaks sticky positioning
+	 */
+	margin-top: 2rem; /* Prevent overlap with previous blocks */
+
+	.airo-wp-scroll-accordion__items {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 0; /* No gap - items stack naturally with sticky positioning */
+		width: 100%;
+
+		/* alignItems controlled via inline style from save.js */
+	}
+}
+
+/**
+ * Note: Animation styles for .airo-wp-scroll-accordion-item
+ * are defined in the child block's style.scss
+ */

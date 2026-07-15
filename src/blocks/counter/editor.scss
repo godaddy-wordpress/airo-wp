@@ -1,0 +1,52 @@
+/**
+ * Counter Block - Editor Styles
+ *
+ * Editor-specific styles (matches frontend for WYSIWYG)
+ */
+
+.airo-wp-counter {
+	// CRITICAL: Must be duplicated from style.scss for editor/frontend parity
+	// Inherit color from parent Counter Group by default
+	// WordPress applies inline style when user chooses a color on individual counter, which takes precedence
+	// Falls back to theme contrast color if no parent color is set
+	color: inherit;
+
+	// Editor-specific styles to improve UX
+	position: relative;
+
+	// Selected state
+	&.is-selected {
+		outline: 1px solid var(--wp-admin-theme-color, #007cba);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+
+	// Hover state in editor
+	&.is-hovered {
+		outline: 1px dashed var(--wp-admin-theme-color, #007cba);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+
+	// Editor-only: Show counter value in a more editable format
+	.block-editor-rich-text__editable {
+		display: inline;
+	}
+
+	// CRITICAL: Must be duplicated from style.scss for editor/frontend parity
+	// Number color - inherits from wrapper
+	&__number {
+		color: currentcolor;
+	}
+
+	// Hover state - must match frontend
+	&:hover {
+
+		.airo-wp-counter__number {
+			color: var(
+				--airo-wp-counter-hover-color,
+				var(--wp--preset--color--accent-2, currentColor)
+			);
+		}
+	}
+}

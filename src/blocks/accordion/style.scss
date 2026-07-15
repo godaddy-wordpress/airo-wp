@@ -1,0 +1,139 @@
+/**
+ * Accordion Block - Frontend Styles
+ * Professional, polished accordion with consistent airo-wp styling
+ */
+
+.airo-wp-accordion {
+	// CSS Custom Properties for easy theming
+	--airo-wp-accordion-gap: var(--wp--preset--spacing--20, 0.5rem);
+	--airo-wp-accordion-border-color: var(--wp--preset--color--contrast, rgba(0, 0, 0, 0.1));
+	--airo-wp-accordion-border-radius: 8px;
+	--airo-wp-accordion-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+	// Reset any default styles
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	position: relative;
+	width: 100%; // Fill container width
+
+	// Optional: subtle border around entire accordion
+	border-radius: var(--airo-wp-accordion-border-radius);
+	overflow: hidden;
+
+	/**
+	 * Skip Link (Accessibility)
+	 * Visually hidden until focused - allows keyboard users to skip accordion
+	 */
+	.airo-wp-accordion__skip-link {
+		position: absolute;
+		left: -9999px;
+		top: auto;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+
+		&:focus {
+			position: relative;
+			left: auto;
+			width: auto;
+			height: auto;
+			padding: 0.5rem 1rem;
+			margin-bottom: 0.5rem;
+			background: var(--wp--preset--color--accent-2, #2563eb);
+			color: var(--wp--preset--color--base, #fff);
+			text-decoration: none;
+			border-radius: 4px;
+			font-weight: 600;
+			display: inline-block;
+		}
+	}
+
+	// Container for accordion items
+	.airo-wp-accordion__items {
+		display: flex;
+		flex-direction: column;
+		gap: var(--airo-wp-accordion-gap);
+	}
+
+	// Border between items - refined styling
+	&.airo-wp-accordion--border-between {
+
+		.airo-wp-accordion__items {
+			gap: 0;
+		}
+
+		.airo-wp-accordion-item:not(:last-child) {
+			border-bottom: 1px solid var(--airo-wp-accordion-border-color);
+		}
+
+		// First item rounded top
+		.airo-wp-accordion-item:first-child {
+			border-top-left-radius: var(--airo-wp-accordion-border-radius);
+			border-top-right-radius: var(--airo-wp-accordion-border-radius);
+			overflow: hidden;
+		}
+
+		// Last item rounded bottom
+		.airo-wp-accordion-item:last-child {
+			border-bottom-left-radius: var(--airo-wp-accordion-border-radius);
+			border-bottom-right-radius: var(--airo-wp-accordion-border-radius);
+			overflow: hidden;
+		}
+	}
+
+	// Icon positioning variants
+	&.airo-wp-accordion--icon-left {
+		// Custom styles if needed
+	}
+
+	&.airo-wp-accordion--icon-right {
+		// Custom styles if needed
+	}
+
+	&.airo-wp-accordion--no-icon {
+
+		.airo-wp-accordion-item__icon {
+			display: none;
+		}
+	}
+
+	// Multiple open mode indicator
+	&.airo-wp-accordion--multiple {
+		// Optional: visual indicator for multiple mode
+	}
+
+	// Full width alignment support
+	&.alignwide,
+	&.alignfull {
+		width: 100%;
+	}
+
+	// Card style variant (optional enhancement)
+	&.is-style-card {
+		border: 1px solid var(--airo-wp-accordion-border-color);
+		box-shadow: var(--airo-wp-accordion-shadow);
+		border-radius: var(--airo-wp-accordion-border-radius);
+		padding: var(--wp--preset--spacing--20, 0.5rem);
+		background: var(--wp--preset--color--base, #fff);
+	}
+
+	// Minimal style variant
+	&.is-style-minimal {
+		--airo-wp-accordion-border-color: transparent;
+		--airo-wp-accordion-shadow: none;
+
+		.airo-wp-accordion-item {
+			background-color: transparent;
+		}
+	}
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+
+	.airo-wp-accordion {
+		--airo-wp-accordion-border-color: rgba(255, 255, 255, 0.1);
+		--airo-wp-accordion-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+	}
+}

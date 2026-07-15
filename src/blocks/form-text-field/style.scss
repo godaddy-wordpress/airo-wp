@@ -1,0 +1,141 @@
+/**
+ * Form Text Field Block - Styles
+ *
+ * Shared styles for form fields
+ *
+ * @since 1.0.0
+ */
+
+.airo-wp-form-field {
+	// Inherit CSS custom properties from form container
+	--airo-wp-field-label-color: var(--airo-wp-form-label-color, inherit);
+	--airo-wp-field-border-color: var(--airo-wp-form-border-color, #d1d5db);
+	--airo-wp-field-border-radius: var(--airo-wp-form-border-radius, 0.375rem);
+	--airo-wp-field-focus-color: var(--airo-wp-form-focus-color, #2563eb);
+	--airo-wp-field-error-color: var(--airo-wp-form-error-color, #dc2626);
+
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	flex: 1 1 100%;
+	min-width: 0; // Prevent flex items from overflowing
+
+	// Label
+	&__label {
+		display: block;
+		font-size: 0.875rem;
+		font-weight: 500;
+		line-height: 1.5;
+		color: var(--airo-wp-field-label-color);
+		margin: 0;
+	}
+
+	// Required indicator
+	&__required {
+		color: var(--airo-wp-field-error-color);
+		margin-left: 0.25rem;
+		font-weight: 600;
+	}
+
+	// Input field
+	&__input,
+	&__textarea,
+	&__select {
+		box-sizing: border-box; // Prevent overflow from padding/border
+		margin: 0; // Reset browser/theme defaults for flex alignment
+		width: 100%;
+		max-width: 100%; // Ensure it doesn't overflow container
+		padding: var(--airo-wp-form-input-padding, 0.75rem);
+		font-size: 1rem;
+		line-height: 1.5;
+		color: inherit;
+		background-color: var(--airo-wp-form-field-bg, var(--wp--preset--color--base, #fff));
+		border: 1px solid var(--airo-wp-field-border-color);
+		border-radius: var(--airo-wp-field-border-radius);
+		transition: all 0.2s ease;
+		min-height: var(--airo-wp-form-input-height, 44px); // Touch-friendly
+
+		&::placeholder {
+			color: #9ca3af;
+			opacity: 1;
+		}
+
+		&:hover:not(:disabled) {
+			border-color: var(--airo-wp-field-focus-color);
+		}
+
+		&:focus {
+			outline: none;
+			border-color: var(--airo-wp-field-focus-color);
+		}
+
+		&:disabled {
+			cursor: not-allowed;
+			// Keep the field background color even when disabled (for editor preview)
+			// Only apply default gray if no background color is set
+			background-color: var(
+				--airo-wp-form-field-bg,
+				var(--wp--preset--color--base, #f3f4f6)
+			);
+		}
+
+		// Invalid state (only show after validation attempt)
+		&[aria-invalid="true"] {
+			border-color: var(--airo-wp-field-error-color);
+		}
+	}
+
+	// Textarea specific
+	&__textarea {
+		resize: vertical;
+		min-height: 100px;
+	}
+
+	// Help text
+	&__help {
+		font-size: 0.875rem;
+		line-height: 1.5;
+		color: #6b7280;
+		margin: 0;
+	}
+
+	// Error message
+	&__error {
+		font-size: 0.875rem;
+		line-height: 1.5;
+		color: var(--airo-wp-field-error-color);
+		margin: 0;
+		display: none;
+
+		&[aria-live] {
+			display: block;
+		}
+	}
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+
+	.airo-wp-form-field {
+
+		&__input,
+		&__textarea,
+		&__select {
+			font-size: 16px; // Prevent zoom on iOS
+		}
+	}
+}
+
+// Print styles
+@media print {
+
+	.airo-wp-form-field {
+
+		&__input,
+		&__textarea,
+		&__select {
+			border: 1px solid #000;
+			background: none;
+		}
+	}
+}

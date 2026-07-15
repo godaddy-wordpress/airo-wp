@@ -1,0 +1,208 @@
+/**
+ * DSG Row Block - Editor Styles
+ *
+ * Editor-only styles for the DSG Row block.
+ *
+ * @package airo-wp
+ */
+
+.airo-wp-flex {
+	// CRITICAL: Ensure width includes padding/border to prevent overflow
+	box-sizing: border-box;
+
+	// Visual indicator in editor and positioning context for block inserter
+	position: relative;
+	overflow: visible;
+
+	&.airo-wp-flex--has-overlay {
+		overflow: hidden;
+
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background-color: var(--airo-wp-overlay-color);
+			opacity: var(--airo-wp-overlay-opacity, 0.8);
+			pointer-events: none;
+			z-index: 1;
+		}
+
+		> .airo-wp-flex__inner {
+			position: relative;
+			z-index: 2;
+		}
+	}
+
+	// CRITICAL: Allow Navigation block dropdowns to overflow even with overlay
+	// Navigation menus need to display outside container bounds
+	&:has(.wp-block-navigation) {
+		overflow: visible;
+	}
+
+	// CRITICAL: Must duplicate from style.scss for editor/frontend parity
+	// Smooth transition for hover background color
+	transition: background-color 0.3s ease;
+
+	// CRITICAL: Must duplicate from style.scss for editor/frontend parity
+	// Inner container must be full width for justify-content to work
+	// When constrainWidth is enabled, inline styles will override with max-width
+	.airo-wp-flex__inner {
+		width: 100%;
+		// Ensure inner container doesn't create positioning context for absolute children
+		position: static;
+	}
+
+	// When Row is inside a grid, inner div must fill the stretched outer div
+	// so align-items: center can vertically center children
+	// Editor: blocks are wrapped in [data-block] elements inside grid
+	.airo-wp-grid__inner > &,
+	.airo-wp-grid__inner > [data-block] & {
+
+		> .airo-wp-flex__inner {
+			height: 100%;
+		}
+	}
+
+	// CRITICAL: When row has content, position appender at outer container corner
+	// Target from outer container to position relative to main block wrapper
+	// Use :not(:only-child) to exclude empty row state
+	/* stylelint-disable-next-line selector-class-pattern */
+	.airo-wp-flex__inner > .block-list-appender:not(:only-child) {
+		// Remove from flex flow and position at outer container corner
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		// Allow inserter button to position naturally
+		width: auto;
+		height: auto;
+	}
+
+	// CRITICAL: When row is empty, show normal appender
+	/* stylelint-disable-next-line selector-class-pattern */
+	.airo-wp-flex__inner > .block-list-appender:only-child {
+		position: static; // Reset positioning
+	}
+
+	// CRITICAL: When Row/Flex is nested inside another container, force full width (EDITOR)
+	// WordPress applies constrained layout which can limit width
+	// This ensures nested Rows take full width of their parent container
+	// In editor, blocks are wrapped in [data-block] elements
+	.airo-wp-stack__inner > &,
+	.airo-wp-stack__inner > [data-block] &,
+	.airo-wp-flex__inner > &,
+	.airo-wp-flex__inner > [data-block] &,
+	.airo-wp-grid__inner > &,
+	.airo-wp-grid__inner > [data-block] & {
+		width: 100% !important;
+
+		.airo-wp-flex__inner {
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+	}
+
+	// CRITICAL: Must duplicate from style.scss for editor/frontend parity
+	// Fix flex children behavior
+	// With two-div structure, flex children are inside .airo-wp-flex__inner
+	.airo-wp-flex__inner > * {
+		// Disable float - WordPress core CSS applies float: right/left for alignment classes
+		// This breaks flex layout, so we override it
+		float: none !important;
+
+		// Remove auto margins - WordPress adds margin-left/right: auto when contentSize is set
+		// This breaks justify-content alignment
+		margin-left: 0 !important;
+		margin-right: 0 !important;
+
+		// Remove margin-block-start - WordPress adds this but we want to use gap instead
+		// This makes spacing behave like the core Row block
+		margin-block-start: 0 !important;
+
+		// CRITICAL: Support WordPress width controls (fit/grow/fixed)
+		// Allow flex-basis, flex-grow, flex-shrink from WordPress layout support
+		// These are applied as inline styles by WordPress
+		// Explicitly set flex-shrink to allow shrinking when needed
+		flex-shrink: 1;
+		// Set min-width to 0 to allow flex items to shrink below content size
+		min-width: 0;
+	}
+
+	// Show outline when selected (editor-only)
+	&.is-selected {
+		outline: 1px dashed rgba(37, 99, 235, 0.3);
+		outline-offset: -1px;
+	}
+
+	// CRITICAL: Mobile stack behavior
+	// Must be duplicated from style.scss for editor/frontend parity.
+	// The inner-div flip is the one that actually stacks children;
+	// the outer flip is kept for legacy class-contract compatibility.
+	&--mobile-stack {
+
+		@media (max-width: 767px) {
+			flex-direction: column !important;
+
+			> .airo-wp-flex__inner {
+				flex-direction: column !important;
+			}
+		}
+	}
+
+	// CRITICAL: Must duplicate from style.scss for editor/frontend parity
+	// Hover background and text colors using CSS custom properties
+	&:hover {
+		// Only apply background if hover background is set
+		// !important needed to override WordPress color classes and gradients
+		// Use 'background' instead of 'background-color' to override gradients
+		&[style*="--airo-wp-hover-bg-color"] {
+			background: var(--airo-wp-hover-bg-color) !important;
+		}
+
+		// Only apply text color if hover text color is set
+		&[style*="--airo-wp-hover-text-color"] {
+			color: var(--airo-wp-hover-text-color) !important;
+
+			h1,
+			h2,
+			h3,
+			h4,
+			h5,
+			h6,
+			p,
+			a,
+			span,
+			li,
+			td,
+			th,
+			.wp-block-heading,
+			.wp-block-paragraph {
+				color: var(--airo-wp-hover-text-color) !important;
+			}
+		}
+	}
+
+	// Hover text color activation class — for style-kit `is-style-hover-text-*`
+	// variations, whose stylesheet supplies the var (the inline `[style*=…]`
+	// gate can't see a variation stylesheet's var).
+	&--has-hover-text:hover {
+		color: var(--airo-wp-hover-text-color) !important;
+
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6,
+		p,
+		a,
+		span,
+		li,
+		td,
+		th,
+		.wp-block-heading,
+		.wp-block-paragraph {
+			color: var(--airo-wp-hover-text-color) !important;
+		}
+	}
+}

@@ -1,0 +1,166 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/image-accordion",
+	"version": "1.0.0",
+	"title": "Image Accordion",
+	"category": "airo-wp",
+	"description": "Display a series of expandable image panels that reveal content on hover or click, perfect for showcasing portfolios, galleries, or featured content.",
+	"keywords": [
+		"image",
+		"accordion",
+		"gallery",
+		"portfolio",
+		"hover",
+		"expand"
+	],
+	"textdomain": "airo-wp",
+	"icon": "images-alt2",
+	"attributes": {
+		"height": {
+			"type": "string"
+		},
+		"gap": {
+			"type": "string"
+		},
+		"expandedRatio": {
+			"type": "number",
+			"default": 3
+		},
+		"transitionDuration": {
+			"type": "string",
+			"default": "0.5s"
+		},
+		"enableOverlay": {
+			"type": "boolean",
+			"default": true
+		},
+		"overlayColor": {
+			"type": "string"
+		},
+		"overlayOpacity": {
+			"type": "number"
+		},
+		"overlayOpacityExpanded": {
+			"type": "number"
+		},
+		"triggerType": {
+			"type": "string",
+			"default": "hover",
+			"enum": [
+				"hover",
+				"click"
+			]
+		},
+		"defaultExpanded": {
+			"type": "number",
+			"default": 0
+		}
+	},
+	"providesContext": {
+		"airo-wp/imageAccordion/enableOverlay": "enableOverlay",
+		"airo-wp/imageAccordion/overlayColor": "overlayColor",
+		"airo-wp/imageAccordion/overlayOpacity": "overlayOpacity",
+		"airo-wp/imageAccordion/overlayOpacityExpanded": "overlayOpacityExpanded"
+	},
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"html": false,
+		"inserter": true,
+		"spacing": {
+			"margin": true,
+			"padding": false,
+			"blockGap": false,
+			"__experimentalDefaultControls": {
+				"margin": true
+			}
+		},
+		"color": {
+			"background": false,
+			"text": true,
+			"link": true,
+			"__experimentalDefaultControls": {
+				"text": true
+			}
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalDefaultControls": {
+				"fontSize": true
+			},
+			"__experimentalFontFamily": true,
+			"__experimentalFontWeight": true
+		}
+	},
+	"example": {
+		"attributes": {},
+		"innerBlocks": [
+			{
+				"name": "airo-wp/image-accordion-item",
+				"attributes": {},
+				"innerBlocks": [
+					{
+						"name": "core/heading",
+						"attributes": {
+							"level": 2,
+							"content": "Discover Paris"
+						}
+					},
+					{
+						"name": "core/paragraph",
+						"attributes": {
+							"content": "Experience the City of Light"
+						}
+					}
+				]
+			},
+			{
+				"name": "airo-wp/image-accordion-item",
+				"attributes": {},
+				"innerBlocks": [
+					{
+						"name": "core/heading",
+						"attributes": {
+							"level": 2,
+							"content": "Explore Venice"
+						}
+					},
+					{
+						"name": "core/paragraph",
+						"attributes": {
+							"content": "Navigate the canals"
+						}
+					}
+				]
+			},
+			{
+				"name": "airo-wp/image-accordion-item",
+				"attributes": {},
+				"innerBlocks": [
+					{
+						"name": "core/heading",
+						"attributes": {
+							"level": 2,
+							"content": "Visit Rome"
+						}
+					},
+					{
+						"name": "core/paragraph",
+						"attributes": {
+							"content": "Walk through history"
+						}
+					}
+				]
+			}
+		]
+	},
+	"editorScript": "file:./index.js",
+	"viewScript": "file:./view.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./index.css"
+}

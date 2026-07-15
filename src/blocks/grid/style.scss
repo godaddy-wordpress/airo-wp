@@ -1,0 +1,269 @@
+/**
+ * DSG Grid Block - Frontend Styles
+ *
+ * Frontend styles for the DSG Grid block with responsive columns.
+ *
+ * @package airo-wp
+ */
+
+.airo-wp-grid {
+	// The block wrapper must stay a normal block: in the two-div pattern the
+	// wrapper handles full-width/background/padding and `.airo-wp-grid__inner` is
+	// the actual grid. The global `.airo-wp-grid { display: grid !important }`
+	// layout utility (block-variations.scss, frontend only) collides with this
+	// wrapper class and forces it to be a grid container, which makes the inner
+	// an indefinite-width grid item. Restore block here so the inner gets a
+	// definite width. The editor never loads that utility, so this also keeps
+	// editor/frontend parity.
+	&.airo-wp-grid {
+		display: block !important;
+	}
+
+	// CRITICAL: Ensure padding is included in the total width to prevent overflow
+	box-sizing: border-box;
+
+	// Positioning context for the overlay ::before pseudo-element below.
+	position: relative;
+
+	// Smooth transition for hover background color
+	transition: background-color 0.3s ease;
+
+	/**
+	 * Background overlay
+	 * Only rendered when overlay color is set (attribute or style variation)
+	 */
+	&.airo-wp-grid--has-overlay {
+		overflow: hidden;
+
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background-color: var(--airo-wp-overlay-color);
+			opacity: var(--airo-wp-overlay-opacity, 0.8);
+			pointer-events: none;
+			z-index: 1;
+		}
+
+		> .airo-wp-grid__inner {
+			position: relative;
+			z-index: 2;
+		}
+	}
+
+	// Default padding using WP standard spacing slugs
+	// Users can override via WordPress padding controls
+	// When padding is set to "Default", these theme values apply
+	// Fallback values match block.json defaults for consistency
+	padding-top: var(--wp--preset--spacing--50, 2rem);
+	padding-bottom: var(--wp--preset--spacing--50, 2rem);
+	padding-left: var(--wp--preset--spacing--30, 1rem);
+	padding-right: var(--wp--preset--spacing--30, 1rem);
+
+	// CRITICAL: Nested containers should have no padding to prevent overflow
+	// Only parent containers should have padding
+	.airo-wp-stack > &,
+	.airo-wp-flex > &,
+	.airo-wp-grid > & {
+		padding: 0;
+	}
+
+	// CRITICAL: Handle full-width and wide alignment
+	// WordPress automatically adds .alignfull and .alignwide classes when user selects alignment
+	// MUST be duplicated from editor.scss for editor/frontend parity
+	&.alignfull {
+		max-width: none;
+		margin-left: 0;
+		margin-right: 0;
+	}
+
+	&.alignwide {
+		max-width: var(--wp--custom--layout--wide-size, 1200px);
+		width: 100%;
+		margin-left: auto;
+		margin-right: auto;
+	}
+
+	// Inner container handles all grid styling
+	// With two-div structure: .airo-wp-grid > .airo-wp-grid__inner
+	.airo-wp-grid__inner {
+		// CRITICAL: Prevent grid items from overflowing their cells
+		// Grid items automatically fill their grid cell, so we only need to prevent overflow
+		> * {
+			min-width: 0;     // Allow shrinking below content width
+			min-height: 0;    // Allow shrinking vertically
+		}
+
+		// CRITICAL: Block-level elements need full width for text-align to work properly
+		// Grid items need explicit width: 100% to fill their grid cell
+		> h1,
+		> h2,
+		> h3,
+		> h4,
+		> h5,
+		> h6,
+		> p,
+		> .wp-block-heading,
+		> .wp-block-paragraph {
+			width: 100%;
+		}
+
+		// CRITICAL: Container blocks need !important to override WordPress layout system
+		// WordPress's constrained layout can apply max-width to nested containers
+		> .airo-wp-flex,
+		> .airo-wp-grid,
+		> .airo-wp-stack {
+			width: 100% !important;
+		}
+	}
+
+	// CRITICAL: When Grid is nested inside Section/Stack/Flex, force full width
+	// WordPress applies constrained layout which can limit width
+	// This ensures nested Grids take full width of their parent container
+	.airo-wp-stack__inner > &,
+	.airo-wp-flex__inner > &,
+	.airo-wp-grid__inner > & {
+		width: 100% !important;
+
+		.airo-wp-grid__inner {
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+	}
+
+	// CRITICAL: Override WordPress width constraints when constrainWidth is disabled
+	// The WordPress container class is on the INNER div, not the outer div
+	// We need higher specificity to override this
+	// IMPORTANT: Only apply when .airo-wp-no-width-constraint class is present (constrainWidth is disabled)
+	&.alignfull.airo-wp-no-width-constraint > .airo-wp-grid__inner[class*="wp-container-"] {
+		// Target all direct children that aren't explicitly aligned
+		// Exclude blocks with explicit max-width set via our extension
+		> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width) {
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+	}
+
+	// Responsive column classes
+	// Desktop columns are set via inline styles (default)
+	// Tablet and mobile columns use media queries
+	// CRITICAL: Target .airo-wp-grid__inner since that's where grid-template-columns is applied
+
+	// Tablet breakpoint (≤ 1024px)
+	@media (max-width: 1024px) {
+
+		@for $i from 1 through 12 {
+			&.airo-wp-grid-cols-tablet-#{$i} .airo-wp-grid__inner {
+				grid-template-columns: repeat(#{$i}, 1fr) !important;
+			}
+		}
+	}
+
+	// Mobile breakpoint (≤ 767px)
+	@media (max-width: 767px) {
+
+		@for $i from 1 through 12 {
+			&.airo-wp-grid-cols-mobile-#{$i} .airo-wp-grid__inner {
+				grid-template-columns: repeat(#{$i}, 1fr) !important;
+			}
+		}
+	}
+
+	// Hover background and text colors using CSS custom properties
+	// CRITICAL: Only apply hover when variables are actually set on THIS element
+	// This prevents hover bleeding to adjacent containers that don't have hover settings
+	&:hover {
+		// Only apply background if hover background is set
+		// !important needed to override WordPress color classes and gradients
+		// Use 'background' instead of 'background-color' to override gradients
+		&[style*="--airo-wp-hover-bg-color"] {
+			background: var(--airo-wp-hover-bg-color) !important;
+		}
+
+		// Only apply text color if hover text color is set
+		// Use !important to override custom text colors set by users
+		&[style*="--airo-wp-hover-text-color"] {
+			color: var(--airo-wp-hover-text-color) !important;
+
+			// Apply text color to all text elements for consistency
+			// !important needed to override custom color classes/inline styles
+			h1, h2, h3, h4, h5, h6, p, a, span, li, td, th,
+			.wp-block-heading,
+			.wp-block-paragraph {
+				color: var(--airo-wp-hover-text-color) !important;
+			}
+		}
+	}
+
+	// Hover text color activation class — for style-kit `is-style-hover-text-*`
+	// variations, whose stylesheet supplies the var (the inline `[style*=…]`
+	// gate can't see a variation stylesheet's var).
+	&--has-hover-text:hover {
+		color: var(--airo-wp-hover-text-color) !important;
+
+		h1, h2, h3, h4, h5, h6, p, a, span, li, td, th,
+		.wp-block-heading,
+		.wp-block-paragraph {
+			color: var(--airo-wp-hover-text-color) !important;
+		}
+	}
+}
+
+// ===================================================================
+// PERFORMANCE OPTIMIZATION (2025-11-11)
+// ===================================================================
+// Tablet grid-column span constraints are now handled by JavaScript (view.js)
+// This eliminates 396 CSS rules (66KB) by using runtime DOM manipulation
+// The view.js script detects responsive breakpoints and dynamically constrains
+// grid-column spans to match the tablet/mobile column configuration
+// ===================================================================
+
+// CRITICAL: Force grid items and nested layouts to stack properly on mobile
+// Must be outside .airo-wp-grid scope for proper specificity
+// With two-div structure: target .airo-wp-grid__inner children
+@media (max-width: 767px) {
+	// Force all grid items with column spans to span 1 on mobile
+	// High specificity to override inline styles
+	.airo-wp-grid__inner > [style*="grid-column"],
+	.airo-wp-grid__inner > [data-block][style*="grid-column"],
+	.airo-wp-grid__inner > [data-block] {
+		grid-column: span 1 !important;
+	}
+
+	// Force nested layouts inside grid items to stack
+	.airo-wp-grid__inner > * {
+		// Force any nested grid to single column
+		.airo-wp-grid {
+			grid-template-columns: 1fr !important;
+		}
+
+		// Force any nested flex to stack vertically
+		.airo-wp-flex {
+			flex-direction: column !important;
+		}
+	}
+}
+
+/**
+ * Layout-Constrained Margin Rules
+ * CRITICAL: Override WordPress's margin-based spacing for Grid layouts
+ * Grid uses CSS gap properties, not margins, for spacing
+ * Applied when layout support is enabled (type: constrained)
+ * With two-div structure: .airo-wp-grid > .airo-wp-grid__inner > items
+ */
+
+// Remove all margin-block spacing from grid items
+// CRITICAL: !important needed to override WordPress's layout system
+// Target inner container's children since we now have two-div structure
+.airo-wp-grid__inner > * {
+	margin-block-start: 0 !important;
+	margin-block-end: 0 !important;
+}
+
+// Also target data-block wrapped elements in editor
+.airo-wp-grid__inner > [data-block] {
+	margin-block-start: 0 !important;
+	margin-block-end: 0 !important;
+}

@@ -1,0 +1,267 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/modal",
+	"version": "1.0.0",
+	"title": "Modal",
+	"category": "airo-wp",
+	"description": "Create accessible modal dialogs with customizable triggers and content.",
+	"keywords": [
+		"modal",
+		"popup",
+		"dialog",
+		"overlay",
+		"lightbox"
+	],
+	"textdomain": "airo-wp",
+	"icon": "feedback",
+	"supports": {
+		"anchor": true,
+		"align": false,
+		"html": false,
+		"customClassName": true,
+		"className": true,
+		"spacing": {
+			"margin": false,
+			"padding": true,
+			"blockGap": true,
+			"__experimentalDefaultControls": {
+				"padding": true,
+				"blockGap": true
+			}
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"link": true,
+			"gradients": true,
+			"__experimentalDefaultControls": {
+				"background": true,
+				"text": true
+			}
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalDefaultControls": {
+				"fontSize": true
+			},
+			"__experimentalFontFamily": true,
+			"__experimentalFontWeight": true,
+			"__experimentalFontStyle": true,
+			"__experimentalTextTransform": true,
+			"__experimentalTextDecoration": true,
+			"__experimentalLetterSpacing": true
+		},
+		"dimensions": {
+			"minHeight": true,
+			"__experimentalDefaultControls": {
+				"minHeight": false
+			}
+		},
+		"shadow": true,
+		"interactivity": {
+			"clientNavigation": true
+		},
+		"__experimentalBorder": {
+			"color": true,
+			"radius": true,
+			"style": true,
+			"width": true,
+			"__experimentalDefaultControls": {
+				"color": true,
+				"radius": true,
+				"style": true,
+				"width": true
+			}
+		}
+	},
+	"providesContext": {
+		"airo-wp/modal/modalId": "modalId",
+		"airo-wp/modal/closeOnBackdrop": "closeOnBackdrop"
+	},
+	"attributes": {
+		"style": {
+			"type": "object",
+			"default": {
+				"border": {
+					"width": "0px",
+					"style": "none"
+				}
+			}
+		},
+		"modalId": {
+			"type": "string",
+			"default": ""
+		},
+		"modalLabel": {
+			"type": "string",
+			"default": ""
+		},
+		"allowHashTrigger": {
+			"type": "boolean",
+			"default": true
+		},
+		"updateUrlOnOpen": {
+			"type": "boolean",
+			"default": false
+		},
+		"autoTriggerType": {
+			"type": "string",
+			"default": "none"
+		},
+		"autoTriggerDelay": {
+			"type": "number",
+			"default": 0
+		},
+		"autoTriggerFrequency": {
+			"type": "string",
+			"default": "always"
+		},
+		"cookieDuration": {
+			"type": "number",
+			"default": 7
+		},
+		"exitIntentSensitivity": {
+			"type": "string",
+			"default": "medium"
+		},
+		"exitIntentMinTime": {
+			"type": "number",
+			"default": 5
+		},
+		"exitIntentExcludeMobile": {
+			"type": "boolean",
+			"default": true
+		},
+		"scrollDepth": {
+			"type": "number",
+			"default": 50
+		},
+		"scrollDirection": {
+			"type": "string",
+			"default": "down"
+		},
+		"timeOnPage": {
+			"type": "number",
+			"default": 30
+		},
+		"galleryGroupId": {
+			"type": "string",
+			"default": ""
+		},
+		"galleryIndex": {
+			"type": "number",
+			"default": 0
+		},
+		"showGalleryNavigation": {
+			"type": "boolean",
+			"default": true
+		},
+		"navigationStyle": {
+			"type": "string",
+			"default": "arrows"
+		},
+		"navigationPosition": {
+			"type": "string",
+			"default": "sides"
+		},
+		"width": {
+			"type": "string",
+			"default": "600px"
+		},
+		"maxWidth": {
+			"type": "string",
+			"default": "90vw"
+		},
+		"height": {
+			"type": "string",
+			"default": "auto"
+		},
+		"maxHeight": {
+			"type": "string",
+			"default": "90vh"
+		},
+		"animationType": {
+			"type": "string",
+			"default": "fade"
+		},
+		"animationDuration": {
+			"type": "number",
+			"default": 300
+		},
+		"overlayOpacity": {
+			"type": "number",
+			"default": 80
+		},
+		"overlayColor": {
+			"type": "string",
+			"default": "#000000"
+		},
+		"overlayBlur": {
+			"type": "number",
+			"default": 0
+		},
+		"closeOnBackdrop": {
+			"type": "boolean",
+			"default": true
+		},
+		"closeOnEsc": {
+			"type": "boolean",
+			"default": true
+		},
+		"showCloseButton": {
+			"type": "boolean",
+			"default": true
+		},
+		"closeButtonPosition": {
+			"type": "string",
+			"default": "inside-top-right"
+		},
+		"closeButtonSize": {
+			"type": "number",
+			"default": 24
+		},
+		"closeButtonLabel": {
+			"type": "string",
+			"default": ""
+		},
+		"closeButtonIconColor": {
+			"type": "string",
+			"default": ""
+		},
+		"closeButtonBgColor": {
+			"type": "string",
+			"default": ""
+		},
+		"disableBodyScroll": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"example": {
+		"attributes": {
+			"width": "500px",
+			"overlayOpacity": 80
+		},
+		"innerBlocks": [
+			{
+				"name": "core/heading",
+				"attributes": {
+					"content": "Welcome!",
+					"level": 2
+				}
+			},
+			{
+				"name": "core/paragraph",
+				"attributes": {
+					"content": "This is a modal dialog. You can add any content here using the block editor."
+				}
+			}
+		]
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./index.css",
+	"viewScript": "file:./view.js"
+}

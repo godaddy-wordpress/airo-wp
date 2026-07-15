@@ -1,0 +1,92 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/slide",
+	"title": "Slide",
+	"category": "airo-wp",
+	"parent": [
+		"airo-wp/slider"
+	],
+	"description": "Individual slide within a slider with background image support and full block flexibility.",
+	"keywords": [
+		"slide",
+		"panel",
+		"item"
+	],
+	"textdomain": "airo-wp",
+	"icon": "format-image",
+	"attributes": {
+		"backgroundImage": {
+			"type": "object",
+			"default": {
+				"url": "",
+				"id": 0,
+				"alt": ""
+			}
+		},
+		"backgroundSize": {
+			"type": "string",
+			"default": "cover"
+		},
+		"backgroundPosition": {
+			"type": "string",
+			"default": "center center"
+		},
+		"backgroundRepeat": {
+			"type": "string",
+			"default": "no-repeat"
+		},
+		"overlayColor": {
+			"type": "string",
+			"default": ""
+		},
+		"overlayOpacity": {
+			"type": "number",
+			"default": 80
+		},
+		"contentVerticalAlign": {
+			"type": "string",
+			"default": "center"
+		},
+		"contentHorizontalAlign": {
+			"type": "string",
+			"default": "center"
+		},
+		"minHeight": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"usesContext": [
+		"airo-wp/slider/effect",
+		"airo-wp/slider/transitionDuration",
+		"airo-wp/slider/activeSlide",
+		"airo-wp/slider/styleVariation"
+	],
+	"supports": {
+		"anchor": false,
+		"html": false,
+		"reusable": false,
+		"spacing": {
+			"margin": true,
+			"padding": true,
+			"blockGap": true
+		},
+		"color": {
+			"background": true,
+			"gradient": true,
+			"text": true
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalFontFamily": true,
+			"__experimentalFontWeight": true,
+			"__experimentalTextTransform": true,
+			"__experimentalLetterSpacing": true
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css"
+}

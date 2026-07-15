@@ -1,0 +1,263 @@
+/**
+ * Scroll Slides - Frontend Styles
+ * Scroll-pinned fullscreen slideshow with crossfading transitions
+ */
+
+.airo-wp-scroll-slides {
+	position: relative;
+	width: 100%;
+
+	// Allow alignfull to use theme negative margins/vw width
+	&.alignfull {
+		width: auto;
+	}
+
+	/**
+	 * Background overlay
+	 * Only rendered when overlay color is set
+	 */
+	&--has-overlay {
+		position: relative;
+
+		&::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background-color: var(--airo-wp-overlay-color);
+			opacity: var(--airo-wp-overlay-opacity, 0.8);
+			pointer-events: none;
+			z-index: 1;
+			border-radius: inherit;
+		}
+	}
+}
+
+/**
+ * Pin spacer — created by JS, wraps the scroll-slides container
+ * Height is set dynamically: slideCount * 100vh
+ */
+.airo-wp-scroll-slides-spacer {
+	position: relative;
+}
+
+/**
+ * Pinned state — applied by JS when spacer is created
+ * Grid moves to the inner container so backgrounds stay full-width
+ */
+.airo-wp-scroll-slides.is-pinned {
+	position: sticky;
+	top: 0;
+	overflow: hidden;
+}
+
+/**
+ * Inner container — constrained content width
+ * Width constraints applied via inline styles when constrainWidth is enabled
+ */
+.airo-wp-scroll-slides__inner {
+	width: 100%;
+	position: relative;
+	z-index: 2;
+	height: 100%;
+
+	.airo-wp-scroll-slides.is-pinned & {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		grid-template-rows: 1fr;
+		align-items: center;
+		height: 100%;
+	}
+}
+
+/**
+ * Navigation — left column
+ */
+.airo-wp-scroll-slides__nav {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	padding: 2rem;
+	z-index: 2;
+	position: relative;
+}
+
+.airo-wp-scroll-slides .airo-wp-scroll-slides__nav-item {
+	background: none;
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	cursor: pointer;
+	text-align: left;
+	font-size: clamp(1.5rem, 3vw, 2.5rem);
+	font-weight: 700;
+	color: currentcolor;
+	opacity: 0.3;
+	transition: opacity 0.3s ease, color 0.3s ease;
+	padding: 0.25rem 0;
+	line-height: 1.2;
+	font-family: inherit;
+	min-height: 0;
+	min-width: 0;
+
+	&:hover {
+		opacity: 0.6;
+	}
+
+	&.is-active {
+		opacity: 1;
+	}
+
+	&:focus-visible {
+		outline: 2px solid currentcolor;
+		outline-offset: 4px;
+		border-radius: 2px;
+	}
+
+	// When custom nav colors are set, use explicit colors instead of opacity
+	.airo-wp-scroll-slides--has-nav-color & {
+		color: var(--airo-wp-nav-color, currentcolor);
+		opacity: 1;
+
+		&.is-active {
+			color: var(--airo-wp-nav-active-color, var(--airo-wp-nav-color, currentcolor));
+		}
+	}
+}
+
+/**
+ * Background layers — absolute positioned behind everything
+ * One div per slide, crossfaded via opacity
+ */
+.airo-wp-scroll-slides__backgrounds {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+}
+
+.airo-wp-scroll-slides__bg {
+	position: absolute;
+	inset: 0;
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+	opacity: 0;
+	will-change: opacity;
+	transition: opacity 0.5s ease;
+
+	&.is-active {
+		opacity: 1;
+	}
+}
+
+/**
+ * Panels container — right column, holds stacked slides
+ * When pinned, acts as positioning context for absolute slides
+ * and centers the active (relative-positioned) slide vertically
+ */
+.airo-wp-scroll-slides__panels {
+	position: relative;
+	z-index: 1;
+	min-height: 100%;
+
+	.airo-wp-scroll-slides.is-pinned & {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+	}
+}
+
+/**
+ * Tap mode — mobile click-to-navigate (no spacer/sticky)
+ * Nav stacks above content, slides switch on tap
+ */
+.airo-wp-scroll-slides.is-tap-mode {
+
+	.airo-wp-scroll-slides__inner {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.airo-wp-scroll-slides__panels {
+		position: relative;
+	}
+}
+
+/**
+ * Mobile fallback — handles the case where JS loaded at desktop width
+ * (is-pinned set) and user resizes to mobile. Unpins, stacks, shows all.
+ */
+@media (max-width: 781px) {
+
+	.airo-wp-scroll-slides-spacer {
+		height: auto !important;
+		padding: 0 !important;
+	}
+
+	.airo-wp-scroll-slides.is-pinned {
+		position: static !important;
+		height: auto !important;
+		display: block;
+	}
+
+	.airo-wp-scroll-slides.is-pinned .airo-wp-scroll-slides__inner {
+		display: block !important;
+	}
+
+	.airo-wp-scroll-slides.is-pinned .airo-wp-scroll-slides__nav {
+		display: none;
+	}
+
+	.airo-wp-scroll-slides.is-pinned .airo-wp-scroll-slides__backgrounds {
+		display: none;
+	}
+
+	// Force all pinned slides visible when viewport is mobile
+	.airo-wp-scroll-slides.is-pinned .airo-wp-scroll-slide {
+		position: relative !important;
+		opacity: 1 !important;
+		transform: none !important;
+	}
+}
+
+/**
+ * Reduced motion — same as mobile (no pinning)
+ */
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-scroll-slides__bg {
+		transition: none;
+	}
+}
+
+/**
+ * Print — show all content
+ */
+@media print {
+
+	.airo-wp-scroll-slides-spacer {
+		height: auto !important;
+		padding: 0 !important;
+	}
+
+	.airo-wp-scroll-slides.is-pinned {
+		position: static !important;
+		height: auto !important;
+		display: block;
+	}
+
+	.airo-wp-scroll-slides__inner {
+		display: block !important;
+	}
+
+	.airo-wp-scroll-slides__nav {
+		display: none;
+	}
+
+	.airo-wp-scroll-slides__backgrounds {
+		display: none;
+	}
+}

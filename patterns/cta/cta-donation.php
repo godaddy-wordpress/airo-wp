@@ -1,0 +1,33 @@
+<?php
+/**
+ * Title: Donation CTA
+ * Slug: airo-wp/cta/cta-donation
+ * Categories: airo-wp-cta
+ * Description: A centered call-to-action encouraging donations with an inspiring message and donate button
+ * Keywords: cta, donation, donate, nonprofit, charity, give
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+return array(
+	'title'      => __( 'Donation CTA', 'airo-wp' ),
+	'categories' => array( 'airo-wp-cta' ),
+	'viewportWidth' => 1200,
+	'content'    => '<!-- wp:airo-wp/section {"style":{"spacing":{"padding":{"top":"var:preset|spacing|70","bottom":"var:preset|spacing|70","left":"var:preset|spacing|30","right":"var:preset|spacing|30"}}},"backgroundColor":"contrast","textColor":"base"} -->
+<div class="wp-block-airo-wp-section alignfull airo-wp-stack has-base-color has-contrast-background-color has-text-color has-background" style="padding-top:var(--wp--preset--spacing--70);padding-right:var(--wp--preset--spacing--30);padding-bottom:var(--wp--preset--spacing--70);padding-left:var(--wp--preset--spacing--30)"><div class="airo-wp-stack__inner" style="max-width:var(--wp--style--global--content-size, 1140px);margin-left:auto;margin-right:auto"><!-- wp:airo-wp/section {"style":{"spacing":{"padding":{"top":"0","bottom":"0","left":"0","right":"0"}}}} -->
+<div class="wp-block-airo-wp-section alignfull airo-wp-stack" style="padding-top:0;padding-right:0;padding-bottom:0;padding-left:0"><div class="airo-wp-stack__inner" style="max-width:var(--wp--style--global--content-size, 1140px);margin-left:auto;margin-right:auto"><!-- wp:heading {"textAlign":"center","style":{"typography":{"fontStyle":"normal","fontWeight":"700"}},"fontSize":"x-large"} -->
+<h2 class="wp-block-heading has-text-align-center has-x-large-font-size" style="font-style:normal;font-weight:700">Every Gift Creates Ripples of Change</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph {"align":"center","style":{"spacing":{"margin":{"top":"var:preset|spacing|20"}}},"fontSize":"medium"} -->
+<p class="has-text-align-center has-medium-font-size" style="margin-top:var(--wp--preset--spacing--20)">Your donation today will transform lives for generations to come. Together, we can build a world where everyone has the opportunity to thrive.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:airo-wp/row {"style":{"spacing":{"margin":{"top":"var:preset|spacing|40"},"blockGap":"var:preset|spacing|20","padding":{"top":"0","bottom":"0","left":"0","right":"0"}}},"layout":{"type":"flex","justifyContent":"center","flexWrap":"wrap"}} -->
+<div class="wp-block-airo-wp-row alignfull airo-wp-flex airo-wp-no-width-constraint" style="margin-top:var(--wp--preset--spacing--40);padding-top:0;padding-right:0;padding-bottom:0;padding-left:0"><div class="airo-wp-flex__inner" style="display:flex;justify-content:center;flex-wrap:wrap;gap:var(--wp--preset--spacing--20)"><!-- wp:airo-wp/icon-button {"text":"Donate Now","url":"#donate","icon":"heart","iconGap":"8px","className":"has-text-color has-background","style":{"spacing":{"padding":{"top":"var:preset|spacing|20","bottom":"var:preset|spacing|20","left":"var:preset|spacing|50","right":"var:preset|spacing|50"}},"border":{"radius":"50px"},"color":{"background":"#10b981","text":"#ffffff"}}} -->
+<div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left has-text-color has-background"><a class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-text-color has-background airo-wp-icon-button--has-icon" style="border-radius:50px;color:#ffffff;background-color:#10b981;gap:8px;padding-top:var(--wp--preset--spacing--20);padding-right:var(--wp--preset--spacing--50);padding-bottom:var(--wp--preset--spacing--20);padding-left:var(--wp--preset--spacing--50)" href="#donate" target="_self"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="heart"></span><span class="airo-wp-icon-button__text">Donate Now</span></a></div>
+<!-- /wp:airo-wp/icon-button --></div></div>
+<!-- /wp:airo-wp/row --></div></div>
+<!-- /wp:airo-wp/section --></div></div>
+<!-- /wp:airo-wp/section -->',
+);

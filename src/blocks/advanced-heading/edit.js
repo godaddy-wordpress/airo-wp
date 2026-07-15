@@ -1,0 +1,135 @@
+/**
+ * Advanced Heading Block - Edit Component
+ *
+ * Renders a heading element containing inner blocks (heading segments)
+ * that each support independent typography controls.
+ *
+ * @since 2.0.0
+ */
+
+import classnames from 'classnames';
+import { __ } from '@wordpress/i18n';
+import {
+	useBlockProps,
+	useInnerBlocksProps,
+	InspectorControls,
+	BlockControls,
+	AlignmentToolbar,
+} from '@wordpress/block-editor';
+import {
+	PanelBody,
+	ToolbarGroup,
+	ToolbarDropdownMenu,
+} from '@wordpress/components';
+import { heading as headingIcon } from '@wordpress/icons';
+import { convertPresetToCSSVar } from '../../utils/convert-preset-to-css-var';
+
+const ALLOWED_BLOCKS = ['airo-wp/heading-segment'];
+const TEMPLATE = [
+	[
+		'airo-wp/heading-segment',
+		{
+			content: __('Bold', 'airo-wp'),
+			style: { typography: { fontWeight: '700' } },
+		},
+	],
+	['airo-wp/heading-segment', { content: __('Heading', 'airo-wp') }],
+];
+
+const HEADING_LEVELS = [1, 2, 3, 4, 5, 6];
+
+/**
+ * Advanced Heading Edit Component
+ *
+ * @param {Object}   props               - Component props
+ * @param {Object}   props.attributes    - Block attributes
+ * @param {Function} props.setAttributes - Function to update attributes
+ * @return {JSX.Element} Advanced Heading block edit component
+ */
+export default function AdvancedHeadingEdit({ attributes, setAttributes }) {
+	const { level = 2, textAlign } = attributes;
+	const validLevel = HEADING_LEVELS.includes(level) ? level : 2;
+	const TagName = `h${validLevel}`;
+
+	const blockGap = convertPresetToCSSVar(attributes.style?.spacing?.blockGap);
+
+	const blockProps = useBlockProps({
+		className: classnames('airo-wp-advanced-heading', {
+			[`has-text-align-${textAlign}`]: textAlign,
+		}),
+	});
+
+	const innerBlocksProps = useInnerBlocksProps(
+		{
+			className: 'airo-wp-advanced-heading__inner',
+			style: blockGap ? { '--airo-wp-segment-gap': blockGap } : undefined,
+		},
+		{
+			allowedBlocks: ALLOWED_BLOCKS,
+			template: TEMPLATE,
+			orientation: 'horizontal',
+		}
+	);
+
+	return (
+		<>
+			{/* ========================================
+			     BLOCK TOOLBAR
+			    ======================================== */}
+			<BlockControls group="block">
+				<ToolbarGroup>
+					<ToolbarDropdownMenu
+						icon={headingIcon}
+						label={__('Change heading level', 'airo-wp')}
+						controls={HEADING_LEVELS.map((targetLevel) => ({
+							icon: headingIcon,
+							title: `H${targetLevel}`,
+							isActive: level === targetLevel,
+							onClick: () =>
+								setAttributes({ level: targetLevel }),
+						}))}
+					/>
+				</ToolbarGroup>
+				<AlignmentToolbar
+					value={textAlign}
+					onChange={(value) => setAttributes({ textAlign: value })}
+				/>
+			</BlockControls>
+
+			{/* ========================================
+			     INSPECTOR CONTROLS
+			    ======================================== */}
+			<InspectorControls>
+				<PanelBody
+					title={__('Heading Settings', 'airo-wp')}
+					initialOpen={true}
+				>
+					<p className="airo-wp-advanced-heading__level-label">
+						{__('Heading Level', 'airo-wp')}
+					</p>
+					<div className="airo-wp-advanced-heading__level-buttons">
+						{HEADING_LEVELS.map((targetLevel) => (
+							<button
+								key={targetLevel}
+								className={`airo-wp-advanced-heading__level-button${level === targetLevel ? ' is-active' : ''}`}
+								onClick={() =>
+									setAttributes({ level: targetLevel })
+								}
+								aria-pressed={level === targetLevel}
+							>
+								H{targetLevel}
+							</button>
+						))}
+					</div>
+				</PanelBody>
+			</InspectorControls>
+
+			{/* ========================================
+			     BLOCK CONTENT
+			    ======================================== */}
+			<div {...blockProps}>
+				<TagName {...innerBlocksProps} />
+			</div>
+		</>
+	);
+}

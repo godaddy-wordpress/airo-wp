@@ -1,0 +1,73 @@
+/**
+ * Scroll Slide - Frontend Styles
+ * Individual slide panel with crossfade transitions
+ */
+
+.airo-wp-scroll-slide {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: var(--wp--style--block-gap, 1rem);
+	padding: 2rem;
+
+	/**
+	 * Flex gap doesn't collapse with element margins — theme headings and
+	 * paragraphs would add their own margin-block on top of the gap,
+	 * producing uneven spacing. Zero out direct children so the gap alone
+	 * controls rhythm (matches the editor, which WP normalises the same
+	 * way via .editor-styles-wrapper).
+	 */
+	> :where(h1, h2, h3, h4, h5, h6, p, figure, ul, ol) {
+		margin-block: 0;
+	}
+
+	/**
+	 * Transition styles apply in both pinned (desktop scroll) and
+	 * tap mode (mobile click). Without this scope, opacity:0 would
+	 * hide slides in the editor too.
+	 */
+	.airo-wp-scroll-slides.is-pinned &,
+	.airo-wp-scroll-slides.is-tap-mode & {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		transform: translateY(20px);
+		transition: opacity 0.4s ease, transform 0.4s ease;
+	}
+
+	/* Active slide */
+	.airo-wp-scroll-slides.is-pinned &.is-active,
+	.airo-wp-scroll-slides.is-tap-mode &.is-active {
+		position: relative;
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/**
+ * Reduced motion
+ */
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-scroll-slide {
+		transition: none;
+		transform: none;
+		opacity: 1;
+		position: relative !important;
+	}
+}
+
+/**
+ * Print
+ */
+@media print {
+
+	.airo-wp-scroll-slide {
+		position: relative !important;
+		opacity: 1 !important;
+		transform: none !important;
+		break-inside: avoid;
+		page-break-inside: avoid;
+		margin-bottom: 2rem;
+	}
+}

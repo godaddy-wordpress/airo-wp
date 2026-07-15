@@ -1,0 +1,113 @@
+<?php
+/**
+ * Title: Flip Card Services
+ * Slug: airo-wp/features/features-flip-card-services
+ * Categories: airo-wp-features
+ * Description: A three-column service showcase using interactive flip cards with front and back content
+ * Keywords: features, flip cards, services, interactive, real estate, hover
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+return array(
+	'title'      => __( 'Flip Card Services', 'airo-wp' ),
+	'categories' => array( 'airo-wp-features' ),
+	'viewportWidth' => 1200,
+	'content'    => '<!-- wp:airo-wp/section {"style":{"spacing":{"padding":{"top":"var:preset|spacing|80","bottom":"var:preset|spacing|80","left":"var:preset|spacing|30","right":"var:preset|spacing|30"}}},"dsgoAnimationEnabled":true,"dsgoEntranceAnimation":"fadeIn"} -->
+<div class="wp-block-airo-wp-section alignfull airo-wp-stack has-airo-wp-animation airo-wp-animation-fadeIn" style="padding-top:var(--wp--preset--spacing--80);padding-right:var(--wp--preset--spacing--30);padding-bottom:var(--wp--preset--spacing--80);padding-left:var(--wp--preset--spacing--30)" data-airo-wp-animation-enabled="true" data-airo-wp-entrance-animation="fadeIn"><div class="airo-wp-stack__inner" style="max-width:var(--wp--style--global--content-size, 1140px);margin-left:auto;margin-right:auto"><!-- wp:airo-wp/section {"style":{"spacing":{"margin":{"bottom":"var:preset|spacing|60"},"padding":{"top":"0","bottom":"0","left":"0","right":"0"}}}} -->
+<div class="wp-block-airo-wp-section alignfull airo-wp-stack" style="margin-bottom:var(--wp--preset--spacing--60);padding-top:0;padding-right:0;padding-bottom:0;padding-left:0"><div class="airo-wp-stack__inner" style="max-width:var(--wp--style--global--content-size, 1140px);margin-left:auto;margin-right:auto"><!-- wp:paragraph {"align":"center","style":{"typography":{"textTransform":"uppercase","letterSpacing":"4px"},"color":{"text":"#d4af37"}},"fontSize":"small"} -->
+<p class="has-text-align-center has-text-color has-small-font-size" style="color:#d4af37;letter-spacing:4px;text-transform:uppercase">Our Services</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"textAlign":"center","style":{"typography":{"fontStyle":"normal","fontWeight":"300","letterSpacing":"-0.5px"},"spacing":{"margin":{"top":"var:preset|spacing|10"}}},"fontSize":"x-large"} -->
+<h2 class="wp-block-heading has-text-align-center has-x-large-font-size" style="margin-top:var(--wp--preset--spacing--10);font-style:normal;font-weight:300;letter-spacing:-0.5px">White-Glove Service at Every Step</h2>
+<!-- /wp:heading --></div></div>
+<!-- /wp:airo-wp/section -->
+
+<!-- wp:airo-wp/grid {"style":{"spacing":{"blockGap":"var:preset|spacing|30","padding":{"top":"0","bottom":"0","left":"0","right":"0"}}}} -->
+<div class="wp-block-airo-wp-grid alignfull airo-wp-grid airo-wp-grid-cols-3 airo-wp-grid-cols-tablet-2 airo-wp-grid-cols-mobile-1 airo-wp-no-width-constraint" style="padding-top:0;padding-right:0;padding-bottom:0;padding-left:0"><div class="airo-wp-grid__inner" style="display:grid;grid-template-columns:repeat(3, 1fr);align-items:stretch;row-gap:var(--wp--preset--spacing--30);column-gap:var(--wp--preset--spacing--30)"><!-- wp:airo-wp/flip-card -->
+<div class="wp-block-airo-wp-flip-card airo-wp-flip-card airo-wp-flip-card--hover airo-wp-flip-card--effect-flip airo-wp-flip-card--horizontal" style="--airo-wp-flip-duration:0.6s" data-flip-trigger="hover" data-flip-effect="flip" data-flip-direction="horizontal"><div class="airo-wp-flip-card__container"><!-- wp:airo-wp/flip-card-face {"side":"front","className":"airo-wp-flip-card__face\u002d\u002dfront","style":{"spacing":{"padding":{"top":"var:preset|spacing|50","bottom":"var:preset|spacing|50","left":"var:preset|spacing|40","right":"var:preset|spacing|40"}},"border":{"radius":"0"},"color":{"gradient":"linear-gradient(135deg,rgb(15,23,42) 0%,rgb(30,41,59) 100%)"}}} -->
+<div class="wp-block-airo-wp-flip-card-face airo-wp-flip-card__face airo-wp-flip-card__front airo-wp-flip-card__face--front has-background" style="border-radius:0;background:linear-gradient(135deg,rgb(15,23,42) 0%,rgb(30,41,59) 100%);padding-top:var(--wp--preset--spacing--50);padding-right:var(--wp--preset--spacing--40);padding-bottom:var(--wp--preset--spacing--50);padding-left:var(--wp--preset--spacing--40)">
+<!-- wp:airo-wp/icon {"icon":"home","dsgoAnimationEnabled":true,"dsgoEntranceAnimation":"zoomIn","dsgoAnimationDuration":500,"style":{"color":{"text":"#d4af37"}}} /-->
+<!-- wp:heading {"level":3,"style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}},"textColor":"base","fontSize":"large"} -->
+<h3 class="wp-block-heading has-base-color has-text-color has-large-font-size" style="margin-top:var(--wp--preset--spacing--30)">Buyer Representation</h3>
+<!-- /wp:heading -->
+<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|10"}},"color":{"text":"rgba(255,255,255,0.6)"}},"fontSize":"small"} -->
+<p class="has-text-color has-small-font-size" style="color:rgba(255,255,255,0.6);margin-top:var(--wp--preset--spacing--10)">Hover to learn more</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:airo-wp/flip-card-face -->
+
+<!-- wp:airo-wp/flip-card-face {"side":"back","className":"airo-wp-flip-card__face\u002d\u002dback","backgroundColor":"base-2","style":{"spacing":{"padding":{"top":"var:preset|spacing|40","bottom":"var:preset|spacing|40","left":"var:preset|spacing|30","right":"var:preset|spacing|30"}},"border":{"radius":"0"}}} -->
+<div class="wp-block-airo-wp-flip-card-face airo-wp-flip-card__face airo-wp-flip-card__back airo-wp-flip-card__face--back has-base-2-background-color has-background" style="border-radius:0;padding-top:var(--wp--preset--spacing--40);padding-right:var(--wp--preset--spacing--30);padding-bottom:var(--wp--preset--spacing--40);padding-left:var(--wp--preset--spacing--30)">
+<!-- wp:heading {"level":3,"fontSize":"medium"} -->
+<h3 class="wp-block-heading has-medium-font-size">Buyer Representation</h3>
+<!-- /wp:heading -->
+<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|15"}}},"fontSize":"small"} -->
+<p class="has-small-font-size" style="margin-top:var(--wp--preset--spacing--15)">Our expert agents guide you through every step of finding and acquiring your perfect property. From initial search to closing, we negotiate on your behalf to secure the best terms.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|15"}},"color":{"text":"#d4af37"},"typography":{"fontStyle":"normal","fontWeight":"600"}},"fontSize":"small"} -->
+<p class="has-text-color has-small-font-size" style="color:#d4af37;margin-top:var(--wp--preset--spacing--15);font-style:normal;font-weight:600">Learn more →</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:airo-wp/flip-card-face --></div></div>
+<!-- /wp:airo-wp/flip-card -->
+
+<!-- wp:airo-wp/flip-card -->
+<div class="wp-block-airo-wp-flip-card airo-wp-flip-card airo-wp-flip-card--hover airo-wp-flip-card--effect-flip airo-wp-flip-card--horizontal" style="--airo-wp-flip-duration:0.6s" data-flip-trigger="hover" data-flip-effect="flip" data-flip-direction="horizontal"><div class="airo-wp-flip-card__container"><!-- wp:airo-wp/flip-card-face {"side":"front","className":"airo-wp-flip-card__face\u002d\u002dfront","style":{"spacing":{"padding":{"top":"var:preset|spacing|50","bottom":"var:preset|spacing|50","left":"var:preset|spacing|40","right":"var:preset|spacing|40"}},"border":{"radius":"0"},"color":{"gradient":"linear-gradient(135deg,rgb(15,23,42) 0%,rgb(30,41,59) 100%)"}}} -->
+<div class="wp-block-airo-wp-flip-card-face airo-wp-flip-card__face airo-wp-flip-card__front airo-wp-flip-card__face--front has-background" style="border-radius:0;background:linear-gradient(135deg,rgb(15,23,42) 0%,rgb(30,41,59) 100%);padding-top:var(--wp--preset--spacing--50);padding-right:var(--wp--preset--spacing--40);padding-bottom:var(--wp--preset--spacing--50);padding-left:var(--wp--preset--spacing--40)">
+<!-- wp:airo-wp/icon {"icon":"chart","dsgoAnimationEnabled":true,"dsgoEntranceAnimation":"zoomIn","dsgoAnimationDuration":500,"dsgoAnimationDelay":100,"style":{"color":{"text":"#d4af37"}}} /-->
+<!-- wp:heading {"level":3,"style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}},"textColor":"base","fontSize":"large"} -->
+<h3 class="wp-block-heading has-base-color has-text-color has-large-font-size" style="margin-top:var(--wp--preset--spacing--30)">Property Valuation</h3>
+<!-- /wp:heading -->
+<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|10"}},"color":{"text":"rgba(255,255,255,0.6)"}},"fontSize":"small"} -->
+<p class="has-text-color has-small-font-size" style="color:rgba(255,255,255,0.6);margin-top:var(--wp--preset--spacing--10)">Hover to learn more</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:airo-wp/flip-card-face -->
+
+<!-- wp:airo-wp/flip-card-face {"side":"back","className":"airo-wp-flip-card__face\u002d\u002dback","backgroundColor":"base-2","style":{"spacing":{"padding":{"top":"var:preset|spacing|40","bottom":"var:preset|spacing|40","left":"var:preset|spacing|30","right":"var:preset|spacing|30"}},"border":{"radius":"0"}}} -->
+<div class="wp-block-airo-wp-flip-card-face airo-wp-flip-card__face airo-wp-flip-card__back airo-wp-flip-card__face--back has-base-2-background-color has-background" style="border-radius:0;padding-top:var(--wp--preset--spacing--40);padding-right:var(--wp--preset--spacing--30);padding-bottom:var(--wp--preset--spacing--40);padding-left:var(--wp--preset--spacing--30)">
+<!-- wp:heading {"level":3,"fontSize":"medium"} -->
+<h3 class="wp-block-heading has-medium-font-size">Property Valuation</h3>
+<!-- /wp:heading -->
+<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|15"}}},"fontSize":"small"} -->
+<p class="has-small-font-size" style="margin-top:var(--wp--preset--spacing--15)">Receive accurate, data-driven valuations backed by our deep knowledge of luxury markets. We analyze comparable sales, market trends, and unique property features.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|15"}},"color":{"text":"#d4af37"},"typography":{"fontStyle":"normal","fontWeight":"600"}},"fontSize":"small"} -->
+<p class="has-text-color has-small-font-size" style="color:#d4af37;margin-top:var(--wp--preset--spacing--15);font-style:normal;font-weight:600">Learn more →</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:airo-wp/flip-card-face --></div></div>
+<!-- /wp:airo-wp/flip-card -->
+
+<!-- wp:airo-wp/flip-card -->
+<div class="wp-block-airo-wp-flip-card airo-wp-flip-card airo-wp-flip-card--hover airo-wp-flip-card--effect-flip airo-wp-flip-card--horizontal" style="--airo-wp-flip-duration:0.6s" data-flip-trigger="hover" data-flip-effect="flip" data-flip-direction="horizontal"><div class="airo-wp-flip-card__container"><!-- wp:airo-wp/flip-card-face {"side":"front","className":"airo-wp-flip-card__face\u002d\u002dfront","style":{"spacing":{"padding":{"top":"var:preset|spacing|50","bottom":"var:preset|spacing|50","left":"var:preset|spacing|40","right":"var:preset|spacing|40"}},"border":{"radius":"0"},"color":{"gradient":"linear-gradient(135deg,rgb(15,23,42) 0%,rgb(30,41,59) 100%)"}}} -->
+<div class="wp-block-airo-wp-flip-card-face airo-wp-flip-card__face airo-wp-flip-card__front airo-wp-flip-card__face--front has-background" style="border-radius:0;background:linear-gradient(135deg,rgb(15,23,42) 0%,rgb(30,41,59) 100%);padding-top:var(--wp--preset--spacing--50);padding-right:var(--wp--preset--spacing--40);padding-bottom:var(--wp--preset--spacing--50);padding-left:var(--wp--preset--spacing--40)">
+<!-- wp:airo-wp/icon {"icon":"globe","dsgoAnimationEnabled":true,"dsgoEntranceAnimation":"zoomIn","dsgoAnimationDuration":500,"dsgoAnimationDelay":200,"style":{"color":{"text":"#d4af37"}}} /-->
+<!-- wp:heading {"level":3,"style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}},"textColor":"base","fontSize":"large"} -->
+<h3 class="wp-block-heading has-base-color has-text-color has-large-font-size" style="margin-top:var(--wp--preset--spacing--30)">Global Reach</h3>
+<!-- /wp:heading -->
+<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|10"}},"color":{"text":"rgba(255,255,255,0.6)"}},"fontSize":"small"} -->
+<p class="has-text-color has-small-font-size" style="color:rgba(255,255,255,0.6);margin-top:var(--wp--preset--spacing--10)">Hover to learn more</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:airo-wp/flip-card-face -->
+
+<!-- wp:airo-wp/flip-card-face {"side":"back","className":"airo-wp-flip-card__face\u002d\u002dback","backgroundColor":"base-2","style":{"spacing":{"padding":{"top":"var:preset|spacing|40","bottom":"var:preset|spacing|40","left":"var:preset|spacing|30","right":"var:preset|spacing|30"}},"border":{"radius":"0"}}} -->
+<div class="wp-block-airo-wp-flip-card-face airo-wp-flip-card__face airo-wp-flip-card__back airo-wp-flip-card__face--back has-base-2-background-color has-background" style="border-radius:0;padding-top:var(--wp--preset--spacing--40);padding-right:var(--wp--preset--spacing--30);padding-bottom:var(--wp--preset--spacing--40);padding-left:var(--wp--preset--spacing--30)">
+<!-- wp:heading {"level":3,"fontSize":"medium"} -->
+<h3 class="wp-block-heading has-medium-font-size">Global Reach</h3>
+<!-- /wp:heading -->
+<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|15"}}},"fontSize":"small"} -->
+<p class="has-small-font-size" style="margin-top:var(--wp--preset--spacing--15)">Access exclusive listings worldwide through our international network. From New York penthouses to Mediterranean villas, we connect you with extraordinary properties globally.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|15"}},"color":{"text":"#d4af37"},"typography":{"fontStyle":"normal","fontWeight":"600"}},"fontSize":"small"} -->
+<p class="has-text-color has-small-font-size" style="color:#d4af37;margin-top:var(--wp--preset--spacing--15);font-style:normal;font-weight:600">Learn more →</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:airo-wp/flip-card-face --></div></div>
+<!-- /wp:airo-wp/flip-card --></div></div>
+<!-- /wp:airo-wp/grid --></div></div>
+<!-- /wp:airo-wp/section -->',
+);

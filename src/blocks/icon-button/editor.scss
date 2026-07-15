@@ -1,0 +1,87 @@
+/**
+ * Icon Button Block - Editor Styles
+ *
+ * @since 1.0.0
+ */
+
+// Import frontend styles
+@use './style.scss' as *;
+
+.airo-wp-icon-button {
+	// Editor-specific styles
+
+	// Width auto: Ensure the button wrapper stays fit-content in the editor
+	// WordPress editor may try to force blocks to full width by default
+	&--width-auto {
+
+		.airo-wp-icon-button__wrapper {
+			width: fit-content !important;
+			max-width: fit-content !important;
+		}
+	}
+
+	.airo-wp-icon-button__wrapper {
+		// Make wrapper visually appear as a button in the editor
+		position: relative;
+
+		// Add editor-only indicator for non-link buttons
+		&:not(a)::after {
+			content: '🔗';
+			position: absolute;
+			top: -8px;
+			right: -8px;
+			font-size: 12px;
+			opacity: 0.3;
+			display: none;
+		}
+	}
+
+	// Show link indicator when button is selected and has no URL
+	&.is-selected .airo-wp-icon-button__wrapper:not(a)::after {
+		display: block;
+	}
+
+	// RichText input styling
+	.airo-wp-icon-button__text {
+		// Ensure text input doesn't have unwanted margins
+		margin: 0;
+		padding: 0;
+
+		&[data-rich-text-placeholder]::before {
+			opacity: 0.6;
+		}
+	}
+}
+
+// CRITICAL: Must duplicate from style.scss for editor/frontend parity
+// Parent container hover: apply button background when parent is hovered
+// Uses CSS variable set by parent container (Flex, Grid, Stack)
+// CRITICAL: Check if PARENT container has the variable, not the button itself
+// CRITICAL: Use __inner wrapper to avoid triggering on outer padding areas
+// CRITICAL: Use direct child selector (>) to only affect direct children
+// See style.scss: the --has-hover-button selector adds Section style-variation
+// support alongside the inline-var (attribute) gate.
+.airo-wp-flex[style*="--airo-wp-parent-hover-button-bg"]:hover .airo-wp-flex__inner > .airo-wp-icon-button .airo-wp-icon-button__wrapper,
+.airo-wp-grid[style*="--airo-wp-parent-hover-button-bg"]:hover .airo-wp-grid__inner > .airo-wp-icon-button .airo-wp-icon-button__wrapper,
+.airo-wp-stack[style*="--airo-wp-parent-hover-button-bg"]:hover .airo-wp-stack__inner > .airo-wp-icon-button .airo-wp-icon-button__wrapper,
+.airo-wp-flex--has-hover-button:hover .airo-wp-flex__inner > .airo-wp-icon-button .airo-wp-icon-button__wrapper,
+.airo-wp-grid--has-hover-button:hover .airo-wp-grid__inner > .airo-wp-icon-button .airo-wp-icon-button__wrapper,
+.airo-wp-stack--has-hover-button:hover .airo-wp-stack__inner > .airo-wp-icon-button .airo-wp-icon-button__wrapper {
+	background-color: var(--airo-wp-parent-hover-button-bg) !important;
+	transition: background-color 0.3s ease;
+}
+
+// CRITICAL: Prevent button from stretching vertically in stretch contexts (editor-only)
+// When a section is inside a grid, slide, or fifty-fifty, the parent's stretch/height
+// cascades through the section's flex layout, and WordPress applies height: 100% to
+// wp-element-button elements in layout contexts. This resets the button element's height.
+// Grid: align-items: stretch cascades through section flex layout.
+// Slide: height: 100% + flex: 1 on .airo-wp-slide__content cascades similarly.
+// Fifty-fifty: min-height on grid container + flex column content cascades to child blocks.
+// No frontend equivalent needed - frontend has no [data-block] wrappers and doesn't
+// inherit height: 100% from WordPress's editor layout system.
+.airo-wp-grid .airo-wp-icon-button,
+.airo-wp-slide .airo-wp-icon-button,
+.airo-wp-fifty-fifty .airo-wp-icon-button {
+	height: auto !important;
+}

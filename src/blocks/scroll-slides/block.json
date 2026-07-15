@@ -1,0 +1,126 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/scroll-slides",
+	"version": "1.0.0",
+	"title": "Scroll Slides",
+	"category": "airo-wp",
+	"description": "Full-screen scroll-pinned slideshow with crossfading content and navigation",
+	"keywords": [
+		"scroll",
+		"slides",
+		"fullscreen",
+		"pinned",
+		"showcase"
+	],
+	"textdomain": "airo-wp",
+	"icon": "images-alt",
+	"attributes": {
+		"minHeight": {
+			"type": "string",
+			"default": "100vh"
+		},
+		"maxHeight": {
+			"type": "string",
+			"default": "900px"
+		},
+		"constrainWidth": {
+			"type": "boolean",
+			"default": true
+		},
+		"contentWidth": {
+			"type": "string",
+			"default": ""
+		},
+		"overlayColor": {
+			"type": "string",
+			"default": ""
+		},
+		"overlayOpacity": {
+			"type": "number",
+			"default": 80
+		},
+		"overlayAutoApplied": {
+			"type": "boolean",
+			"default": false
+		},
+		"navColor": {
+			"type": "string",
+			"default": ""
+		},
+		"navActiveColor": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"usesContext": [
+		"airo-wp/queryId",
+		"airo-wp/querySource",
+		"airo-wp/queryPostType",
+		"airo-wp/currentItemId",
+		"airo-wp/currentItemType"
+	],
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"gradients": true
+		},
+		"background": {
+			"backgroundImage": true,
+			"backgroundSize": true,
+			"backgroundPosition": true,
+			"backgroundRepeat": true,
+			"__experimentalDefaultControls": {
+				"backgroundImage": true
+			}
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true
+		},
+		"layout": {
+			"allowEditing": false
+		}
+	},
+	"example": {
+		"attributes": {
+			"minHeight": "60vh"
+		},
+		"innerBlocks": [
+			{
+				"name": "airo-wp/scroll-slide",
+				"attributes": {
+					"navHeading": "Introduction"
+				}
+			},
+			{
+				"name": "airo-wp/scroll-slide",
+				"attributes": {
+					"navHeading": "Features"
+				}
+			},
+			{
+				"name": "airo-wp/scroll-slide",
+				"attributes": {
+					"navHeading": "Get Started"
+				}
+			}
+		]
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"viewScript": "file:./view.js",
+	"render": "file:./render.php"
+}

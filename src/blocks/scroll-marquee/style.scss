@@ -1,0 +1,74 @@
+/**
+ * Scrolling Gallery Block - Frontend Styles
+ * Displays rows of images that scroll horizontally based on page scroll
+ */
+
+.airo-wp-scroll-marquee {
+	--airo-wp-marquee-gap: 20px;
+	--airo-wp-marquee-row-gap: 20px;
+	--airo-wp-marquee-image-height: 200px;
+	--airo-wp-marquee-image-width: auto;
+	--airo-wp-marquee-object-fit: cover;
+
+	// Respect parent container width like other blocks
+	position: relative;
+	overflow: hidden; // Hide images that scroll beyond edges
+	display: flex;
+	flex-direction: column;
+	gap: var(--airo-wp-marquee-row-gap);
+	// Ensure this block doesn't affect page width
+	contain: layout;
+	max-width: 100%; // Prevent overflow in containers and on small screens
+	background: none;
+
+	// Only show a background when the user chooses one via block supports
+	&:not(.has-background) {
+		background-color: transparent;
+	}
+
+	// Note: scroll-marquee has align: false in block.json, so no alignment overrides
+
+	&__row {
+		position: relative;
+		width: 100%;
+		max-width: 100%; // Prevent overflow
+		overflow: hidden; // Hide overflow, no scrollbars
+		overflow-x: clip; // Modern: prevents scrollbar and doesn't create scroll container
+		// Isolate this row's layout
+		contain: layout;
+	}
+
+	&__track {
+		display: flex;
+		gap: var(--airo-wp-marquee-gap);
+		will-change: transform; // GPU acceleration for smooth performance
+		// Start with initial position for seamless appearance
+		transform: translateX(0);
+	}
+
+	&__track-segment {
+		display: flex;
+		gap: var(--airo-wp-marquee-gap);
+		flex-shrink: 0;
+	}
+
+	&__image {
+		height: var(--airo-wp-marquee-image-height, 200px);
+
+		// `auto` lets the intrinsic aspect ratio + fixed height drive the
+		// rendered width; an explicit length overrides it. object-fit is inert
+		// when width is auto but stays declared so fixed-width images still crop.
+		width: var(--airo-wp-marquee-image-width, auto);
+		object-fit: var(--airo-wp-marquee-object-fit, cover);
+		flex-shrink: 0; // Prevent images from shrinking
+		display: block;
+	}
+}
+
+// Accessibility: Respect user's motion preferences
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-scroll-marquee__track {
+		transform: none !important;
+	}
+}

@@ -1,0 +1,35 @@
+<?php
+/**
+ * Title: SaaS Transform CTA
+ * Slug: airo-wp/cta/cta-saas-transform
+ * Categories: airo-wp-cta
+ * Description: A bold call-to-action with shape dividers encouraging users to transform their workflow
+ * Keywords: cta, saas, transform, workflow, signup, dark, shape divider
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+return array(
+	'title'      => __( 'SaaS Transform CTA', 'airo-wp' ),
+	'categories' => array( 'airo-wp-cta' ),
+	'viewportWidth' => 1200,
+	'content'    => '<!-- wp:airo-wp/section {"style":{"spacing":{"padding":{"top":"var:preset|spacing|50","bottom":"var:preset|spacing|80","left":"var:preset|spacing|30","right":"var:preset|spacing|30"}}},"shapeDividerTop":"curve","shapeDividerTopFlipY":true,"backgroundColor":"contrast","textColor":"base"} -->
+<div class="wp-block-airo-wp-section alignfull airo-wp-stack airo-wp-stack--has-shape-divider has-base-color has-contrast-background-color has-text-color has-background" style="padding-top:var(--wp--preset--spacing--50);padding-right:var(--wp--preset--spacing--30);padding-bottom:var(--wp--preset--spacing--80);padding-left:var(--wp--preset--spacing--30)"><div class="airo-wp-shape-divider airo-wp-shape-divider--top is-shape-curve is-flip-y" aria-hidden="true"></div><div class="airo-wp-stack__inner" style="max-width:var(--wp--style--global--content-size, 1140px);margin-left:auto;margin-right:auto;padding-top:100px"><!-- wp:heading {"textAlign":"center","style":{"typography":{"fontStyle":"normal","fontWeight":"700"}},"fontSize":"x-large"} -->
+<h2 class="wp-block-heading has-text-align-center has-x-large-font-size" style="font-style:normal;font-weight:700">Ready to Transform Your Workflow?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph {"align":"center","style":{"spacing":{"margin":{"top":"var:preset|spacing|20"}},"color":{"text":"#94a3b8"}},"fontSize":"medium"} -->
+<p class="has-text-align-center has-text-color has-medium-font-size" style="color:#94a3b8;margin-top:var(--wp--preset--spacing--20)">Join thousands of teams already using our platform to ship better products faster. Start your free trial today.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:airo-wp/row {"style":{"spacing":{"margin":{"top":"var:preset|spacing|40"},"blockGap":"var:preset|spacing|20","padding":{"top":"0","bottom":"0","left":"0","right":"0"}}},"layout":{"type":"flex","justifyContent":"center","flexWrap":"wrap"}} -->
+<div class="wp-block-airo-wp-row alignfull airo-wp-flex airo-wp-no-width-constraint" style="margin-top:var(--wp--preset--spacing--40);padding-top:0;padding-right:0;padding-bottom:0;padding-left:0"><div class="airo-wp-flex__inner" style="display:flex;justify-content:center;flex-wrap:wrap;gap:var(--wp--preset--spacing--20)"><!-- wp:airo-wp/icon-button {"text":"Start Free Trial","url":"#trial","icon":"arrow-right","iconPosition":"end","iconGap":"8px","className":"has-text-color has-background","style":{"spacing":{"padding":{"top":"var:preset|spacing|20","bottom":"var:preset|spacing|20","left":"var:preset|spacing|50","right":"var:preset|spacing|50"}},"border":{"radius":"8px"},"color":{"background":"#8b5cf6","text":"#ffffff"}}} -->
+<div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left has-text-color has-background"><a class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-text-color has-background airo-wp-icon-button--has-icon airo-wp-icon-button--icon-end" style="border-radius:8px;color:#ffffff;background-color:#8b5cf6;gap:8px;padding-top:var(--wp--preset--spacing--20);padding-right:var(--wp--preset--spacing--50);padding-bottom:var(--wp--preset--spacing--20);padding-left:var(--wp--preset--spacing--50)" href="#trial" target="_self"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="arrow-right"></span><span class="airo-wp-icon-button__text">Start Free Trial</span></a></div>
+<!-- /wp:airo-wp/icon-button -->
+
+<!-- wp:airo-wp/icon-button {"text":"Talk to Sales","url":"#sales","icon":"","iconPosition":"none","iconGap":"8px","className":"has-text-color has-background","style":{"spacing":{"padding":{"top":"var:preset|spacing|20","bottom":"var:preset|spacing|20","left":"var:preset|spacing|50","right":"var:preset|spacing|50"}},"border":{"radius":"8px","width":"1px","color":"#475569"},"color":{"background":"transparent","text":"#e2e8f0"}}} -->
+<div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left has-text-color has-background"><a class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-border-color has-text-color has-background" style="border-color:#475569;border-width:1px;border-radius:8px;color:#e2e8f0;background-color:transparent;padding-top:var(--wp--preset--spacing--20);padding-right:var(--wp--preset--spacing--50);padding-bottom:var(--wp--preset--spacing--20);padding-left:var(--wp--preset--spacing--50)" href="#sales" target="_self"><span class="airo-wp-icon-button__text">Talk to Sales</span></a></div>
+<!-- /wp:airo-wp/icon-button --></div></div>
+<!-- /wp:airo-wp/row --></div></div>
+<!-- /wp:airo-wp/section -->',
+);

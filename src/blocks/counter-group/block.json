@@ -1,0 +1,143 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/counter-group",
+	"version": "1.0.0",
+	"title": "Counter Group",
+	"category": "airo-wp",
+	"description": "Display animated statistics and numbers that count up on scroll",
+	"keywords": [
+		"counter",
+		"stats",
+		"statistics",
+		"numbers",
+		"animated"
+	],
+	"textdomain": "airo-wp",
+	"icon": "chart-area",
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"html": false,
+		"inserter": true,
+		"spacing": {
+			"margin": true,
+			"padding": true,
+			"blockGap": false,
+			"__experimentalDefaultControls": {
+				"padding": true
+			}
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"__experimentalDefaultControls": {
+				"background": true,
+				"text": true
+			}
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalDefaultControls": {
+				"fontSize": true
+			}
+		}
+	},
+	"attributes": {
+		"columns": {
+			"type": "number",
+			"default": 3
+		},
+		"columnsTablet": {
+			"type": "number",
+			"default": 2
+		},
+		"columnsMobile": {
+			"type": "number",
+			"default": 1
+		},
+		"gap": {
+			"type": "string",
+			"default": "32px"
+		},
+		"alignContent": {
+			"type": "string",
+			"default": "center"
+		},
+		"animationDuration": {
+			"type": "number",
+			"default": 2
+		},
+		"animationDelay": {
+			"type": "number",
+			"default": 0
+		},
+		"animationEasing": {
+			"type": "string",
+			"default": "easeOutQuad"
+		},
+		"useGrouping": {
+			"type": "boolean",
+			"default": true
+		},
+		"separator": {
+			"type": "string",
+			"default": ","
+		},
+		"decimal": {
+			"type": "string",
+			"default": "."
+		},
+		"hoverColor": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"providesContext": {
+		"airo-wp/counterGroup/animationDuration": "animationDuration",
+		"airo-wp/counterGroup/animationDelay": "animationDelay",
+		"airo-wp/counterGroup/animationEasing": "animationEasing",
+		"airo-wp/counterGroup/useGrouping": "useGrouping",
+		"airo-wp/counterGroup/separator": "separator",
+		"airo-wp/counterGroup/decimal": "decimal",
+		"airo-wp/counterGroup/hoverColor": "hoverColor"
+	},
+	"example": {
+		"innerBlocks": [
+			{
+				"name": "airo-wp/counter",
+				"attributes": {
+					"endValue": 500,
+					"suffix": "+",
+					"label": "Happy Customers"
+				}
+			},
+			{
+				"name": "airo-wp/counter",
+				"attributes": {
+					"prefix": "$",
+					"endValue": 1000000,
+					"suffix": "+",
+					"label": "Revenue Generated"
+				}
+			},
+			{
+				"name": "airo-wp/counter",
+				"attributes": {
+					"endValue": 99.9,
+					"decimals": 1,
+					"suffix": "%",
+					"label": "Uptime"
+				}
+			}
+		]
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./index.css",
+	"viewScript": "file:./view.js"
+}

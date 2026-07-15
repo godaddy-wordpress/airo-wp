@@ -1,0 +1,129 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/scroll-marquee",
+	"version": "1.2.0",
+	"title": "Scrolling Gallery",
+	"category": "airo-wp",
+	"description": "Display rows of images that scroll horizontally in alternating directions based on page scroll. For best performance, use optimized images (WebP format recommended) and limit to 20 images or less.",
+	"keywords": [
+		"scrolling",
+		"gallery",
+		"images",
+		"parallax",
+		"scroll",
+		"infinite"
+	],
+	"textdomain": "airo-wp",
+	"icon": "controls-repeat",
+	"supports": {
+		"anchor": true,
+		"align": false,
+		"html": false,
+		"spacing": {
+			"margin": false,
+			"padding": false,
+			"blockGap": true
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"gradients": true
+		},
+		"__experimentalBorder": {
+			"radius": true,
+			"__experimentalSkipSerialization": true,
+			"__experimentalDefaultControls": {
+				"radius": true
+			}
+		}
+	},
+	"attributes": {
+		"rows": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"images": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "number"
+								},
+								"url": {
+									"type": "string"
+								},
+								"alt": {
+									"type": "string"
+								}
+							}
+						}
+					},
+					"direction": {
+						"type": "string"
+					}
+				}
+			},
+			"default": [
+				{
+					"images": [],
+					"direction": "left"
+				}
+			]
+		},
+		"scrollSpeed": {
+			"type": "number",
+			"default": 0.5
+		},
+		"imageHeight": {
+			"type": "string",
+			"default": "200px"
+		},
+		"imageWidth": {
+			"type": "string",
+			"default": "auto"
+		},
+		"objectFit": {
+			"type": "string",
+			"default": "cover",
+			"enum": [ "cover", "contain", "fill", "scale-down" ]
+		},
+		"gap": {
+			"type": "string",
+			"default": "20px"
+		},
+		"rowGap": {
+			"type": "string",
+			"default": "20px"
+		}
+	},
+	"example": {
+		"attributes": {
+			"rows": [
+				{
+					"images": [
+						{
+							"url": "",
+							"alt": "Example image 1"
+						},
+						{
+							"url": "",
+							"alt": "Example image 2"
+						},
+						{
+							"url": "",
+							"alt": "Example image 3"
+						}
+					],
+					"direction": "left"
+				}
+			]
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./index.css",
+	"viewScript": "file:./view.js"
+}

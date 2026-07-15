@@ -1,0 +1,576 @@
+/**
+ * DSG Section Block - Editor Styles
+ *
+ * Minimal editor-only styles - WordPress handles flex layout through .is-layout-flex class.
+ *
+ * @package airo-wp
+ */
+
+@use './styles/shape-divider';
+
+// SCSS Variables for inline/shrink-wrap blocks
+// These blocks should align based on parent container settings rather than stretch to full width
+// Used across text-align, content-justification, and explicit alignment rules
+
+// Frontend block classes (for save.js output)
+// NOTE: .wp-block-buttons is intentionally excluded — it's a layout container
+// that needs full width for its justify-content to position child buttons
+// NOTE: Pill, Icon, and Icon Button are intentionally excluded — their root
+// is now a block-level `.airo-wp-justify` positioning wrapper (see
+// src/styles/_justification.scss), which core's constrained layout already
+// caps at the content column exactly like a paragraph. An `align-self` from
+// this list would fight `.airo-wp-justify`'s own cross-axis handling; the
+// editor gets that fit-content sizing for free from
+// `.airo-wp-stack__inner > .wp-block { width: 100% }` plus `.airo-wp-justify`
+// itself, with no dedicated align-self rule needed. Modal Trigger was never
+// added to these lists.
+$inline-block-classes: (
+	'.airo-wp-counter',
+	'.wp-block-airo-wp-counter',
+	'.wp-block-button'
+);
+
+// Editor data-type attributes (for edit.js output - blocks are wrapped in [data-type] elements)
+// NOTE: core/buttons is intentionally excluded — it's a layout container, not an inline block
+// NOTE: airo-wp/pill, airo-wp/icon, and airo-wp/icon-button are
+// intentionally excluded — see $inline-block-classes above.
+$inline-block-data-types: (
+	'[data-type="airo-wp/counter"]',
+	'[data-type="core/button"]'
+);
+
+.airo-wp-stack {
+	// CRITICAL: Ensure width includes padding to prevent overflow
+	box-sizing: border-box;
+
+	// CRITICAL: Flex column layout so .airo-wp-stack__inner can fill available height
+	// This enables vertical alignment (top/center/bottom/space-between) to work
+	// when the section has a min-height set. Shape dividers are position: absolute
+	// so they don't participate in this flex layout.
+	display: flex;
+	flex-direction: column;
+
+	// NOTE: No overflow restrictions — allows nav dropdowns, sticky elements,
+	// and fonts to render without clipping. Shape dividers handle their own
+	// overflow via .airo-wp-stack--has-shape-divider { overflow-x: clip }.
+
+	// Visual indicator in editor
+	position: relative;
+
+	// Hover background overlay - works with both gradients and solid colors
+	// Using ::after pseudo-element allows smooth opacity transition.
+	// Always present but transparent until --airo-wp-hover-bg-color is set, so the
+	// color may come from an inline attribute OR a section style variation's
+	// stylesheet. Mirrors src/blocks/section/style.scss.
+	&::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: var(--airo-wp-hover-bg-color, transparent);
+		opacity: 0;
+		transition: opacity 0.3s ease;
+		pointer-events: none;
+		z-index: 0;
+		border-radius: inherit;
+	}
+
+	// Ensure content is above hover overlay
+	// IMPORTANT: Exclude shape dividers - they need position: absolute to stay at edges
+	> *:not(.airo-wp-stack__inner):not(.airo-wp-shape-divider) {
+		position: relative;
+		z-index: 3;
+	}
+
+	/**
+	 * Background overlay for editor
+	 * Applied when overlay color is set
+	 */
+	&.airo-wp-stack--has-overlay {
+
+		&::before {
+			content: '';
+			position: absolute !important;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background-color: var(--airo-wp-overlay-color) !important;
+			opacity: var(--airo-wp-overlay-opacity, 0.8) !important;
+			pointer-events: none;
+			z-index: 1;
+			border-radius: inherit;
+		}
+
+		/* Ensure content is above overlay */
+		> .airo-wp-stack__inner {
+			position: relative;
+			z-index: 2;
+		}
+	}
+
+	// CRITICAL: Inner container must be full width for layout to work
+	// When constrainWidth is enabled, inline styles will override with max-width
+	.airo-wp-stack__inner {
+		width: 100%;
+		// CRITICAL: Fill available height so justify-content (vertical alignment) works
+		// Without this, the inner div shrinks to content height and top/center/bottom/space-between
+		// have no effect because there's no extra space to distribute
+		flex-grow: 1;
+		// Ensure inner container doesn't create positioning context for absolute children
+		position: static;
+	}
+
+	// When width constraints ARE enabled (no airo-wp-no-width-constraint class)
+	// Ensure child blocks don't exceed the inner container's max-width
+	&:not(.airo-wp-no-width-constraint) .airo-wp-stack__inner.is-layout-flex > [data-block] {
+		// Allow child blocks to be constrained by parent's max-width
+		max-width: 100%;
+
+		// Reset any forced full-width from WordPress or other sources
+		> * {
+			max-width: 100%;
+		}
+	}
+
+	// Buttons container is block-level in constrained sections too
+	&:not(.airo-wp-no-width-constraint) .airo-wp-stack__inner.is-layout-flex {
+
+		> [data-type="core/buttons"] {
+			align-self: stretch;
+		}
+	}
+
+	// CRITICAL: When section has content, position appender at outer container corner
+	// Target from outer container to position relative to main block wrapper
+	// Use :not(:only-child) to exclude empty section state
+	/* stylelint-disable-next-line selector-class-pattern */
+	.airo-wp-stack__inner > .block-list-appender:not(:only-child) {
+		// Remove from flex flow and position at outer container corner
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		// Allow inserter button to position naturally
+		width: auto;
+		height: auto;
+	}
+
+	// CRITICAL: When section is empty, show normal appender
+	/* stylelint-disable-next-line selector-class-pattern */
+	.airo-wp-stack__inner > .block-list-appender:only-child {
+		position: static; // Reset positioning
+	}
+
+	// CRITICAL: When Section is nested inside another container, force full width (EDITOR)
+	// WordPress applies constrained layout which can limit width
+	// This ensures nested Sections take full width of their parent container
+	// In editor, blocks are wrapped in [data-block] elements
+	.airo-wp-stack__inner > &,
+	.airo-wp-stack__inner > [data-block] &,
+	.airo-wp-flex__inner > &,
+	.airo-wp-flex__inner > [data-block] &,
+	.airo-wp-grid__inner > &,
+	.airo-wp-grid__inner > [data-block] & {
+		width: 100% !important;
+
+		// Only strip inner constraints when the nested section itself has no width constraint
+		// Sections with constrainWidth enabled need their max-width + margin:auto preserved
+		&.airo-wp-no-width-constraint > .airo-wp-stack__inner {
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+	}
+
+	// CRITICAL: Disable float for all children in flex layout (must match style.scss)
+	// WordPress core CSS applies float for alignment classes (.alignleft, .alignright)
+	// but float should not work inside flex containers
+	// NOTE: .is-layout-flex is on the airo-wp-stack__inner element, not the outer wrapper
+	// In editor, children are wrapped in [data-block] elements
+	.airo-wp-stack__inner.is-layout-flex > *,
+	.airo-wp-stack__inner.is-layout-flex > [data-block] > * {
+		float: none !important;
+	}
+
+	// CRITICAL: In editor, blocks are wrapped in [data-block] elements inside .airo-wp-stack__inner
+	// NOTE: .is-layout-flex is on the airo-wp-stack__inner element, not the outer wrapper
+	// ONLY apply when section has NO width constraints (airo-wp-no-width-constraint class)
+	&.airo-wp-no-width-constraint .airo-wp-stack__inner.is-layout-flex > [data-block] {
+		// Auto width by default for alignment to work
+		width: auto;
+		max-width: 100%;
+
+		// CRITICAL: Block-level element wrappers should take full width
+		// This makes the wrapper stretch so the inner block can use its full width
+		&[data-type="core/heading"],
+		&[data-type="core/paragraph"],
+		&[data-type="core/group"],
+		&[data-type="core/image"],
+		&[data-type="core/video"],
+		&[data-type="core/embed"],
+		&[data-type="core/table"],
+		&[data-type="core/list"],
+		&[data-type="core/buttons"],
+		&[data-type="airo-wp/grid"],
+		&[data-type="airo-wp/section"],
+		&[data-type="airo-wp/row"],
+		&[data-type="airo-wp/stack"],
+		&[data-type="airo-wp/flex"],
+		&[data-type="airo-wp/tabs"],
+		&[data-type="airo-wp/accordion"],
+		&[data-type="airo-wp/blobs"],
+		&[data-type="airo-wp/scroll-marquee"] {
+			width: 100%;
+
+			> :where(
+					.wp-block-heading,
+					.wp-block-paragraph,
+					.wp-block-group,
+					.wp-block-image,
+					.wp-block-video,
+					.wp-block-embed,
+					.wp-block-table,
+					.wp-block-list,
+					.wp-block-buttons,
+					.airo-wp-grid,
+					.wp-block-airo-wp-grid,
+					.airo-wp-stack,
+					.wp-block-airo-wp-stack,
+					.airo-wp-flex,
+					.wp-block-airo-wp-flex,
+					.wp-block-airo-wp-row,
+					.airo-wp-tabs,
+					.wp-block-airo-wp-tabs,
+					.airo-wp-accordion,
+					.wp-block-airo-wp-accordion,
+					.airo-wp-scroll-marquee,
+					.wp-block-airo-wp-scroll-marquee
+				):not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide) {
+				width: 100% !important;
+				max-width: none !important;
+				margin-left: 0 !important;
+				margin-right: 0 !important;
+			}
+		}
+
+		// Old group structure (pre-6.0) with __inner-container
+		&[data-type="core/group"]
+			> .wp-block-group
+			> .wp-block-group__inner-container {
+			width: 100% !important;
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+
+		&[data-type="core/group"]
+			> .wp-block-group.wp-block-group-is-layout-constrained
+			> .wp-block-group__inner-container {
+			width: 100% !important;
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+
+		// Modern group structure (6.0+) without __inner-container
+		// Target all layout types: flow, constrained, flex, grid
+		// The .wp-block-group class is on the SAME element as data-type="core/group"
+		&[data-type="core/group"].wp-block-group {
+			width: 100% !important;
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+
+			// Ensure the block takes full width regardless of content
+			min-width: 100% !important;
+		}
+	}
+
+	// Show outline when selected (editor-only)
+	&.is-selected {
+		outline: 1px dashed rgba(37, 99, 235, 0.3);
+		outline-offset: -1px;
+	}
+
+	// Hover background and text colors using CSS custom properties (must match style.scss)
+	// Fade in the hover background overlay (::after). Safe when unset — the layer
+	// is transparent. Works with an inline attribute or a variation.
+	&:hover::after {
+		opacity: 1;
+	}
+
+	// Hover text: inline-gated for the attribute, class-gated (--has-hover-text)
+	// for an is-style-hover-text-* variation whose stylesheet supplies the var.
+	// Must match style.scss.
+	&[style*="--airo-wp-hover-text-color"]:hover,
+	&--has-hover-text:hover {
+		color: var(--airo-wp-hover-text-color) !important;
+
+		// Apply text color to all text elements for consistency
+		h1, h2, h3, h4, h5, h6, p, a, span, li, td, th,
+		.wp-block-heading,
+		.wp-block-paragraph {
+			color: var(--airo-wp-hover-text-color) !important;
+		}
+	}
+}
+
+// CRITICAL: Override WordPress's generated contentSize constraints for inline blocks (editor)
+// WordPress generates rules like .wp-container-{block}-is-layout-{hash} > :where(...) { max-width: 1200px }
+// We need to override these for blocks that should shrink to content
+
+// Icon, Icon Button, and Pill are deliberately NOT listed here — the editor
+// mirror of the same exclusion in style.scss. Their `.airo-wp-justify` wrapper
+// must keep WordPress's generated content-size cap; that cap is exactly what
+// makes the wrapper land on the content column (see
+// src/styles/_justification.scss). `max-width: none` here would reintroduce
+// the escape bug the wrapper exists to fix. Counter and core/button are
+// untouched.
+[class*="wp-container-airo-wp-stack"] {
+
+	> [data-block] {
+
+		> .airo-wp-counter,
+		> .wp-block-airo-wp-counter,
+		> .wp-block-button {
+			width: auto !important;
+			max-width: none !important;
+		}
+	}
+}
+
+// CRITICAL: Editor-only fix for inline block [data-block] wrappers stretching inside
+// grid > section or slide > section contexts.
+// Grid: items stretch to fill their cells via align-items: stretch.
+// Slide: height: 100% + flex: 1 on .airo-wp-slide__content forces children to fill height.
+// Both cascade through the section's flex layout — .airo-wp-stack__inner fills the parent
+// (flex-grow: 1), leaving extra vertical space. WordPress may apply flex-grow or height
+// to [data-block] wrappers, causing inline blocks to expand to fill the section height.
+// No frontend equivalent needed - [data-type] selectors only exist in the editor DOM.
+// NOTE: Uses descendant selectors (not child combinators) intentionally, because the section
+// may be nested deeper inside the parent (e.g., grid > flex > section, slide > section).
+// NOTE: Must include all types from $inline-block-data-types to prevent stretching.
+.airo-wp-grid .airo-wp-stack .airo-wp-stack__inner.is-layout-flex,
+.airo-wp-slide .airo-wp-stack .airo-wp-stack__inner.is-layout-flex {
+
+	> [data-type="airo-wp/icon-button"],
+	> [data-type="airo-wp/icon"],
+	> [data-type="airo-wp/counter"],
+	> [data-type="airo-wp/pill"],
+	> [data-type="core/button"] {
+		flex-grow: 0 !important;
+		height: auto !important;
+	}
+}
+
+// Text alignment helpers for inline-width children (editor)
+.airo-wp-stack,
+.wp-block-airo-wp-stack {
+
+	&,
+	&.has-text-align-left,
+	&[style*='text-align:left'] {
+
+		.airo-wp-stack__inner.is-layout-flex > :where(#{$inline-block-classes}) {
+			align-self: flex-start;
+		}
+
+		// Editor: target inline blocks by data-type attribute
+		.airo-wp-stack__inner.is-layout-flex > :where(#{$inline-block-data-types}) {
+			align-self: flex-start;
+		}
+	}
+
+	&.has-text-align-center,
+	&[style*='text-align:center'] {
+
+		.airo-wp-stack__inner.is-layout-flex > :where(#{$inline-block-classes}) {
+			align-self: center;
+		}
+
+		// Editor: target inline blocks by data-type attribute
+		.airo-wp-stack__inner.is-layout-flex > :where(#{$inline-block-data-types}) {
+			align-self: center;
+		}
+	}
+
+	&.has-text-align-right,
+	&[style*='text-align:right'] {
+
+		.airo-wp-stack__inner.is-layout-flex > :where(#{$inline-block-classes}) {
+			align-self: flex-end;
+		}
+
+		// Editor: target inline blocks by data-type attribute
+		.airo-wp-stack__inner.is-layout-flex > :where(#{$inline-block-data-types}) {
+			align-self: flex-end;
+		}
+	}
+
+	.airo-wp-stack__inner.is-layout-flex {
+
+		// NOTE: Do NOT set align-items: stretch here — it's the browser default,
+		// and an explicit declaration would override WordPress's layout-generated
+		// align-items (e.g., from content justification), breaking alignment inheritance.
+
+		// EDITOR: Blocks are wrapped in [data-block] elements, so alignment must target
+		// both the block class (frontend parity) AND the [data-block] wrapper (editor).
+
+		// CRITICAL: All block-level children stretch to full width by default.
+		// When section has content justification (e.g., center), WordPress applies
+		// align-items: center which shrinks ALL children to content width. This
+		// breaks paragraphs, headings, and other text blocks — even those without
+		// an explicit has-text-align-* class (i.e., default left-aligned text).
+		// In the editor, blocks are wrapped in [data-block] elements so > * covers
+		// those wrappers. Using > * without !important so inline block rules (pill,
+		// icon, button, counter) can override via higher specificity or !important.
+		> * {
+			align-self: stretch;
+		}
+
+		// Section center alignment - apply to inline blocks WITHOUT their own alignment
+		&.is-content-justification-center {
+
+			> :where(#{$inline-block-classes}):not(.alignleft):not(.alignright):not(.aligncenter) {
+				align-self: center;
+			}
+
+			// Editor: target inline blocks by data-type attribute
+			> #{$inline-block-data-types} {
+				align-self: center;
+			}
+		}
+
+		// Section right alignment - apply to inline blocks WITHOUT their own alignment
+		&.is-content-justification-right {
+
+			> :where(#{$inline-block-classes}):not(.alignleft):not(.alignright):not(.aligncenter) {
+				align-self: flex-end;
+			}
+
+			// Editor: target inline blocks by data-type attribute
+			> #{$inline-block-data-types} {
+				align-self: flex-end;
+			}
+		}
+
+		// Section left alignment - apply to inline blocks WITHOUT their own alignment
+		&.is-content-justification-left {
+
+			> :where(#{$inline-block-classes}):not(.alignleft):not(.alignright):not(.aligncenter) {
+				align-self: flex-start;
+			}
+
+			// Editor: target inline blocks by data-type attribute
+			> #{$inline-block-data-types} {
+				align-self: flex-start;
+			}
+		}
+
+		// Inline blocks WITH explicit alignment - override section alignment
+		> :where(
+			.wp-block-airo-wp-icon,
+			.wp-block-airo-wp-icon-button,
+			.wp-block-airo-wp-pill,
+			.wp-block-airo-wp-counter
+		).aligncenter {
+			align-self: center !important;
+		}
+
+		> :where(
+			.wp-block-airo-wp-icon,
+			.wp-block-airo-wp-icon-button,
+			.wp-block-airo-wp-pill,
+			.wp-block-airo-wp-counter
+		).alignleft {
+			align-self: flex-start !important;
+		}
+
+		> :where(
+			.wp-block-airo-wp-icon,
+			.wp-block-airo-wp-icon-button,
+			.wp-block-airo-wp-pill,
+			.wp-block-airo-wp-counter
+		).alignright {
+			align-self: flex-end !important;
+		}
+
+		// Editor: [data-block] wrappers WITH explicit alignment on inner block
+		> [data-block]:has(> .aligncenter:where(
+			.wp-block-airo-wp-icon,
+			.wp-block-airo-wp-icon-button,
+			.wp-block-airo-wp-pill,
+			.wp-block-airo-wp-counter,
+			.wp-block-button,
+			.wp-block-buttons
+		)) {
+			align-self: center !important;
+		}
+
+		> [data-block]:has(> .alignleft:where(
+			.wp-block-airo-wp-icon,
+			.wp-block-airo-wp-icon-button,
+			.wp-block-airo-wp-pill,
+			.wp-block-airo-wp-counter,
+			.wp-block-button,
+			.wp-block-buttons
+		)) {
+			align-self: flex-start !important;
+		}
+
+		> [data-block]:has(> .alignright:where(
+			.wp-block-airo-wp-icon,
+			.wp-block-airo-wp-icon-button,
+			.wp-block-airo-wp-pill,
+			.wp-block-airo-wp-counter,
+			.wp-block-button,
+			.wp-block-buttons
+		)) {
+			align-self: flex-end !important;
+		}
+
+		// Block-level elements WITH explicit alignment
+		> .aligncenter:not(.wp-block-airo-wp-icon):not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-pill):not(.wp-block-airo-wp-counter) {
+			align-self: center !important;
+		}
+
+		> .alignright:not(.wp-block-airo-wp-icon):not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-pill):not(.wp-block-airo-wp-counter) {
+			align-self: flex-end !important;
+		}
+
+		> .alignleft:not(.wp-block-airo-wp-icon):not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-pill):not(.wp-block-airo-wp-counter) {
+			align-self: flex-start !important;
+		}
+
+		> .alignwide,
+		> .alignfull {
+			align-self: stretch !important;
+			width: 100% !important;
+		}
+	}
+}
+
+// CRITICAL: When Stack is full-width (alignfull) AND has no width constraints, allow child blocks to go full-width (editor)
+// WordPress constrains children with max-width: 1200px by default via generated classes like:
+// .wp-container-airo-wp-stack-is-layout-{hash} > :where(:not(.alignleft):not(.alignright):not(.alignfull))
+// In the EDITOR: WordPress container class is directly on the Stack block itself
+// In the FRONTEND: WordPress container class is on the inner .airo-wp-stack__inner div
+// We need higher specificity to override this
+// IMPORTANT: Only apply when .airo-wp-no-width-constraint class is present (constrainWidth is disabled)
+.airo-wp-stack.alignfull.airo-wp-no-width-constraint[class*="wp-container-"] {
+
+	// Target all direct children that aren't explicitly aligned
+	// In editor, children are wrapped in [data-block] elements
+	> [data-block]:not(.alignleft):not(.alignright) {
+		max-width: none !important;
+		margin-left: 0 !important;
+		margin-right: 0 !important;
+	}
+}
+
+// Shape Divider Styles (Editor) — identical to the frontend; the entire
+// ruleset lives in the shared partial @used at the top of this file. No
+// editor-specific divider variant exists, so there is nothing to override
+// here.

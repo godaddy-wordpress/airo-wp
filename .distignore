@@ -1,0 +1,50 @@
+# Files and directories excluded from the distributable plugin archive.
+# This file documents what does NOT ship to end users.
+
+# Version control
+.git
+.gitignore
+.gitkeep
+
+# CI / development infrastructure
+.github
+.dev
+.claude
+.idea
+.vscode
+.worktrees
+.dockerignore
+.phpunit.result.cache
+.DS_Store
+
+# Documentation (readme.txt is the WP standard)
+docs
+CONTRIBUTORS.md
+AGENTS.md
+CLAUDE.md
+README.md
+
+# Build tooling
+bin
+Makefile
+composer.lock
+phpcs.xml
+phpunit.xml.dist
+
+# Node.js / Playwright (e2e only)
+node_modules
+package.json
+package-lock.json
+tsconfig.json
+playwright.config.ts
+test-results
+playwright-report
+
+# Build config (source and compiled blocks both ship)
+webpack.config.js
+
+# Build output
+builds
+
+# Tests
+tests

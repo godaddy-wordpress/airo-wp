@@ -1,0 +1,49 @@
+<?php
+/**
+ * Dynamic Query Results — renders the item grid.
+ *
+ * This block lives inside airo-wp/query. The parent's render.php invokes
+ * us during its custom rendering loop and supplies the pre-computed results
+ * HTML via $GLOBALS['airowp_query_results_html'][ queryId ]. If we run
+ * standalone (no parent context), we emit nothing — the block is not meant
+ * to be used on its own.
+ *
+ * @package airo-wp
+ * @since 2.6.0
+ *
+ * @param array    $attributes Block attributes.
+ * @param string   $content    Unused — server-side rendered.
+ * @param WP_Block $block      Block instance (carries context).
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+if ( ! function_exists( 'airowp_render_query_results' ) ) {
+	/**
+	 * Render the Query Results block.
+	 *
+	 * @param array    $attributes Block attributes.
+	 * @param string   $content    Inner block content.
+	 * @param WP_Block $block      Block instance.
+	 * @return void
+	 */
+	function airowp_render_query_results( $attributes, $content, $block ) {
+		$query_id = isset( $block->context['airo-wp/queryId'] )
+			? sanitize_key( (string) $block->context['airo-wp/queryId'] )
+			: '';
+
+		if ( '' === $query_id ) {
+			return;
+		}
+
+		// The parent Query block's render.php pre-renders the items grid and stashes
+		// the HTML here keyed by queryId. That lets the parent run a single WP_Query
+		// and populate the state registry (for sibling pagination / no-results)
+		// before any child block renders.
+		if ( isset( $GLOBALS['airowp_query_results_html'][ $query_id ] ) ) {
+			echo $GLOBALS['airowp_query_results_html'][ $query_id ]; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- pre-rendered by parent query block's render.php.
+		}
+	}
+}
+
+airowp_render_query_results( $attributes, $content, $block );

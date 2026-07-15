@@ -1,0 +1,265 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/section",
+	"version": "1.0.0",
+	"title": "Section",
+	"category": "airo-wp",
+	"description": "Vertical stacking container for sections and content areas. Perfect for building layouts with consistent spacing. Can be nested within other sections for complex page structures.",
+	"keywords": [
+		"section",
+		"stack",
+		"vertical",
+		"layout",
+		"container",
+		"content area"
+	],
+	"textdomain": "airo-wp",
+	"icon": "align-wide",
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"html": false,
+		"inserter": true,
+		"layout": {
+			"allowSwitching": false,
+			"allowInheriting": false,
+			"allowEditing": true,
+			"allowSizingOnChildren": true,
+			"default": {
+				"type": "flex",
+				"orientation": "vertical",
+				"justifyContent": "center"
+			}
+		},
+		"spacing": {
+			"margin": true,
+			"padding": true,
+			"blockGap": true,
+			"__experimentalDefaultControls": {
+				"padding": true,
+				"blockGap": true
+			}
+		},
+		"dimensions": {
+			"minHeight": true
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"gradients": true,
+			"link": true,
+			"__experimentalDefaultControls": {
+				"background": true,
+				"text": true
+			}
+		},
+		"background": {
+			"backgroundImage": true,
+			"backgroundSize": true,
+			"backgroundPosition": true,
+			"backgroundRepeat": true,
+			"__experimentalDefaultControls": {
+				"backgroundImage": true
+			}
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalDefaultControls": {
+				"fontSize": true
+			}
+		},
+		"shadow": true,
+		"position": {
+			"sticky": true
+		},
+		"__experimentalBorder": {
+			"color": true,
+			"radius": true,
+			"style": true,
+			"width": true,
+			"__experimentalDefaultControls": {
+				"color": true,
+				"radius": true,
+				"style": true,
+				"width": true
+			}
+		}
+	},
+	"attributes": {
+		"align": {
+			"type": "string",
+			"default": "full"
+		},
+		"tagName": {
+			"type": "string",
+			"default": "div"
+		},
+		"constrainWidth": {
+			"type": "boolean",
+			"default": true
+		},
+		"contentWidth": {
+			"type": "string",
+			"default": ""
+		},
+		"style": {
+			"type": "object",
+			"default": {
+				"spacing": {
+					"padding": {
+						"top": "var:preset|spacing|50",
+						"bottom": "var:preset|spacing|50",
+						"left": "var:preset|spacing|30",
+						"right": "var:preset|spacing|30"
+					}
+				}
+			}
+		},
+		"hoverBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"hoverTextColor": {
+			"type": "string",
+			"default": ""
+		},
+		"hoverIconBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"hoverButtonBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"overlayColor": {
+			"type": "string",
+			"default": ""
+		},
+		"shapeDividerTop": {
+			"type": "string",
+			"default": ""
+		},
+		"shapeDividerTopColor": {
+			"type": "string",
+			"default": ""
+		},
+		"shapeDividerTopHeight": {
+			"type": "number",
+			"default": 100
+		},
+		"shapeDividerTopWidth": {
+			"type": "number",
+			"default": 100
+		},
+		"shapeDividerTopFlipX": {
+			"type": "boolean",
+			"default": false
+		},
+		"shapeDividerTopFlipY": {
+			"type": "boolean",
+			"default": false
+		},
+		"shapeDividerTopFront": {
+			"type": "boolean",
+			"default": false
+		},
+		"shapeDividerTopBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"shapeDividerBottom": {
+			"type": "string",
+			"default": ""
+		},
+		"shapeDividerBottomColor": {
+			"type": "string",
+			"default": ""
+		},
+		"shapeDividerBottomHeight": {
+			"type": "number",
+			"default": 100
+		},
+		"shapeDividerBottomWidth": {
+			"type": "number",
+			"default": 100
+		},
+		"shapeDividerBottomFlipX": {
+			"type": "boolean",
+			"default": false
+		},
+		"shapeDividerBottomFlipY": {
+			"type": "boolean",
+			"default": false
+		},
+		"shapeDividerBottomFront": {
+			"type": "boolean",
+			"default": false
+		},
+		"shapeDividerBottomBackgroundColor": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"schemaMetadata": {
+		"attributeDescriptions": {
+			"align": "Block alignment (wide or full width)",
+			"tagName": "HTML tag to use for the section container (div, section, article, header, footer, main, aside)",
+			"constrainWidth": "Whether to constrain the content to a maximum width",
+			"contentWidth": "Maximum width for the content area (CSS value like 1200px or 80%)",
+			"style": "WordPress block style object containing spacing, colors, and typography settings",
+			"hoverBackgroundColor": "Background color when hovering over the section",
+			"hoverTextColor": "Text color when hovering over the section",
+			"hoverIconBackgroundColor": "Icon background color on hover (passed to child blocks via context)",
+			"hoverButtonBackgroundColor": "Button background color on hover (passed to child blocks via context)",
+			"overlayColor": "Semi-transparent overlay color for background images",
+			"shapeDividerTop": "Shape divider style for the top edge. Accepted values: \"\" (off), \"inherit\" (theme default), or a shape slug (wave, tilt, curve, etc.)",
+			"shapeDividerTopColor": "Editor-preview-only / legacy. Since the see-through refactor the top shape region is transparent and reveals the section's own background, so this no longer affects rendered output; only the inspector preview swatch reads it, and it is retained for migrated content.",
+			"shapeDividerTopHeight": "Height of the top shape divider in pixels",
+			"shapeDividerTopWidth": "Width stretch percentage of the top shape divider",
+			"shapeDividerTopFlipX": "Flip the top shape divider horizontally",
+			"shapeDividerTopFlipY": "Flip the top shape divider vertically (inverts the per-position default; bottom dividers flip by default)",
+			"shapeDividerTopFront": "Render the top shape divider in front of content",
+			"shapeDividerTopBackgroundColor": "Band background color beside the top shape divider (the part adjoining the neighbouring section); defaults to the theme base color",
+			"shapeDividerBottom": "Shape divider style for the bottom edge. Accepted values: \"\" (off), \"inherit\" (theme default), or a shape slug",
+			"shapeDividerBottomColor": "Editor-preview-only / legacy. Since the see-through refactor the bottom shape region is transparent and reveals the section's own background, so this no longer affects rendered output; only the inspector preview swatch reads it, and it is retained for migrated content.",
+			"shapeDividerBottomHeight": "Height of the bottom shape divider in pixels",
+			"shapeDividerBottomWidth": "Width stretch percentage of the bottom shape divider",
+			"shapeDividerBottomFlipX": "Flip the bottom shape divider horizontally",
+			"shapeDividerBottomFlipY": "Flip the bottom shape divider vertically (inverts the per-position default; bottom dividers flip by default)",
+			"shapeDividerBottomFront": "Render the bottom shape divider in front of content",
+			"shapeDividerBottomBackgroundColor": "Band background color beside the bottom shape divider (the part adjoining the neighbouring section); defaults to the theme base color"
+		}
+	},
+	"providesContext": {
+		"airo-wp/hoverIconBackgroundColor": "hoverIconBackgroundColor",
+		"airo-wp/hoverButtonBackgroundColor": "hoverButtonBackgroundColor"
+	},
+	"example": {
+		"attributes": {
+			"gap": "var:preset|spacing|50"
+		},
+		"innerBlocks": [
+			{
+				"name": "core/heading",
+				"attributes": {
+					"level": 2,
+					"content": "Section"
+				}
+			},
+			{
+				"name": "core/paragraph",
+				"attributes": {
+					"content": "Vertical stacking container for sections and content areas with consistent spacing. Can be nested for complex layouts."
+				}
+			}
+		]
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css"
+}

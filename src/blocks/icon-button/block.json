@@ -1,0 +1,156 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/icon-button",
+	"version": "1.0.0",
+	"title": "Icon Button",
+	"category": "airo-wp",
+	"description": "A customizable button with optional icon and hover animations.",
+	"keywords": [
+		"button",
+		"icon",
+		"link",
+		"call to action",
+		"cta",
+		"animated"
+	],
+	"textdomain": "airo-wp",
+	"icon": "external",
+	"usesContext": [
+		"airo-wp/hoverButtonBackgroundColor"
+	],
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"alignWide": true,
+		"html": false,
+		"inserter": true,
+		"spacing": {
+			"margin": true,
+			"padding": true,
+			"__experimentalSkipSerialization": [
+				"padding"
+			],
+			"__experimentalDefaultControls": {
+				"margin": true,
+				"padding": true
+			}
+		},
+		"color": {
+			"background": true,
+			"text": true,
+			"gradients": true,
+			"__experimentalSkipSerialization": true,
+			"__experimentalDefaultControls": {
+				"background": true,
+				"text": true
+			}
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalSkipSerialization": true,
+			"__experimentalDefaultControls": {
+				"fontSize": true
+			},
+			"__experimentalFontWeight": true
+		},
+		"shadow": {
+			"__experimentalSkipSerialization": true
+		},
+		"__experimentalBorder": {
+			"color": true,
+			"radius": true,
+			"style": true,
+			"width": true,
+			"__experimentalSkipSerialization": true,
+			"__experimentalDefaultControls": {
+				"color": true,
+				"radius": true,
+				"style": true,
+				"width": true
+			}
+		}
+	},
+	"selectors": {
+		"root": ".wp-block-airo-wp-icon-button .airo-wp-icon-button"
+	},
+	"attributes": {
+		"justification": {
+			"type": "string",
+			"enum": [ "left", "center", "right" ],
+			"default": "left"
+		},
+		"fullWidth": {
+			"type": "boolean",
+			"default": false
+		},
+		"text": {
+			"type": "string",
+			"default": ""
+		},
+		"url": {
+			"type": "string",
+			"default": ""
+		},
+		"linkTarget": {
+			"type": "string",
+			"default": "_self"
+		},
+		"rel": {
+			"type": "string",
+			"default": ""
+		},
+		"icon": {
+			"type": "string",
+			"default": "lightbulb"
+		},
+		"iconPosition": {
+			"type": "string",
+			"default": "start"
+		},
+		"iconStyle": {
+			"type": "string",
+			"enum": ["filled", "outlined"]
+		},
+		"strokeWidth": {
+			"type": "number",
+			"default": 1.5
+		},
+		"iconSize": {
+			"type": "number"
+		},
+		"iconGap": {
+			"type": "string"
+		},
+		"hoverAnimation": {
+			"type": "string",
+			"default": "none"
+		},
+		"hoverBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"hoverTextColor": {
+			"type": "string",
+			"default": ""
+		},
+		"modalCloseId": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"example": {
+		"attributes": {
+			"text": "Get Started",
+			"icon": "lightbulb",
+			"iconPosition": "start"
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./index.css"
+}

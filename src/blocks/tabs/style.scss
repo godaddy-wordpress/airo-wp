@@ -1,0 +1,574 @@
+/**
+ * Tabs Block - Frontend Styles
+ */
+
+// Ensure WordPress block wrapper doesn't cause overflow
+.wp-block-airo-wp-tabs {
+	max-width: 100%;
+	box-sizing: border-box;
+
+	// Override WordPress alignment negative margins
+	&.alignfull,
+	&.alignwide {
+		margin-left: 0 !important;
+		margin-right: 0 !important;
+	}
+}
+
+.airo-wp-tabs {
+	position: relative;
+	padding: 0; // Default to no padding
+	width: 100%; // Fill container width
+	max-width: 100%; // Prevent overflow beyond parent
+	min-width: 0; // Allow shrinking in flex containers
+	box-sizing: border-box; // Include padding/border in width calculation
+	overflow: hidden; // Prevent child elements from overflowing
+	margin-left: 0 !important; // Prevent WordPress negative margins
+	margin-right: 0 !important; // Prevent WordPress negative margins
+
+	// CSS custom properties for easy customization
+	--airo-wp-tabs-gap: 8px;
+	--airo-wp-tab-padding: var(--wp--preset--spacing--30, 1rem);
+	--airo-wp-tab-bg: transparent;
+	--airo-wp-tab-color: var(--wp--preset--color--contrast, #000);
+	--airo-wp-tab-bg-active: var(--wp--preset--color--accent-2, #2563eb);
+	--airo-wp-tab-color-active: var(--wp--preset--color--accent-2, #2563eb);
+	--airo-wp-tab-color-hover: var(--airo-wp-tab-color-active);
+	--airo-wp-tab-bg-hover: transparent;
+	--airo-wp-tab-border-color: var(--wp--preset--color--accent-2, #2563eb);
+	--airo-wp-tab-border-radius: var(--wp--custom--airo-wp--border-radius--small, 0.25rem);
+	--airo-wp-tab-content-bg: transparent;
+
+	/**
+	 * Skip Link (Accessibility)
+	 * Visually hidden until focused - allows keyboard users to skip tab navigation
+	 */
+	.airo-wp-tabs__skip-link {
+		position: absolute;
+		left: -9999px;
+		top: auto;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+
+		&:focus {
+			position: static;
+			width: auto;
+			height: auto;
+			padding: 0.5rem 1rem;
+			background: var(--wp--preset--color--accent-2, #2563eb);
+			color: var(--wp--preset--color--base, #fff);
+			text-decoration: none;
+			border-radius: 4px;
+			font-weight: 600;
+			margin-right: auto;
+			order: -1; // Ensure it appears first in flexbox
+		}
+	}
+
+	/**
+	 * Tab Navigation
+	 */
+	.airo-wp-tabs__nav {
+		display: flex;
+		gap: var(--airo-wp-tabs-gap);
+		margin-bottom: var(--wp--preset--spacing--40, 1.5rem);
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+
+		// Hide scrollbar in most browsers but keep functionality
+		scrollbar-width: thin;
+		scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+
+		&::-webkit-scrollbar {
+			height: 4px;
+		}
+
+		&::-webkit-scrollbar-track {
+			background: transparent;
+		}
+
+		&::-webkit-scrollbar-thumb {
+			background: rgba(0, 0, 0, 0.2);
+			border-radius: 2px;
+		}
+	}
+
+	/**
+	 * Optional Nav Border
+	 * Shows a divider line below the tab navigation when enabled
+	 */
+	&.airo-wp-tabs--show-nav-border .airo-wp-tabs__nav {
+		border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+		padding-bottom: 0.5rem;
+	}
+
+	/**
+	 * Individual Tab Buttons
+	 */
+	.airo-wp-tabs__tab {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: var(--airo-wp-tab-padding);
+		background: var(--airo-wp-tab-bg, transparent);
+		border: none;
+		color: var(--airo-wp-tab-color, inherit);
+		font-family: inherit;
+		font-size: inherit;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		position: relative;
+		white-space: nowrap;
+
+		&:hover:not(.is-active) {
+			color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+			background: var(--airo-wp-tab-bg-hover, transparent);
+		}
+
+		&:focus,
+		&:focus-visible {
+			outline: none;
+		}
+
+		&.is-active {
+			background: var(--airo-wp-tab-bg-active, transparent);
+			color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+			font-weight: 600;
+		}
+
+		.airo-wp-tabs__tab-icon {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+			color: currentcolor;
+
+			svg {
+				// Size SVG directly for better flexibility
+				// Allows icons to respond to font-size changes if needed
+				width: 20px;
+				height: 20px;
+				fill: currentcolor;
+				color: currentcolor;
+			}
+		}
+
+		.airo-wp-tabs__tab-icon-top {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			margin-bottom: 0.25rem;
+			color: currentcolor;
+
+			svg {
+				fill: currentcolor;
+				color: currentcolor;
+			}
+		}
+
+		// Icon top layout: stack icon above text
+		&.has-icon-top {
+			flex-direction: column;
+			align-items: center;
+			text-align: center;
+			white-space: normal;
+			gap: 0.25rem;
+		}
+	}
+
+	/**
+	 * Tab Panels Container
+	 * No typography - let child blocks inherit from body/theme naturally
+	 */
+	.airo-wp-tabs__panels {
+		position: relative;
+		width: 100%;
+		max-width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+	}
+
+	/**
+	 * Individual Tab Panel
+	 */
+	.airo-wp-tab {
+		display: none;
+		width: 100%;
+		max-width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+		background: var(--airo-wp-tab-content-bg, transparent);
+
+		&.is-active {
+			display: block;
+		}
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	/**
+	 * Tab Content Wrapper
+	 * No additional styles needed - padding/background applied to .airo-wp-tab
+	 */
+
+	/**
+	 * Orientation: Horizontal (Default)
+	 */
+	&.airo-wp-tabs--horizontal {
+
+		.airo-wp-tabs__nav {
+			flex-direction: row;
+			flex-wrap: wrap;
+			overflow: visible; // Wrapping handles overflow; auto causes unwanted vertical scrollbar
+		}
+
+		// Alignment options
+		&.airo-wp-tabs--align-left .airo-wp-tabs__nav {
+			justify-content: flex-start;
+		}
+
+		&.airo-wp-tabs--align-center .airo-wp-tabs__nav {
+			justify-content: center;
+		}
+
+		&.airo-wp-tabs--align-right .airo-wp-tabs__nav {
+			justify-content: flex-end;
+		}
+
+		&.airo-wp-tabs--align-justified .airo-wp-tabs__nav {
+
+			.airo-wp-tabs__tab {
+				flex: 1;
+				justify-content: center;
+			}
+		}
+	}
+
+	/**
+	 * Orientation: Vertical
+	 */
+	&.airo-wp-tabs--vertical {
+		display: flex;
+		gap: var(--wp--preset--spacing--40, 1.5rem);
+
+		.airo-wp-tabs__nav {
+			flex-direction: column;
+			margin-bottom: 0;
+			padding-right: var(--wp--preset--spacing--40, 1.5rem);
+			min-width: 200px;
+			overflow: visible; // Remove horizontal scrollbar for vertical tabs
+		}
+
+		.airo-wp-tabs__panels {
+			flex: 1;
+		}
+	}
+
+	/**
+	 * Tab Style: Default
+	 * Simple text-only style with no borders or backgrounds
+	 */
+	&.airo-wp-tabs--default {
+
+		.airo-wp-tabs__tab {
+
+			&:hover:not(.is-active) {
+				background: var(--airo-wp-tab-bg-hover, transparent);
+				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+			}
+
+			&.is-active {
+				background: transparent;
+				color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+			}
+		}
+	}
+
+	/**
+	 * Tab Style: Pills
+	 */
+	&.airo-wp-tabs--pills {
+		// Override color variable for pills - white text on colored background
+		--airo-wp-tab-color-active: #fff;
+
+		.airo-wp-tabs__nav {
+			border-bottom: none;
+		}
+
+		.airo-wp-tabs__tab {
+			background: var(--airo-wp-tab-bg, rgba(0, 0, 0, 0.05));
+			border-radius: var(--airo-wp-tab-border-radius);
+			border-bottom: none;
+			margin-bottom: 0;
+
+			&:hover:not(.is-active) {
+				background: var(--airo-wp-tab-bg-hover, var(--airo-wp-tab-bg, rgba(0, 0, 0, 0.1)));
+				color: var(--airo-wp-tab-color-hover, var(--wp--preset--color--accent-2, #2563eb));
+			}
+
+			&.is-active {
+				background: var(--airo-wp-tab-bg-active, var(--wp--preset--color--accent-2, #2563eb));
+				color: var(--airo-wp-tab-color-active, #fff);
+			}
+		}
+	}
+
+	/**
+	 * Tab Style: Underline
+	 */
+	&.airo-wp-tabs--underline {
+
+		.airo-wp-tabs__nav {
+			border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+		}
+
+		.airo-wp-tabs__tab {
+			padding-bottom: calc(var(--airo-wp-tab-padding) + 0.5rem);
+			border-bottom: 2px solid transparent;
+			margin-bottom: -1px; // Overlap the nav border
+			background: transparent; // No background by default for underline style
+
+			&:hover:not(.is-active) {
+				background: var(--airo-wp-tab-bg-hover, transparent);
+				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+			}
+
+			&.is-active {
+				border-bottom-color: var(--airo-wp-tab-border-color, var(--wp--preset--color--accent-2, #2563eb));
+				color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+				background: transparent; // Keep transparent even when active
+			}
+		}
+	}
+
+	/**
+	 * Vertical + Underline
+	 */
+	&.airo-wp-tabs--vertical.airo-wp-tabs--underline {
+
+		.airo-wp-tabs__tab {
+			border-bottom: 2px solid transparent;
+			margin-right: 0;
+
+			&:hover:not(.is-active) {
+				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+				background: var(--airo-wp-tab-bg-hover, transparent);
+			}
+
+			&.is-active {
+				border-bottom-color: var(--airo-wp-tab-border-color, var(--wp--preset--color--accent-2, #2563eb));
+				color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+			}
+		}
+	}
+
+	/**
+	 * Tab Style: Minimal
+	 */
+	&.airo-wp-tabs--minimal {
+		// Override defaults for minimal style - use light gray background with blue text
+		--airo-wp-tab-bg-active: rgba(0, 0, 0, 0.03);
+
+		.airo-wp-tabs__nav {
+			border-bottom: none;
+		}
+
+		.airo-wp-tabs__tab {
+			padding: 0.5rem 1rem;
+			border-bottom: none;
+			margin-bottom: 0;
+
+			&:hover:not(.is-active) {
+				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+				background: var(--airo-wp-tab-bg-hover, transparent);
+			}
+
+			&.is-active {
+				background: var(--airo-wp-tab-bg-active);
+				color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+			}
+		}
+
+		// When user customizes background to a color (via inline styles), use white text for contrast
+		&[style*="--airo-wp-tab-bg-active"] .airo-wp-tabs__tab.is-active {
+			color: var(--wp--preset--color--base, #fff);
+		}
+	}
+
+	/**
+	 * Mobile: Accordion Mode
+	 */
+	&.airo-wp-tabs--accordion {
+
+		.airo-wp-tabs__nav {
+			display: none;
+		}
+
+		.airo-wp-tab {
+			display: block !important; // Force all tabs visible in accordion mode
+			border: 1px solid rgba(0, 0, 0, 0.1);
+			border-radius: var(--airo-wp-tab-border-radius);
+			margin-bottom: 0.5rem;
+			padding: 0; // Remove any padding from tab panel itself
+			overflow: hidden; // Ensure content doesn't create extra space
+			min-height: 0 !important; // Override editor min-height for accordion mode
+
+			.airo-wp-tab__accordion-header {
+				width: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: var(--airo-wp-tab-padding);
+				background: rgba(0, 0, 0, 0.02);
+				border: none;
+				border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+				font-family: inherit;
+				font-size: inherit;
+				font-weight: 600;
+				cursor: pointer;
+				text-align: left;
+
+				&::after {
+					content: '\25BC'; // Down arrow
+					font-size: 0.75em;
+					transition: transform 0.2s ease;
+				}
+
+				&[aria-expanded='true']::after {
+					transform: rotate(180deg);
+				}
+
+				&:hover {
+					background: rgba(0, 0, 0, 0.05);
+				}
+			}
+
+			.airo-wp-tab__content {
+				padding: var(--airo-wp-tab-padding);
+			}
+
+			&:not(.is-active) {
+
+				.airo-wp-tab__content {
+					display: none !important; // Force content to be completely hidden when inactive
+					height: 0 !important; // Collapse height to prevent space
+					padding: 0 !important; // Remove padding when collapsed
+					overflow: hidden !important; // Ensure nothing shows
+				}
+			}
+		}
+	}
+
+	/**
+	 * Mobile: Dropdown Mode
+	 */
+	&.airo-wp-tabs--dropdown {
+
+		.airo-wp-tabs__nav {
+			display: none;
+		}
+
+		.airo-wp-tabs__dropdown {
+			width: 100%;
+			padding: var(--airo-wp-tab-padding);
+			font-family: inherit;
+			font-size: inherit;
+			font-weight: 500;
+			border: 1px solid rgba(0, 0, 0, 0.2);
+			border-radius: var(--airo-wp-tab-border-radius);
+			background: var(--airo-wp-tab-bg);
+			color: var(--airo-wp-tab-color);
+			cursor: pointer;
+			margin-bottom: var(--wp--preset--spacing--40, 1.5rem);
+
+			&:focus-visible {
+				outline: none;
+			}
+		}
+	}
+
+	/**
+	 * Mobile Breakpoint
+	 */
+	&.is-mobile {
+		// Mobile-specific overrides
+	}
+}
+
+/**
+ * Animation: Fade In
+ */
+@keyframes airo-wp-tab-fade-in {
+
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.airo-wp-tab.is-active {
+	animation: airo-wp-tab-fade-in 0.3s ease;
+}
+
+/**
+ * Accessibility: Reduced Motion
+ */
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-tabs__tab,
+	.airo-wp-tab {
+		transition: none;
+		animation: none;
+	}
+}
+
+/**
+ * Responsive: Mobile
+ */
+@media (max-width: 767px) {
+
+	.airo-wp-tabs {
+		// Default to accordion on mobile
+		&:not([data-mobile-mode='tabs']) {
+
+			.airo-wp-tabs__nav {
+				overflow-x: auto;
+				scrollbar-width: thin;
+
+				&::-webkit-scrollbar {
+					height: 6px;
+				}
+
+				&::-webkit-scrollbar-track {
+					background: rgba(0, 0, 0, 0.05);
+				}
+
+				&::-webkit-scrollbar-thumb {
+					background: rgba(0, 0, 0, 0.2);
+					border-radius: 3px;
+				}
+			}
+		}
+	}
+
+	.airo-wp-tabs--vertical {
+		flex-direction: column;
+
+		.airo-wp-tabs__nav {
+			border-right: none;
+			border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+			padding-right: 0;
+			margin-bottom: var(--wp--preset--spacing--40, 1.5rem);
+			min-width: 0;
+		}
+	}
+}

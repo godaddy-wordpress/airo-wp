@@ -1,0 +1,31 @@
+/**
+ * Advanced Heading Block Frontend Styles
+ */
+
+.airo-wp-advanced-heading {
+	// Reset margin on the heading element itself — spacing
+	// is handled by WordPress Block Supports on the wrapper
+	.airo-wp-advanced-heading__inner {
+		margin: 0;
+		padding: 0;
+	}
+
+	// Gap between heading segments — defaults to 0 so segments run
+	// together as one heading; editor block-gap control can override
+	.airo-wp-heading-segment + .airo-wp-heading-segment {
+		margin-inline-start: var(--airo-wp-segment-gap, 0);
+	}
+}
+
+// Text alignment support
+.airo-wp-advanced-heading.has-text-align-left .airo-wp-advanced-heading__inner {
+	text-align: left;
+}
+
+.airo-wp-advanced-heading.has-text-align-center .airo-wp-advanced-heading__inner {
+	text-align: center;
+}
+
+.airo-wp-advanced-heading.has-text-align-right .airo-wp-advanced-heading__inner {
+	text-align: right;
+}

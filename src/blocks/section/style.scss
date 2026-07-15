@@ -1,0 +1,507 @@
+/**
+ * DSG Section Block - Frontend Styles
+ *
+ * Minimal frontend styles - WordPress handles flex layout through .is-layout-flex class.
+ *
+ * @package airo-wp
+ */
+
+@use './styles/shape-divider';
+
+.airo-wp-stack {
+	// CRITICAL: Ensure width includes padding to prevent overflow
+	box-sizing: border-box;
+
+	// CRITICAL: Flex column layout so .airo-wp-stack__inner can fill available height
+	// This enables vertical alignment (top/center/bottom/space-between) to work
+	// when the section has a min-height set. Shape dividers are position: absolute
+	// so they don't participate in this flex layout.
+	display: flex;
+	flex-direction: column;
+
+	// NOTE: No overflow restrictions — allows nav dropdowns, sticky elements,
+	// and fonts to render without clipping. Shape dividers handle their own
+	// overflow via .airo-wp-stack--has-shape-divider { overflow-x: clip }.
+
+	// Position relative for hover overlay pseudo-element
+	position: relative;
+
+	// Hover background overlay - works with both gradients and solid colors
+	// Using ::after pseudo-element allows smooth opacity transition
+	// z-index: 0 (below overlay ::before and content).
+	// The layer is always present but transparent until --airo-wp-hover-bg-color is
+	// set, so fading it in on hover is a no-op when there is no hover color. This
+	// (rather than an inline-`[style*=…]` gate) lets the color come from EITHER
+	// the block's inline attribute OR a section style variation's stylesheet
+	// (`.is-style-*{ --airo-wp-hover-bg-color: … }`). Additive overlay — no base
+	// value is clobbered — so no class-based activation is needed.
+	&::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: var(--airo-wp-hover-bg-color, transparent);
+		opacity: 0;
+		transition: opacity 0.3s ease;
+		pointer-events: none;
+		z-index: 0;
+		border-radius: inherit;
+	}
+
+	// Ensure content is above all overlays
+	// NOTE: This is overridden for overlay blocks (z-index: 2 on .airo-wp-stack__inner)
+	// IMPORTANT: Exclude shape dividers - they need position: absolute to stay at edges
+	> *:not(.airo-wp-stack__inner):not(.airo-wp-shape-divider) {
+		position: relative;
+		z-index: 3;
+	}
+
+	/**
+	 * Background overlay
+	 * Only rendered when overlay color is set
+	 */
+	&--has-overlay {
+		position: relative;
+
+		&::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background-color: var(--airo-wp-overlay-color);
+			opacity: var(--airo-wp-overlay-opacity, 0.8);
+			pointer-events: none; /* Allow clicks to pass through to content */
+			z-index: 1; /* Above background image but below content */
+			border-radius: inherit; /* Match parent border radius */
+		}
+
+		/* Ensure content is above overlay */
+		> .airo-wp-stack__inner {
+			position: relative;
+			z-index: 2;
+		}
+	}
+
+	// CRITICAL: Inner container must be full width for layout to work
+	// Width constraints are applied via inline styles when constrainWidth is enabled
+	.airo-wp-stack__inner {
+		width: 100%;
+		// CRITICAL: Fill available height so justify-content (vertical alignment) works
+		// Without this, the inner div shrinks to content height and top/center/bottom/space-between
+		// have no effect because there's no extra space to distribute
+		flex-grow: 1;
+		// CRITICAL: Position relative + z-index to ensure content stays above both overlays
+		// z-index: 2 (above ::before overlay at z-index: 1 and ::after hover at z-index: 0)
+		position: relative;
+		z-index: 2;
+	}
+
+	// CRITICAL: When Section is nested inside another container, force full width
+	// WordPress applies constrained layout which can limit width
+	// This ensures nested Sections take full width of their parent container
+	.airo-wp-stack__inner > &,
+	.airo-wp-flex__inner > &,
+	.airo-wp-grid__inner > & {
+		width: 100% !important;
+
+		// Only strip inner constraints when the nested section itself has no width constraint
+		// Sections with constrainWidth enabled need their max-width + margin:auto preserved
+		&.airo-wp-no-width-constraint > .airo-wp-stack__inner {
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+	}
+
+	// CRITICAL: Disable float for all children in flex layout
+	// WordPress core CSS applies float for alignment classes (.alignleft, .alignright)
+	// but float should not work inside flex containers
+	// NOTE: .is-layout-flex is on the airo-wp-stack__inner element, not the outer wrapper
+	// CRITICAL: Disable float and stretch all block-level children by default.
+	// Float: WordPress core CSS applies float for alignment classes (.alignleft,
+	// .alignright) but float should not work inside flex containers.
+	// Stretch: When section has content justification (e.g., center), WordPress
+	// applies align-items: center which shrinks ALL children to content width.
+	// This breaks paragraphs, headings, and other text blocks — even those without
+	// an explicit has-text-align-* class (i.e., default left-aligned text).
+	// Using align-self: stretch without !important so inline block rules (pill,
+	// icon, button, counter) can override via higher specificity or !important.
+	// NOTE: .is-layout-flex is on the airo-wp-stack__inner element, not the outer wrapper
+	.airo-wp-stack__inner.is-layout-flex > * {
+		float: none !important;
+		align-self: stretch;
+	}
+
+	// CRITICAL: When section uses "stretch" justification, children should grow
+	// to fill available vertical space. WordPress's `justifyContent: "stretch"`
+	// only generates `align-items: stretch` (horizontal). This adds `flex-grow: 1`
+	// so children also stretch along the main axis (vertical in column flex).
+	.airo-wp-stack__inner.is-layout-flex.is-content-justification-stretch > * {
+		flex-grow: 1;
+	}
+
+	// When images are inside a stretch section, make them fill their
+	// stretched container. WordPress defaults img to height:auto which
+	// prevents the image from filling the grown figure element.
+	.airo-wp-stack__inner.is-layout-flex.is-content-justification-stretch > .wp-block-image {
+		overflow: hidden; // Clip image to figure bounds (respects border-radius)
+
+		img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+	}
+
+	// CRITICAL: Ensure flex layout properties work correctly
+	// WordPress applies these via inline styles, but we ensure they're respected
+	// NOTE: .is-layout-flex is on the airo-wp-stack__inner element, not the outer wrapper
+	.airo-wp-stack__inner.is-layout-flex {
+		display: flex;
+		flex-direction: column; // Vertical stacking
+
+		// NOTE: align-items defaults to stretch (browser default).
+		// Do NOT set align-items here — WordPress's layout system may generate
+		// align-items based on content justification, and an explicit stretch
+		// would override it, breaking Pill/Icon/Button alignment inheritance.
+
+		// Inline blocks WITH explicit alignment - override section alignment
+
+		// Icon Button is a STATIC block: `.alignleft`/`.aligncenter`/`.alignright`
+		// alongside `.wp-block-airo-wp-icon-button` on the same element only
+		// ever appears in un-migrated legacy markup (pre-justification-wrapper —
+		// see icon-button/deprecated.js v9); new markup never emits an align
+		// class on this element at all. Icon and Pill are DYNAMIC and always
+		// re-render through the current justification-wrapper markup, which also
+		// never emits these classes — so they no longer belong in this list; this
+		// rule is legacy-icon-button-only now. Counter is untouched (separate
+		// block, unaffected by the justification-wrapper refactor).
+		> :where(
+			.wp-block-airo-wp-icon-button,
+			.wp-block-airo-wp-counter
+		).aligncenter {
+			align-self: center !important;
+		}
+
+		> :where(
+			.wp-block-airo-wp-icon-button,
+			.wp-block-airo-wp-counter
+		).alignleft {
+			align-self: flex-start !important;
+		}
+
+		> :where(
+			.wp-block-airo-wp-icon-button,
+			.wp-block-airo-wp-counter
+		).alignright {
+			align-self: flex-end !important;
+		}
+
+		// Block-level elements WITH explicit alignment
+		> .aligncenter:not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-counter) {
+			align-self: center !important;
+		}
+
+		> .alignright:not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-counter) {
+			align-self: flex-end !important;
+		}
+
+		> .alignleft:not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-counter) {
+			align-self: flex-start !important;
+		}
+
+		> .alignwide,
+		> .alignfull {
+			align-self: stretch !important;
+			width: 100% !important;
+		}
+
+		// Aspect-ratio'd figures (core/post-featured-image with aspectRatio,
+		// core/image with aspectRatio) render as <figure style="aspect-ratio:X">
+		// with no explicit width. In a column flex with align-self: stretch and
+		// min-width: auto, the browser can resolve the figure's width from the
+		// child <img>'s intrinsic size (e.g. 1024px) rather than the cross-axis
+		// container width — breaking the figure out of a narrow section (cards
+		// inside grid cells, sections nested in columns, etc.). Pin to 100% so
+		// the aspect-ratio drives height while width stays inside the column.
+		// Honors WP alignment classes that intentionally shrink the figure.
+		> .wp-block-post-featured-image:not(.alignleft):not(.alignright):not(.aligncenter):not(.alignwide):not(.alignfull),
+		> .wp-block-image:not(.alignleft):not(.alignright):not(.aligncenter):not(.alignwide):not(.alignfull) {
+			max-width: 100%;
+		}
+	}
+
+	// ONLY apply full-width forcing when section has NO width constraints
+	&.airo-wp-no-width-constraint .airo-wp-stack__inner.is-layout-flex {
+
+		// CRITICAL: Inline/shrink-wrap blocks should respect alignment
+		// These blocks should shrink to content width so they can be centered/aligned
+
+		// Icon, Icon Button, and Pill are NOT listed here (unlike the legacy
+		// version of this rule): their block root is now a `.airo-wp-justify`
+		// content-column positioning wrapper that must stay stretched to the
+		// section's available width — its OWN `justify-content` (driven by the
+		// `justification` attribute) is what positions the shrink-wrapped
+		// visible element inside it. Forcing `width: auto !important` here
+		// removes that free space and makes `justification` inert, reproducing
+		// the content-column escape bug the wrapper exists to fix. Counter and
+		// core/button are untouched (unaffected by that refactor).
+		> .airo-wp-counter,
+		> .wp-block-airo-wp-counter,
+		> .wp-block-button {
+			align-self: flex-start; // Override to allow alignment
+			width: auto !important; // Shrink to content
+			max-width: none !important; // Remove WordPress's 1200px contentSize constraint
+		}
+
+		// CRITICAL: Block-level elements take full width by default
+		// Text blocks, groups, and most WordPress blocks
+		// NOTE: .wp-block-buttons is a layout container (not inline) — it needs full width
+		// so its internal justify-content can position child buttons correctly
+		> :where(
+			.wp-block-heading,
+			.wp-block-paragraph,
+			.wp-block-group,
+			.wp-block-image,
+			.wp-block-video,
+			.wp-block-embed,
+			.wp-block-table,
+			.wp-block-list,
+			.wp-block-buttons,
+			.airo-wp-grid,
+			.wp-block-airo-wp-grid,
+			.airo-wp-stack,
+			.wp-block-airo-wp-stack,
+			.airo-wp-flex,
+			.wp-block-airo-wp-flex,
+			.wp-block-airo-wp-row,
+			.airo-wp-tabs,
+			.wp-block-airo-wp-tabs,
+			.airo-wp-accordion,
+			.wp-block-airo-wp-accordion,
+			.airo-wp-scroll-marquee,
+			.wp-block-airo-wp-scroll-marquee
+		):not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide) {
+			width: 100% !important;
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+
+		// Old group structure (pre-6.0) with __inner-container
+		> :where(.wp-block-group, .wp-block-airo-wp-stack, .airo-wp-stack)
+			:not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide)
+			> .wp-block-group__inner-container {
+			width: 100% !important;
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+
+		> :where(.wp-block-group, .airo-wp-stack, .wp-block-airo-wp-stack)
+			:is(.is-layout-constrained, .wp-block-group-is-layout-constrained)
+			> .wp-block-group__inner-container {
+			width: 100% !important;
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+		}
+
+		// Modern group structure (6.0+) without __inner-container
+		// Ensure nested groups take full width regardless of their layout type
+		> .wp-block-group:not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide) {
+			width: 100% !important;
+			max-width: none !important;
+			margin-left: 0 !important;
+			margin-right: 0 !important;
+			// Ensure the block takes full width regardless of content
+			min-width: 100% !important;
+		}
+
+		// Gap is handled by WordPress's blockGap support
+	}
+
+	// When width constraints ARE enabled, allow blocks to be constrained
+	&:not(.airo-wp-no-width-constraint) .airo-wp-stack__inner.is-layout-flex {
+		// Inline blocks still shrink to content.
+
+		// Icon, Icon Button, and Pill are deliberately NOT listed here (see the
+		// matching comment on the `.airo-wp-no-width-constraint` branch above) —
+		// their `.airo-wp-justify` wrapper must stay stretched so its own
+		// `justify-content` can position the visible element inside it.
+		> .airo-wp-counter,
+		> .wp-block-airo-wp-counter,
+		> .wp-block-button {
+			align-self: flex-start;
+			width: auto !important;
+		}
+
+		// Buttons container is block-level — needs full width for justify-content to work
+		> .wp-block-buttons:not(.alignleft):not(.alignright) {
+			align-self: stretch;
+		}
+	}
+
+	// Section center/right/left alignment - apply to inline blocks WITHOUT
+	// their own alignment.
+
+	// Icon, Icon Button, and Pill are deliberately NOT listed here (see the
+	// matching comment above): forcing their `.airo-wp-justify` wrapper's
+	// `align-self` from the SECTION's own justifyContent setting overrides the
+	// wrapper's required `stretch` and makes the block's OWN `justification`
+	// attribute inert (the wrapper shrinks to content, so its internal
+	// `justify-content` has no free space left to distribute) — exactly the
+	// content-column escape bug the wrapper exists to fix. Counter and
+	// core/button are untouched.
+	.airo-wp-stack__inner.is-layout-flex.is-content-justification-center {
+
+		> :where(
+			.airo-wp-counter,
+			.wp-block-airo-wp-counter,
+			.wp-block-button
+		):not(.alignleft):not(.alignright):not(.aligncenter) {
+			align-self: center;
+		}
+	}
+
+	.airo-wp-stack__inner.is-layout-flex.is-content-justification-right {
+
+		> :where(
+			.airo-wp-counter,
+			.wp-block-airo-wp-counter,
+			.wp-block-button
+		):not(.alignleft):not(.alignright):not(.aligncenter) {
+			align-self: flex-end;
+		}
+	}
+
+	.airo-wp-stack__inner.is-layout-flex.is-content-justification-left {
+
+		> :where(
+			.airo-wp-counter,
+			.wp-block-airo-wp-counter,
+			.wp-block-button
+		):not(.alignleft):not(.alignright):not(.aligncenter) {
+			align-self: flex-start;
+		}
+	}
+
+	// Text alignment helpers for inline-width children.
+
+	// Icon, Icon Button, and Pill are deliberately NOT listed here (see the
+	// matching comment above the content-justification rules) — their
+	// `.airo-wp-justify` wrapper must stay stretched so its own attribute-driven
+	// `justify-content` positions the visible element, independent of the
+	// section's text-align setting. Counter and core/button are untouched.
+	&,
+	&.has-text-align-left,
+	&[style*='text-align:left'] {
+
+		.airo-wp-stack__inner.is-layout-flex
+			> :where(
+				.airo-wp-counter,
+				.wp-block-airo-wp-counter,
+				.wp-block-button
+			) {
+			align-self: flex-start;
+		}
+	}
+
+	&.has-text-align-center,
+	&[style*='text-align:center'] {
+
+		.airo-wp-stack__inner.is-layout-flex
+			> :where(
+				.airo-wp-counter,
+				.wp-block-airo-wp-counter,
+				.wp-block-button
+			) {
+			align-self: center;
+		}
+	}
+
+	&.has-text-align-right,
+	&[style*='text-align:right'] {
+
+		.airo-wp-stack__inner.is-layout-flex
+			> :where(
+				.airo-wp-counter,
+				.wp-block-airo-wp-counter,
+				.wp-block-button
+			) {
+			align-self: flex-end;
+		}
+	}
+
+	// Fade in the hover background overlay (::after pseudo-element). Safe when no
+	// hover color is set — the layer is transparent, so this is a visual no-op.
+	// Works with an inline attribute or a style variation.
+	&:hover::after {
+		opacity: 1;
+	}
+
+	// Hover text color overrides the base `color` with !important, so it must be
+	// gated to "only when set" or it would clobber the section's own text color.
+	// Two gates cover both sources:
+	//   [style*=…]        — inline var from the block's hoverTextColor attribute
+	//   --has-hover-text  — emitted by the block for an is-style-hover-text-*
+	//                       variation, whose stylesheet supplies the var (the
+	//                       inline gate can't see a stylesheet-set var)
+	&[style*="--airo-wp-hover-text-color"]:hover,
+	&--has-hover-text:hover {
+		color: var(--airo-wp-hover-text-color) !important;
+
+		// Apply text color to all text elements for consistency
+		h1, h2, h3, h4, h5, h6, p, a, span, li, td, th,
+		.wp-block-heading,
+		.wp-block-paragraph {
+			color: var(--airo-wp-hover-text-color) !important;
+		}
+	}
+}
+
+// CRITICAL: Override WordPress's generated contentSize constraints for inline blocks
+// WordPress generates rules like .wp-container-{block}-is-layout-{hash} > :where(...) { max-width: 1200px }
+// We need to override these for blocks that should shrink to content
+
+// Icon, Icon Button, and Pill are deliberately NOT listed here: their
+// `.airo-wp-justify` wrapper must keep WordPress's generated content-size cap —
+// that cap is exactly what makes the wrapper land on the content column
+// (see src/styles/_justification.scss). Removing it here would reintroduce
+// the escape bug the wrapper exists to fix. Counter and core/button are
+// untouched.
+[class*="wp-container-airo-wp-stack"] {
+
+	> .airo-wp-counter,
+	> .wp-block-airo-wp-counter,
+	> .wp-block-button {
+		width: auto !important;
+		max-width: none !important;
+	}
+}
+
+// CRITICAL: When Stack is full-width (alignfull) AND has no width constraints, allow child blocks to go full-width
+// WordPress constrains children with max-width: 1200px by default via generated classes like:
+// .wp-container-airo-wp-stack-is-layout-{hash} > :where(:not(.alignleft):not(.alignright):not(.alignfull))
+// The WordPress container class is on the INNER div, not the outer div
+// We need higher specificity to override this
+// IMPORTANT: Only apply when .airo-wp-no-width-constraint class is present (constrainWidth is disabled)
+.airo-wp-stack.alignfull.airo-wp-no-width-constraint > .airo-wp-stack__inner[class*="wp-container-"] {
+
+	// Target all direct children that aren't explicitly aligned
+	// Exclude blocks with explicit max-width set via our extension
+	> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width) {
+		max-width: none !important;
+		margin-left: 0 !important;
+		margin-right: 0 !important;
+	}
+}
+
+// Shape Divider Styles — the entire ruleset (base box, masked ::before,
+// per-shape masks, position, flip/front, stacking, media queries) lives in
+// the shared partial so frontend + editor stay identical. See the @use at
+// the top of this file.

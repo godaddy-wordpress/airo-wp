@@ -1,0 +1,118 @@
+name: Pre-release
+
+# Full PHP × WP matrix sweep.
+# Triggers automatically on release/* PRs to main; also runnable manually.
+
+on:
+  workflow_dispatch:
+    inputs:
+      php_version:
+        description: 'PHP version to test, or "all"'
+        default: 'all'
+      wp_version:
+        description: 'WP version to test, or "all"'
+        default: 'all'
+  pull_request:
+    branches: [main]
+
+jobs:
+  matrix-setup:
+    name: Build matrix
+    runs-on: ubuntu-24.04
+    if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
+    outputs:
+      php: ${{ steps.set.outputs.php }}
+      wp: ${{ steps.set.outputs.wp }}
+    steps:
+      - id: set
+        run: |
+          if [ -z "${{ inputs.php_version }}" ] || [ "${{ inputs.php_version }}" = "all" ]; then
+            echo 'php=["7.4","8.0","8.1","8.2","8.3"]' >> $GITHUB_OUTPUT
+          else
+            echo 'php=["${{ inputs.php_version }}"]' >> $GITHUB_OUTPUT
+          fi
+          if [ -z "${{ inputs.wp_version }}" ] || [ "${{ inputs.wp_version }}" = "all" ]; then
+            echo 'wp=["6.8","6.9","7.0"]' >> $GITHUB_OUTPUT
+          else
+            echo 'wp=["${{ inputs.wp_version }}"]' >> $GITHUB_OUTPUT
+          fi
+
+  lint:
+    name: PHPCS (PHP 8.3)
+    runs-on: ubuntu-24.04
+    if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/setup/unit.sh
+        env:
+          PHP_VERSION: '8.3'
+      - run: sh scripts/tests/lint.sh
+
+  unit:
+    name: PHPUnit (PHP ${{ matrix.php }})
+    needs: matrix-setup
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ${{ fromJson(needs.matrix-setup.outputs.php) }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/setup/unit.sh
+        env:
+          PHP_VERSION: ${{ matrix.php }}
+      - run: sh scripts/tests/unit.sh
+
+  test-e2e:
+    name: E2E (PHP ${{ matrix.php }} × WP ${{ matrix.wp }})
+    needs: matrix-setup
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ${{ fromJson(needs.matrix-setup.outputs.php) }}
+        wp: ${{ fromJson(needs.matrix-setup.outputs.wp) }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/setup/e2e.sh
+        env:
+          PHP_VERSION: ${{ matrix.php }}
+          WP_VERSION: ${{ matrix.wp }}
+      - run: sh scripts/tests/e2e.sh
+        env:
+          PHP_VERSION: ${{ matrix.php }}
+          WP_VERSION: ${{ matrix.wp }}
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-php${{ matrix.php }}-wp${{ matrix.wp }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  check-plugin:
+    name: Plugin Check (PHP ${{ matrix.php }} × WP ${{ matrix.wp }})
+    needs: matrix-setup
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ${{ fromJson(needs.matrix-setup.outputs.php) }}
+        wp: ${{ fromJson(needs.matrix-setup.outputs.wp) }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/setup/e2e.sh
+        env:
+          PHP_VERSION: ${{ matrix.php }}
+          WP_VERSION: ${{ matrix.wp }}
+      - run: sh scripts/tests/plugin-check.sh
+        env:
+          PHP_VERSION: ${{ matrix.php }}
+          WP_VERSION: ${{ matrix.wp }}
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-check-php${{ matrix.php }}-wp${{ matrix.wp }}
+          path: builds/plugin-check-results.txt
+          retention-days: 7

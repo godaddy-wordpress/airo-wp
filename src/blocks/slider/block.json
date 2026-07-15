@@ -1,0 +1,248 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "airo-wp/slider",
+	"title": "Slider",
+	"category": "airo-wp",
+	"description": "A modern, performant slider with multiple transition effects, auto-play, and full block support inside slides.",
+	"keywords": [
+		"slider",
+		"carousel",
+		"slideshow",
+		"gallery",
+		"hero"
+	],
+	"textdomain": "airo-wp",
+	"icon": "images-alt2",
+	"attributes": {
+		"slidesPerView": {
+			"type": "number",
+			"default": 1
+		},
+		"slidesPerViewTablet": {
+			"type": "number",
+			"default": 1
+		},
+		"slidesPerViewMobile": {
+			"type": "number",
+			"default": 1
+		},
+		"height": {
+			"type": "string",
+			"default": ""
+		},
+		"aspectRatio": {
+			"type": "string",
+			"default": "16/9"
+		},
+		"useAspectRatio": {
+			"type": "boolean",
+			"default": false
+		},
+		"gap": {
+			"type": "string",
+			"default": "20px"
+		},
+		"showArrows": {
+			"type": "boolean",
+			"default": true
+		},
+		"showDots": {
+			"type": "boolean",
+			"default": true
+		},
+		"arrowStyle": {
+			"type": "string",
+			"default": "default"
+		},
+		"arrowPosition": {
+			"type": "string",
+			"default": "sides"
+		},
+		"arrowVerticalPosition": {
+			"type": "string",
+			"default": "center"
+		},
+		"arrowColor": {
+			"type": "string",
+			"default": ""
+		},
+		"arrowBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"arrowSize": {
+			"type": "string",
+			"default": "24px"
+		},
+		"arrowPadding": {
+			"type": "string",
+			"default": ""
+		},
+		"dotStyle": {
+			"type": "string",
+			"default": "default"
+		},
+		"dotPosition": {
+			"type": "string",
+			"default": "inside"
+		},
+		"dotColor": {
+			"type": "string",
+			"default": ""
+		},
+		"effect": {
+			"type": "string",
+			"default": "slide"
+		},
+		"transitionDuration": {
+			"type": "string",
+			"default": "0.5s"
+		},
+		"transitionEasing": {
+			"type": "string",
+			"default": "ease-in-out"
+		},
+		"autoplay": {
+			"type": "boolean",
+			"default": false
+		},
+		"autoplayInterval": {
+			"type": "number",
+			"default": 3000
+		},
+		"pauseOnHover": {
+			"type": "boolean",
+			"default": true
+		},
+		"pauseOnInteraction": {
+			"type": "boolean",
+			"default": true
+		},
+		"loop": {
+			"type": "boolean",
+			"default": true
+		},
+		"draggable": {
+			"type": "boolean",
+			"default": true
+		},
+		"swipeable": {
+			"type": "boolean",
+			"default": true
+		},
+		"freeMode": {
+			"type": "boolean",
+			"default": false
+		},
+		"centeredSlides": {
+			"type": "boolean",
+			"default": false
+		},
+		"mobileBreakpoint": {
+			"type": "number",
+			"default": 768
+		},
+		"tabletBreakpoint": {
+			"type": "number",
+			"default": 1024
+		},
+		"activeSlide": {
+			"type": "number",
+			"default": 0
+		},
+		"styleVariation": {
+			"type": "string",
+			"default": "classic"
+		},
+		"ariaLabel": {
+			"type": "string",
+			"default": ""
+		},
+		"scrollDriven": {
+			"type": "boolean",
+			"default": false
+		},
+		"scrollDrivenSpeed": {
+			"type": "number",
+			"default": 1
+		}
+	},
+	"providesContext": {
+		"airo-wp/slider/effect": "effect",
+		"airo-wp/slider/transitionDuration": "transitionDuration",
+		"airo-wp/slider/activeSlide": "activeSlide",
+		"airo-wp/slider/styleVariation": "styleVariation"
+	},
+	"usesContext": [
+		"airo-wp/queryId",
+		"airo-wp/querySource",
+		"airo-wp/queryPostType",
+		"airo-wp/currentItemId",
+		"airo-wp/currentItemType"
+	],
+	"supports": {
+		"anchor": true,
+		"align": [
+			"wide",
+			"full"
+		],
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"color": {
+			"background": true,
+			"gradient": true,
+			"text": true
+		},
+		"typography": {
+			"fontSize": true,
+			"lineHeight": true,
+			"__experimentalFontFamily": true,
+			"__experimentalFontWeight": true,
+			"__experimentalTextTransform": true,
+			"__experimentalLetterSpacing": true
+		},
+		"__experimentalBorder": {
+			"color": true,
+			"radius": true,
+			"style": true,
+			"width": true
+		}
+	},
+	"example": {
+		"attributes": {
+			"height": "400px",
+			"showArrows": true,
+			"showDots": true,
+			"effect": "slide"
+		},
+		"innerBlocks": [
+			{
+				"name": "airo-wp/slide",
+				"attributes": {
+					"backgroundImage": {}
+				}
+			},
+			{
+				"name": "airo-wp/slide",
+				"attributes": {
+					"backgroundImage": {}
+				}
+			},
+			{
+				"name": "airo-wp/slide",
+				"attributes": {
+					"backgroundImage": {}
+				}
+			}
+		]
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"viewScript": "file:./view.js",
+	"render": "file:./render.php"
+}

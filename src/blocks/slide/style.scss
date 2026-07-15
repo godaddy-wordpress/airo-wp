@@ -1,0 +1,185 @@
+/**
+ * Slide Block - Frontend & Editor Styles
+ * CRITICAL: Must be duplicated to editor.scss for editor/frontend parity
+ */
+
+.airo-wp-slide {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	overflow: hidden;
+	box-sizing: border-box; // Ensure padding doesn't increase slide width
+
+	// Use CSS custom properties from inline styles
+	--airo-wp-slide-overlay-color: #000;
+	--airo-wp-slide-overlay-opacity: 0.4;
+	--airo-wp-slide-content-vertical-align: center;
+	--airo-wp-slide-content-horizontal-align: center;
+
+	// Background image set via inline styles
+	// background-image, background-size, background-position, etc.
+	background-repeat: no-repeat;
+	background-size: cover;
+	background-position: center;
+
+	// No default background - use WordPress native background colors
+	// Users can set background via Styles > Color > Background
+
+	// No default min-height - only applied when user sets override
+	// Users can set min-height via Content Alignment > Min Height Override
+
+	&__overlay {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 1;
+		pointer-events: none;
+		background-color: var(--airo-wp-slide-overlay-color);
+		opacity: var(--airo-wp-slide-overlay-opacity);
+	}
+
+	&__content {
+		position: relative;
+		z-index: 2;
+		display: flex;
+		flex-direction: column;
+		justify-content: var(--airo-wp-slide-content-vertical-align);
+		align-items: var(--airo-wp-slide-content-horizontal-align);
+		flex: 1;
+		width: 100%;
+		gap: var(--wp--style--block-gap, 0.5em);
+
+		// Ensure text is readable over images
+		color: inherit;
+
+		// Reset theme default margins on child blocks — the editor
+		// zeroes these via .block-editor-block-list__block, so the
+		// frontend must match.  Spacing is controlled by gap above;
+		// any per-block margin set by users will be overridden here.
+		> * {
+			width: 100%;
+			max-width: 100%;
+			margin-block: 0;
+		}
+
+		// Center aligned content shouldn't be full width
+		&[style*="align-items: center"] > * {
+			width: auto;
+			max-width: 800px;
+		}
+	}
+
+	// Has background image modifier
+	&--has-background {
+		// Ensure good contrast with background images
+		.airo-wp-slide__content {
+			// Text shadow for better readability (subtle)
+			text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+		}
+	}
+
+	// Active state (for fade/zoom transitions)
+	&--active {
+		z-index: 1;
+	}
+
+	// Ensure content is clickable
+	a,
+	button {
+		position: relative;
+		z-index: 3;
+	}
+}
+
+// Style variation adjustments
+.airo-wp-slider--classic .airo-wp-slide {
+	// Classic style already handled by slider wrapper
+}
+
+.airo-wp-slider--minimal .airo-wp-slide {
+	// Minimal style - no additional slide styling needed
+}
+
+.airo-wp-slider--card .airo-wp-slide {
+	// No default background - users set via Styles > Color > Background
+}
+
+.airo-wp-slider--fullbleed .airo-wp-slide {
+	// Full bleed - ensure full viewport coverage
+	min-height: 100vh;
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+
+	.airo-wp-slide {
+
+		&__content {
+			// Smaller text shadows on mobile
+			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+
+			> * {
+				// Ensure readable text size on mobile
+				font-size: inherit;
+			}
+		}
+	}
+}
+
+// Additional mobile adjustments handled by WordPress spacing controls
+
+// Accessibility
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-slide {
+		transition: none !important;
+		animation: none !important;
+	}
+}
+
+// Loading state
+.airo-wp-slide.is-loading {
+
+	.airo-wp-slide__content {
+		opacity: 0;
+	}
+
+	&::after {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 40px;
+		height: 40px;
+		border: 3px solid rgba(255, 255, 255, 0.3);
+		border-top-color: rgba(255, 255, 255, 0.8);
+		border-radius: 50%;
+		animation: slide-spinner 0.8s linear infinite;
+	}
+}
+
+@keyframes slide-spinner {
+
+	to {
+		transform: translate(-50%, -50%) rotate(360deg);
+	}
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+
+	.airo-wp-slide {
+
+		&__overlay {
+			opacity: calc(var(--airo-wp-slide-overlay-opacity) * 1.2);
+		}
+
+		&__content {
+			text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+		}
+	}
+}

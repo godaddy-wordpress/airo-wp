@@ -1,0 +1,89 @@
+/**
+ * Image Accordion Item - Editor Styles
+ *
+ * CRITICAL: Must match style.scss for editor/frontend parity
+ */
+
+.airo-wp-image-accordion-item {
+	// Position and layout
+	position: relative;
+	flex: 1;
+	overflow: hidden;
+	min-height: 200px;
+
+	// Background image must always cover the item regardless of what the Styles
+	// panel sets inline — allowing `auto`/`contain` breaks the accordion layout.
+	background-size: cover !important;
+	background-position: center;
+	background-repeat: no-repeat !important;
+
+	// Overlay (pseudo-element) - MUST MATCH the four-layer cascade in style.scss.
+	// Solid #000 fallback (not rgba) so the separate opacity var is not
+	// double-applied; short → parent → theme token → literal, same as frontend.
+	// (Previously drifted to `rgba(0,0,0,0.4)` + `0.4`; harmless only while the
+	// editor unconditionally set the short vars — which it no longer does.)
+	&--has-overlay::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background-color: var(
+			--airo-wp-overlay-color,
+			var(
+				--airo-wp-image-accordion-overlay-color,
+				var(
+					--wp--custom--airo-wp--image-accordion--overlay-color,
+					#000
+				)
+			)
+		);
+		opacity: var(
+			--airo-wp-overlay-opacity,
+			var(
+				--airo-wp-image-accordion-overlay-opacity,
+				var(
+					--wp--custom--airo-wp--image-accordion--overlay-opacity,
+					0.4
+				)
+			)
+		);
+		pointer-events: none;
+		z-index: 1;
+	}
+
+	// Content wrapper
+	&__content {
+		position: relative;
+		z-index: 2;
+		// Default padding: L (top/bottom), M (left/right) - MUST MATCH style.scss
+		padding-top: var(--wp--preset--spacing--large, 2rem);
+		padding-bottom: var(--wp--preset--spacing--large, 2rem);
+		padding-left: var(--wp--preset--spacing--medium, 1.5rem);
+		padding-right: var(--wp--preset--spacing--medium, 1.5rem);
+		min-height: 150px;
+		display: flex;
+		flex-direction: column;
+		// Use alignment from attributes - MUST MATCH style.scss
+		justify-content: var(--airo-wp-vertical-alignment, center);
+		align-items: var(--airo-wp-horizontal-alignment, center);
+		color: #fff;
+
+		// Make all text white for readability
+		h1, h2, h3, h4, h5, h6,
+		p, a, span, li {
+			color: inherit;
+		}
+
+		// Ensure links are visible
+		a {
+			text-decoration: underline;
+		}
+	}
+
+	// Border for better visibility in editor
+	border: 1px dashed rgba(0, 0, 0, 0.2);
+
+	// Hover effect in editor (subtle)
+	&:hover {
+		border-color: var(--wp-admin-theme-color, #2271b1);
+	}
+}

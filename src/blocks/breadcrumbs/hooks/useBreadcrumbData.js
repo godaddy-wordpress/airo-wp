@@ -1,0 +1,113 @@
+/**
+ * Custom hook to fetch breadcrumb data from the editor
+ *
+ * @return {Object} Breadcrumb data including post title, type, parents, and categories
+ */
+import { __ } from '@wordpress/i18n';
+import { useSelect } from '@wordpress/data';
+import { useMemo } from '@wordpress/element';
+
+const EMPTY_ARRAY = [];
+
+export function useBreadcrumbData() {
+	const rawData = useSelect((select) => {
+		const { getCurrentPost, getEditedPostAttribute } =
+			select('core/editor') || {};
+		const { getEntityRecords } = select('core') || {};
+
+		if (!getCurrentPost || !getEditedPostAttribute) {
+			return {
+				postTitle: '',
+				postType: 'post',
+				parentId: 0,
+				categoryIds: EMPTY_ARRAY,
+				allPages: null,
+				allCategories: null,
+				isEditorReady: false,
+			};
+		}
+
+		const title = getEditedPostAttribute('title');
+		const type = getEditedPostAttribute('type');
+		const parentId = getEditedPostAttribute('parent');
+		const categoryIds = getEditedPostAttribute('categories') || EMPTY_ARRAY;
+
+		let allPages = null;
+		let allCategories = null;
+
+		if (type === 'page' && parentId && getEntityRecords) {
+			allPages = getEntityRecords('postType', 'page', {
+				per_page: -1,
+			});
+		}
+
+		if (type === 'post' && categoryIds.length > 0 && getEntityRecords) {
+			allCategories = getEntityRecords('taxonomy', 'category', {
+				per_page: -1,
+			});
+		}
+
+		return {
+			postTitle: title || __('(no title)', 'airo-wp'),
+			postType: type || 'post',
+			parentId: parentId || 0,
+			categoryIds,
+			allPages,
+			allCategories,
+			isEditorReady: true,
+		};
+	}, []);
+
+	const {
+		postTitle,
+		postType,
+		parentId,
+		categoryIds,
+		allPages,
+		allCategories,
+		isEditorReady,
+	} = rawData;
+
+	const postParents = useMemo(() => {
+		if (postType !== 'page' || !parentId || !allPages) {
+			return EMPTY_ARRAY;
+		}
+		const parents = [];
+		let currentParentId = parentId;
+		while (currentParentId) {
+			const parent = allPages.find((p) => p.id === currentParentId);
+			if (parent) {
+				parents.unshift({
+					title: parent.title.rendered,
+					id: parent.id,
+				});
+				currentParentId = parent.parent;
+			} else {
+				break;
+			}
+		}
+		return parents.length > 0 ? parents : EMPTY_ARRAY;
+	}, [postType, parentId, allPages]);
+
+	const postCategories = useMemo(() => {
+		if (postType !== 'post' || categoryIds.length === 0 || !allCategories) {
+			return EMPTY_ARRAY;
+		}
+		const firstCategoryId = categoryIds[0];
+		const category = allCategories.find(
+			(cat) => cat.id === firstCategoryId
+		);
+		if (category) {
+			return [{ title: category.name, id: category.id }];
+		}
+		return EMPTY_ARRAY;
+	}, [postType, categoryIds, allCategories]);
+
+	return {
+		postTitle,
+		postType,
+		postParents,
+		postCategories,
+		isEditorReady,
+	};
+}

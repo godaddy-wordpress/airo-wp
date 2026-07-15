@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "airo-wp/query-pagination",
+  "version": "1.0.0",
+  "title": "Query Pagination",
+  "category": "airo-wp",
+  "ancestor": ["airo-wp/query"],
+  "description": "Pagination controls for the Dynamic Query block. Supports numbered links and Interactivity-API load-more.",
+  "keywords": ["pagination", "load more"],
+  "textdomain": "airo-wp",
+  "icon": "ellipsis",
+  "supports": {
+    "html": false,
+    "align": false,
+    "color": {
+      "background": true,
+      "text": true,
+      "link": true,
+      "__experimentalDefaultControls": { "text": true }
+    },
+    "typography": {
+      "fontSize": true,
+      "lineHeight": true
+    },
+    "spacing": {
+      "margin": true,
+      "padding": true,
+      "blockGap": true
+    }
+  },
+  "usesContext": ["airo-wp/queryId"],
+  "attributes": {
+    "mode": { "type": "string", "default": "numbered", "enum": ["numbered", "loadmore"] },
+    "paginationKind": { "type": "string", "default": "numbered", "enum": ["numbered", "loadmore", "infinite"] },
+    "labelLoadMore": { "type": "string", "default": "" },
+    "labelLoading": { "type": "string", "default": "" },
+    "showPrevNext": { "type": "boolean", "default": true },
+    "autoPauseAfter": { "type": "number", "default": 3 },
+    "sentinelOffsetPx": { "type": "number", "default": 200 },
+    "buttonLabelWhenPaused": { "type": "string", "default": "Load more" },
+    "alignment": { "type": "string", "default": "left", "enum": ["left", "center", "right"] }
+  },
+  "example": { "attributes": { "mode": "numbered" } },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "render": "file:./render.php"
+}
