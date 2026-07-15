@@ -13,6 +13,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	return;
 }
 
+if ( file_exists( dirname( __DIR__ ) . '/data/icon-svg-library.php' ) ) {
+	require_once dirname( __DIR__ ) . '/data/icon-svg-library.php';
+}
+
 if ( file_exists( __DIR__ . '/blocks/index.php' ) ) {
 	require_once __DIR__ . '/blocks/index.php';
 }

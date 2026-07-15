@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5
+
+- Hardened permission checks on four MCP tools
+
 ## 0.2.4
 
 - Bundled block dynamic tags so shipped blocks resolve dynamic content correctly

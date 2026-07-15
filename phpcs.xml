@@ -49,6 +49,11 @@
 		<exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.cookies_setcookie"/>
 		<!-- JS scanning is deprecated in PHPCS 4.0; this ruleset only targets PHP files -->
 		<exclude name="WordPressVIPMinimum.JS.Window"/>
+		<exclude name="WordPressVIPMinimum.JS.DangerouslySetInnerHTML"/>
+		<exclude name="WordPressVIPMinimum.JS.InnerHTML"/>
+		<exclude name="WordPressVIPMinimum.JS.StrippingTags"/>
+		<exclude name="WordPressVIPMinimum.JS.StringConcat"/>
+		<exclude name="WordPressVIPMinimum.JS.HTMLExecutingFunctions"/>
 	</rule>
 
 	<rule ref="Generic.PHP.RequireStrictTypes"/>

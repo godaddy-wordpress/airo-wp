@@ -11,7 +11,7 @@
  *
  * SECURITY: Path `d` values are static data and must never accept user input.
  *
- * @package DesignSetGo
+ * @package airo-wp
  * @since 2.1.0
  */
 
@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @return array<string, array{width: int, height: int, paths: array}> Pattern definitions keyed by pattern ID.
  */
-function designsetgo_get_svg_pattern_data() {
+function airowp_get_svg_pattern_data() {
 	return array(
 		// ── MINIMAL ──────────────────────────────────────
 

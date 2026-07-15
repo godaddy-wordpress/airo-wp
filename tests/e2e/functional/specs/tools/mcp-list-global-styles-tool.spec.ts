@@ -102,8 +102,17 @@ test.describe('airo-wp/list-global-styles tool', () => {
   });
 
   test('filters by theme using active theme stylesheet', async ({ requestUtils }) => {
+    // Detect the active theme slug so the filter uses a value that actually
+    // exists in this environment instead of a hardcoded name.
+    const themes = await requestUtils.rest<Array<{ stylesheet: string }>>({
+      method: 'GET',
+      path: '/wp/v2/themes?status=active',
+    });
+    const activeTheme = themes[0]?.stylesheet;
+    expect(activeTheme, 'could not determine active theme').toBeTruthy();
+
     const response = await callTool(requestUtils, sessionId, 'airo-wp-list-global-styles', {
-      theme: 'twentytwentyfive',
+      theme: activeTheme,
     }, 4);
 
     expect(response.status(), `tools/call failed: ${await response.text()}`).toBe(200);
@@ -118,11 +127,11 @@ test.describe('airo-wp/list-global-styles tool', () => {
 
     expect(data.success, `expected success: ${JSON.stringify(data)}`).toBe(true);
     expect(Array.isArray(data.styles), 'styles should be an array').toBe(true);
-    expect(data.styles.length, 'should find styles for twentytwentyfive').toBeGreaterThan(0);
+    expect(data.styles.length, `should find styles for ${activeTheme}`).toBeGreaterThan(0);
 
     // Every returned style should belong to the filtered theme.
     for (const style of data.styles) {
-      expect(style.theme, `style theme should be twentytwentyfive`).toBe('twentytwentyfive');
+      expect(style.theme, `style theme should be ${activeTheme}`).toBe(activeTheme);
     }
   });
 });

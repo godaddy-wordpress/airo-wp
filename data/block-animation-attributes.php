@@ -5,7 +5,7 @@
  * Provides utility functions to add animation data attributes
  * to dynamic blocks during server-side rendering.
  *
- * @package DesignSetGo
+ * @package airo-wp
  * @since 1.0.0
  */
 
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @param array $attributes Block attributes array.
  * @return array Array of data attributes for animations.
  */
-function designsetgo_get_animation_attributes( $attributes ) {
+function airowp_get_animation_attributes( $attributes ) {
 	$animation_attrs   = array();
 	$animation_classes = array();
 
@@ -37,61 +37,61 @@ function designsetgo_get_animation_attributes( $attributes ) {
 	}
 
 	// Add animation classes.
-	$animation_classes[] = 'has-dsgo-animation';
+	$animation_classes[] = 'has-airo-wp-animation';
 
 	// Add entrance animation class.
 	$entrance_animation = isset( $attributes['dsgoEntranceAnimation'] ) ? $attributes['dsgoEntranceAnimation'] : '';
 	if ( $entrance_animation ) {
-		$animation_classes[] = 'dsgo-animation-' . esc_attr( $entrance_animation );
+		$animation_classes[] = 'airo-wp-animation-' . esc_attr( $entrance_animation );
 	}
 
 	// Add exit animation class.
 	$exit_animation = isset( $attributes['dsgoExitAnimation'] ) ? $attributes['dsgoExitAnimation'] : '';
 	if ( $exit_animation ) {
-		$animation_classes[] = 'dsgo-animation-exit-' . esc_attr( $exit_animation );
+		$animation_classes[] = 'airo-wp-animation-exit-' . esc_attr( $exit_animation );
 	}
 
 	// Always include the enabled flag and animation type(s) — required by frontend JS.
-	$animation_attrs['data-dsgo-animation-enabled'] = 'true';
+	$animation_attrs['data-airo-wp-animation-enabled'] = 'true';
 
 	if ( $entrance_animation ) {
-		$animation_attrs['data-dsgo-entrance-animation'] = esc_attr( $entrance_animation );
+		$animation_attrs['data-airo-wp-entrance-animation'] = esc_attr( $entrance_animation );
 	}
 
 	if ( $exit_animation ) {
-		$animation_attrs['data-dsgo-exit-animation'] = esc_attr( $exit_animation );
+		$animation_attrs['data-airo-wp-exit-animation'] = esc_attr( $exit_animation );
 	}
 
 	// Only output settings that differ from defaults to keep markup lean.
 	// Defaults: trigger=scroll, duration=600, delay=0, easing=ease-out, offset=100, once=true.
 	$trigger = isset( $attributes['dsgoAnimationTrigger'] ) ? $attributes['dsgoAnimationTrigger'] : 'scroll';
 	if ( 'scroll' !== $trigger ) {
-		$animation_attrs['data-dsgo-animation-trigger'] = esc_attr( $trigger );
+		$animation_attrs['data-airo-wp-animation-trigger'] = esc_attr( $trigger );
 	}
 
 	$duration = isset( $attributes['dsgoAnimationDuration'] ) ? (int) $attributes['dsgoAnimationDuration'] : 600;
 	if ( 600 !== $duration ) {
-		$animation_attrs['data-dsgo-animation-duration'] = esc_attr( (string) $duration );
+		$animation_attrs['data-airo-wp-animation-duration'] = esc_attr( (string) $duration );
 	}
 
 	$delay = isset( $attributes['dsgoAnimationDelay'] ) ? (int) $attributes['dsgoAnimationDelay'] : 0;
 	if ( 0 !== $delay ) {
-		$animation_attrs['data-dsgo-animation-delay'] = esc_attr( (string) $delay );
+		$animation_attrs['data-airo-wp-animation-delay'] = esc_attr( (string) $delay );
 	}
 
 	$easing = isset( $attributes['dsgoAnimationEasing'] ) ? $attributes['dsgoAnimationEasing'] : 'ease-out';
 	if ( 'ease-out' !== $easing ) {
-		$animation_attrs['data-dsgo-animation-easing'] = esc_attr( $easing );
+		$animation_attrs['data-airo-wp-animation-easing'] = esc_attr( $easing );
 	}
 
 	$offset = isset( $attributes['dsgoAnimationOffset'] ) ? (int) $attributes['dsgoAnimationOffset'] : 100;
 	if ( 100 !== $offset ) {
-		$animation_attrs['data-dsgo-animation-offset'] = esc_attr( (string) $offset );
+		$animation_attrs['data-airo-wp-animation-offset'] = esc_attr( (string) $offset );
 	}
 
 	$once = isset( $attributes['dsgoAnimationOnce'] ) ? (bool) $attributes['dsgoAnimationOnce'] : true;
 	if ( ! $once ) {
-		$animation_attrs['data-dsgo-animation-once'] = 'false';
+		$animation_attrs['data-airo-wp-animation-once'] = 'false';
 	}
 
 	// Convert classes array to string.
@@ -117,7 +117,7 @@ function designsetgo_get_animation_attributes( $attributes ) {
  * @param array $attributes Block attributes array.
  * @return array Array of data attributes for links.
  */
-function designsetgo_get_clickable_attributes( $attributes ) {
+function airowp_get_clickable_attributes( $attributes ) {
 	$link_attrs   = array();
 	$link_classes = array();
 
@@ -131,7 +131,7 @@ function designsetgo_get_clickable_attributes( $attributes ) {
 	}
 
 	// Add clickable class.
-	$link_classes[] = 'dsgo-clickable';
+	$link_classes[] = 'airo-wp-clickable';
 
 	// Add link data attributes.
 	$link_attrs['data-link-url'] = esc_attr( $link_url );
@@ -171,12 +171,12 @@ function designsetgo_get_clickable_attributes( $attributes ) {
  * @param array  $attributes         Block attributes array.
  * @return string Modified wrapper attributes string.
  */
-function designsetgo_add_animation_to_wrapper( $wrapper_attributes, $attributes ) {
+function airowp_add_animation_to_wrapper( $wrapper_attributes, $attributes ) {
 	// Get animation data.
-	$animation_data = designsetgo_get_animation_attributes( $attributes );
+	$animation_data = airowp_get_animation_attributes( $attributes );
 
 	// Get clickable link data.
-	$clickable_data = designsetgo_get_clickable_attributes( $attributes );
+	$clickable_data = airowp_get_clickable_attributes( $attributes );
 
 	// Combine all classes.
 	$all_classes = trim( $animation_data['classes'] . ' ' . $clickable_data['classes'] );

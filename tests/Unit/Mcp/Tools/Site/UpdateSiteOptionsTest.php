@@ -215,4 +215,47 @@ final class UpdateSiteOptionsTest extends TestCase {
 		$this->assertFalse( $result['success'] );
 		$this->assertStringContainsString( 'protected', $result['message'] );
 	}
+
+	/**
+	 * AI service API keys are protected.
+	 *
+	 * @dataProvider provider_ai_api_keys
+	 */
+	public function test_ai_api_keys_are_protected( string $key ): void {
+		Functions\expect( 'current_user_can' )->with( 'manage_options' )->andReturn( true );
+
+		$result = $this->tool->execute( array(
+			'option_name'  => $key,
+			'option_value' => 'sk-leaked',
+		) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'protected', $result['message'] );
+	}
+
+	/**
+	 * @return array<string, array{string}>
+	 */
+	public static function provider_ai_api_keys(): array {
+		return array(
+			'openai'     => array( 'openai_api_key' ),
+			'anthropic'  => array( 'anthropic_api_key' ),
+			'openai_uc'  => array( 'OPENAI_API_KEY' ),
+		);
+	}
+
+	/**
+	 * Options with the gd_mwcs_ prefix are protected.
+	 */
+	public function test_gd_mwcs_prefix_is_protected(): void {
+		Functions\expect( 'current_user_can' )->with( 'manage_options' )->andReturn( true );
+
+		$result = $this->tool->execute( array(
+			'option_name'  => 'gd_mwcs_api_token',
+			'option_value' => 'leaked',
+		) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'protected', $result['message'] );
+	}
 }

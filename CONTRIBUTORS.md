@@ -8,164 +8,115 @@ Airo WP is a **plugin scaffold**: bootstrap, DI container, package loader, Strau
 
 ## Prerequisites
 
-Before you begin, install:
-
-| Tool | Version |
-|------|---------|
-| PHP | 7.4+ (use **8.3** locally when possible) |
-| Composer | 2.x |
-| Git | 2.x |
-| WordPress | 6.8+ (local site or container) |
-
-Optional but recommended:
-
-- A local WordPress environment (e.g. site-designer-local or your team's standard stack)
-- `phpcs` / `phpcbf` via Composer (included in dev dependencies)
+| Tool | Version | Notes |
+|------|---------|-------|
+| Node.js | 20+ | Required |
+| npm | 10+ | Required |
+| Docker | 24+ | Required by the WordPress test environment |
+| PHP | 7.4+ | Optional — only needed if running Composer on the host |
+| Composer | 2.x | Optional — runs inside the WordPress environment |
 
 ## Getting started
 
-### 1. Clone and install dependencies
+### 1. Clone and install Node dependencies
 
 ```bash
 git clone git@github.com:godaddy-wordpress/airo-wp.git
 cd airo-wp
-composer install
+npm ci
 ```
 
-This installs dev tools (PHPUnit, Brain Monkey, WPCS, VIPWPCS), downloads the Strauss phar, and wires autoloaders.
-
-### 2. Link the plugin into WordPress
-
-Point your local site's plugins directory at this repo:
+### 2. Start the WordPress environment
 
 ```bash
-# Example: symlink (adjust paths to your environment)
-ln -s "$(pwd)" /path/to/wordpress/wp-content/plugins/airo-wp
+npm run wp-env:start
 ```
 
-Or copy the built plugin tree into `wp-content/plugins/airo-wp/`.
+This starts a Docker-based WordPress instance with the plugin loaded. On first run it also installs Composer inside the environment (takes ~2–3 minutes while images are pulled).
 
-### 3. Prefix runtime dependencies (when changing deps or autoload)
+### 3. Install PHP dependencies
 
 ```bash
-composer build
+npx wp-env run tests-cli --env-cwd=wp-content/plugins/airo-wp -- composer install --no-interaction --no-progress
 ```
-
-Run this after adding or updating Composer `require` packages, or after changing PSR-4 paths. It runs Strauss to refresh prefixed packages under `dependencies/`, then regenerates `vendor/autoload.php` via Composer. The `dependencies/` directory is gitignored — do not commit it.
 
 ### 4. Verify everything passes
 
-With Docker (recommended; caches `vendor` in named volumes):
-
 ```bash
-make check             # test + lint (recommended before opening a PR)
-make test PHP=8.0      # test on a specific version only
-make lint              # lint only
-make docker-build-all  # build all matrix images locally (optional)
+npm run test:unit
+npm run lint
 ```
 
-CI runs the same commands automatically:
-- `.github/workflows/phpunit.yml` — PHPUnit matrix on PHP 7.4–8.3 (PR + push to `main`)
-- `.github/workflows/phpcs.yml` — PHPCS on PHP 8.3 (PR + push to `main`)
-- `.github/workflows/plugin-check.yml` — WordPress Plugin Check on PHP 8.3, WP latest (PR + push to `main`)
-
-Or locally with Composer (single host PHP only):
-
-```bash
-composer test
-composer lint
-```
-
-Both must pass before you open a pull request. Build images once with `make docker-build` if `airo-wp-test` / `airo-wp-linter` tags are missing.
+Both must pass before you open a pull request. CI runs the same commands automatically.
 
 ### 5. Activate in WordPress
 
-In wp-admin → **Plugins**, activate **Airo WP**. The scaffold has no settings screen; activation only boots the container and placeholder `scaffold` package.
+The environment boots at `http://localhost:8881` with the plugin active. Admin at `http://localhost:8881/wp-admin/` (user: `admin`, password: `password`).
+
+### 6. Stop the environment when done
+
+```bash
+npm run wp-env:stop
+```
 
 ## Development commands
 
 | Command | Description |
 |---------|-------------|
-| `make test` | PHPUnit in Docker (default PHP 8.3) |
-| `make test PHP=8.0` | PHPUnit in Docker on a specific version (7.4–8.3) |
-| `make lint` | PHPCS in Docker |
-| `make check` | test + lint |
-| `make docker-build` | Build `airo-wp-test` and `airo-wp-linter` images |
-| `make docker-build-all` | Build test images for every PHP version |
-| `make plugin-check` | Run WordPress Plugin Check in Docker (PHP 8.3, WP latest) |
-| `make plugin-check PHP=8.3 WP=6.8` | Plugin Check against a specific WP version |
-| `make docker-build-e2e` | Build `airo-wp-e2e` image (PHP + Node.js + WP-CLI) |
-| `make e2e` | Run e2e tests in Docker (PHP 8.3, WP 6.9.4) |
-| `make e2e PHP=8.0 WP=6.8` | Run e2e tests against a specific PHP × WP version |
-| `make playground` | Run WP Playground in Docker (PHP 8.3, latest WP) |
-| `make playground PHP=8.2 WP=6.8` | Playground with specific PHP × WP version |
-| `make playground-stop` | Stop the running playground container |
-| `make playground-reset` | Stop and remove all playground data (fresh start) |
-| `make version-bump TYPE=patch` | Bump plugin version in all files (patch/minor/major) |
-| `make package` | Build distributable zip (`builds/airo-wp.zip`) |
-| `make build TYPE=patch` | Version bump + full build (patch/minor/major) |
-| `composer test` | PHPUnit on host PHP (no version matrix) |
-| `composer lint` | PHPCS — WPCS + VIP-Go + PHPCompatibility |
-| `composer format` | PHPCBF auto-fix |
-| `composer build` | Strauss-prefix runtime deps into `dependencies/` |
+| `npm run test:unit` | PHPUnit — PHP unit tests |
+| `npm run lint` | PHPCS — WordPress coding standards |
+| `npm run format` | PHPCBF — auto-fix coding standard issues |
+| `npm run build` | Build JS/CSS assets (wp-scripts) |
+| `npm run build:zip` | Build distributable plugin zip (`builds/airo-wp-test.zip`) |
+| `npm run test:e2e` | Playwright functional end-to-end tests |
+| `npm run test:e2e:debug` | Playwright with step debugger |
+| `npm run plugin-check` | WordPress Plugin Check (PCP) |
+| `npm run wp-env:start` | Start the WordPress environment |
+| `npm run wp-env:stop` | Stop the WordPress environment |
+| `npm run start` | JS/CSS file watcher |
 
 ## Plugin Check
 
-The [WordPress Plugin Check](https://wordpress.org/plugins/plugin-check/) (PCP) verifies the plugin satisfies WordPress.org requirements (security, performance, accessibility, plugin-review standards).
+The [WordPress Plugin Check](https://wordpress.org/plugins/plugin-check/) (PCP) verifies the plugin satisfies WordPress.org requirements.
 
 ### Running locally
 
 ```bash
-# Build the e2e image once (shared with e2e tests)
-make docker-build-e2e
+# Build the distributable zip first
+npx wp-env run tests-cli --env-cwd=wp-content/plugins/airo-wp -- composer install --no-dev --no-interaction --no-progress
+npm run build:zip
 
-# Run Plugin Check (default: PHP 8.3, WP latest)
-make plugin-check
-
-# Run against a specific WP version
-make plugin-check PHP=8.3 WP=6.8
+# Run Plugin Check
+npm run plugin-check
 ```
 
-### How it works
+Full results are written to `builds/plugin-check-results.txt`. CI posts them as a sticky PR comment.
 
-1. `tests/e2e/setup/plugin-check-entrypoint.sh` runs inside the container:
-   - Builds a distributable zip via `.dev/release/build-zip.sh` (Composer, DSG sync, wp-scripts build, plugin-zip)
-   - Downloads WordPress via WP-CLI and sets up SQLite database integration (no MySQL needed)
-   - Installs the plugin from the built zip (`wp plugin install builds/airo-wp-test.zip`)
-   - Installs the Plugin Check plugin and runs `wp plugin check` with `--require=cli.php` for runtime checks
-2. Full results are saved as markdown to `plugin-check-results/full-results.txt` (posted as a sticky PR comment in CI)
-3. A filtered run (excluding baseline ignore codes) determines pass/fail
-4. The job hard-fails if any ERROR-type finding is detected in the filtered output
+After running plugin-check locally, restore dev dependencies:
 
-### The `.distignore` file
-
-`.distignore` documents which files and directories are excluded from the distributable plugin archive. The plugin-check build step mirrors these exclusions. When adding new dev-only files or directories, add them to `.distignore` to keep them out of the build.
+```bash
+npx wp-env run tests-cli --env-cwd=wp-content/plugins/airo-wp -- composer install --no-interaction --no-progress
+```
 
 ## End-to-end tests
 
-E2e tests run WordPress via [`@wp-playground/cli`](https://github.com/WordPress/playground-tools/tree/trunk/packages/playground-cli) (WASM PHP + bundled SQLite, no separate database) and drive the REST API with [Playwright](https://playwright.dev).
-
-### Prerequisites
-
-- Docker (same requirement as unit tests)
-- No local Node.js or PHP needed — everything runs inside the container
+E2e tests run WordPress via the wp-env environment and drive the REST API and browser with [Playwright](https://playwright.dev).
 
 ### Running locally
 
 ```bash
-# Build the e2e image once (or after changing .dev/e2e/Dockerfile)
-make docker-build-e2e
+# Build JS/CSS assets (required — tests interact with compiled blocks)
+npm run build
 
-# Run against the default matrix cell (PHP 8.3, WP 6.9.4)
-make e2e
+# Install Playwright browser (once)
+npx playwright install --with-deps chromium
 
-# Run against a specific PHP × WP version
-make e2e PHP=8.0 WP=6.8
+# Start environment and run tests
+npm run wp-env:start
+npm run test:e2e
 ```
 
-Supported WP versions: `6.8`, `6.9`, `7` (must be `>= 6.8` — the plugin's declared minimum).
-
-On failure, Playwright's HTML report is written to `tests/e2e/playwright-report/` inside the container. Pass `-e PWDEBUG=1` in the `docker run` command to enable step-by-step debugging.
+Playwright's HTML report is written to `playwright-report/` on failure.
 
 ### What the tests cover
 
@@ -174,53 +125,16 @@ On failure, Playwright's HTML report is written to `tests/e2e/playwright-report/
 | `plugin-activation.spec.ts` | Plugin is present and `active` via `GET /wp/v2/plugins` |
 | `mcp-tools.spec.ts` | MCP `tools/list` returns `gd-mcp-get-site-info`; `tools/call` returns site data |
 
-### How it works
+## CI
 
-1. `entrypoint.sh` runs inside the container:
-   - Builds a distributable zip via `.dev/release/build-zip.sh` (Composer, DSG sync, wp-scripts build, plugin-zip)
-   - Extracts `builds/airo-wp-test.zip` to a temp directory
-   - Copies `tests/e2e/setup/e2e-setup.php` into the @wp-playground/cli server's MU-plugins directory (loaded on WP boot)
-   - Starts `@wp-playground/cli` serving the extracted plugin on port 8080
-   - Runs `playwright test` with static test credentials
-2. All REST calls use `index.php?rest_route=` instead of `/wp-json/` because @wp-playground/cli does not rewrite URLs at the Node level.
+CI runs automatically on pull requests and pushes to `main`:
 
-### CI
+- **PHPUnit** — PHP unit tests
+- **PHPCS** — WordPress coding standards
+- **Functional E2E** — Playwright test suite
+- **Plugin Check (PCP)** — WordPress.org plugin requirements check
 
-The workflow at `.github/workflows/e2e.yml` is **manual only** (`workflow_dispatch`). It accepts optional `php_version` and `wp_version` inputs (defaults to `all`) and runs the full PHP × WP matrix with `fail-fast: false`. Trigger it from the GitHub Actions tab when you need to verify backward compatibility.
-
-## WP Playground
-
-A local WordPress instance running the plugin with live source binding — useful for quick fixes, prototyping, and manual testing.
-
-### Running
-
-```bash
-# Start (first run builds the image and installs deps)
-make playground
-
-# Specific PHP and WP versions
-make playground PHP=8.2 WP=6.8
-
-# Stop
-make playground-stop
-
-# Reset all state (fresh WordPress on next start)
-make playground-reset
-```
-
-### How it works
-
-- Uses [`@wp-playground/cli`](https://github.com/WordPress/playground-tools/tree/trunk/packages/playground-cli) (WordPress Playground for Node.js) inside Docker
-- Plugin source is bind-mounted — edits reflect immediately without restart
-- WordPress state (SQLite database, uploads, settings) persists in the `airo-wp-playground-data` Docker volume across container restarts
-- Browser auto-opens at `http://localhost:9400`; admin at `http://localhost:9400/wp-admin/`
-- The Docker image is built from the `base` stage of `.dev/e2e/Dockerfile` (PHP + Node 24 + Composer, shared with the e2e image)
-
-### Known limitations
-
-- @wp-playground/cli uses PHP-WASM (WebAssembly), not native PHP — step-debugging (Xdebug) is not available
-- WordPress loopback requests (Site Health REST API check) time out — this is a PHP-WASM limitation and does not affect normal plugin development
-- Plugin source changes are live, but `vendor/` changes require stopping and restarting (`make playground-stop && make playground`)
+All four must pass before merge.
 
 ## Architecture
 
@@ -231,38 +145,11 @@ make playground-reset
 | `includes/Packages.php` | Domain package registry |
 | `includes/Container.php` | DI facade |
 | `functions/` | Global helpers (`functions/index.php` → per-domain files) |
-| `dependencies/` | Strauss-prefixed runtime vendors (gitignored; generated at build time) |
-| `tests/` | PHPUnit unit tests |
-
-**Autoloading:** Composer's `vendor/autoload.php` loads plugin code (`includes/`, `functions/`) and Strauss-prefixed runtime packages under `dependencies/`. Run `composer install` (or `composer install --no-dev` for releases) before activating the plugin.
-
-## Project structure
-
-```
-airo-wp.php              # Plugin header + bootstrap (keep thin)
-readme.txt               # WordPress.org-style readme (screens, changelog)
-includes/                # All PHP classes (PSR-4)
-  Container.php
-  Packages.php
-  Plugin.php
-  Internal/              # Infrastructure (container, etc.)
-  {YourDomain}/          # Your feature package
-    Package.php
-functions/
-  index.php              # Composer files autoload entry
-  container.php          # AiroWP()
-  {your-domain}.php      # Optional global helpers
-dependencies/            # Strauss-prefixed vendors (gitignored; generated by composer build)
-tests/                   # PHPUnit + Brain Monkey
-```
-
-Namespace root: `GoDaddy\WordPress\Plugins\AiroWp\`
+| `tests/` | PHPUnit unit tests + Playwright e2e tests |
 
 ## Adding a feature (domain package)
 
-1. **Create the package class**
-
-   `includes/MyFeature/Package.php`:
+1. **Create the package class** — `includes/MyFeature/Package.php`:
 
    ```php
    <?php
@@ -286,43 +173,29 @@ Namespace root: `GoDaddy\WordPress\Plugins\AiroWp\`
    'my-feature' => MyFeature\Package::class,
    ```
 
-3. **Prefer DI over `new`** — resolve services via `$container->get( SomeService::class )` with constructor or `init()` type hints.
+3. **Tests** — add `tests/Unit/MyFeature/` with Brain Monkey for WordPress APIs.
 
-4. **Optional helpers** — add `functions/my-feature.php` and `require_once` it from `functions/index.php`.
-
-5. **Tests** — add `tests/Unit/MyFeature/` with Brain Monkey for WordPress APIs.
-
-6. **Run** `composer test`, `composer lint`, and `composer build` if you changed Composer dependencies (`dependencies/` is regenerated automatically and should not be committed).
+4. **Run** `npm run test:unit` and `npm run lint` before opening a PR.
 
 ## Coding standards
 
 - **PHPCS** with WordPress-Core, WordPress-Extra, WordPress-Docs, **WordPress-VIP-Go**, and PHPCompatibilityWP (`testVersion` 7.4–8.3).
-- Run `make lint` (Docker, matches CI) before pushing; `composer lint` works too if Docker is unavailable. `composer format` (or `phpcbf`) fixes many issues automatically.
 - Use `declare(strict_types=1);` in new PHP files.
-- Add `defined( 'ABSPATH' ) || exit;` to every PHP file for direct file access protection. Place it **after** the `namespace` declaration in namespaced files, or after `declare(strict_types=1)` in non-namespaced files (PHP requires `namespace` to directly follow `declare`).
-- Keep `airo-wp.php` free of business logic.
-- Write PHP **7.4-compatible** code in `includes/` (no enums/readonly in shared code unless the team agrees to raise the minimum).
-- **Brain Monkey** for unit tests; use `Proxies\LegacyProxy` only when a WordPress function is impractical to mock.
-
-## Dependency and autoload rules
-
-- **Runtime** packages go in `composer.json` `require` → Strauss prefixes them into `dependencies/`.
-- **Dev-only** tools stay in `require-dev` → `vendor/` only, not shipped.
-- Do not commit `vendor/`, `dependencies/`, or `bin/strauss.phar`.
-- `dependencies/` is gitignored and generated automatically by `composer build` (or `make test` on first run).
+- Add `defined( 'ABSPATH' ) || exit;` to every PHP file for direct file access protection. Place it **after** the `namespace` declaration in namespaced files, or after `declare(strict_types=1)` in non-namespaced files.
+- Write PHP **7.4-compatible** code in `includes/`.
 
 ## Pull requests
 
-1. Branch from `main` (or your team's default branch).
-2. Keep changes focused; one domain or one infrastructure concern per PR when possible.
-3. Ensure CI passes (PHPUnit matrix 7.4–8.3, PHPCS on 8.3).
+1. Branch from `main`.
+2. Keep changes focused — one domain or one infrastructure concern per PR.
+3. Ensure CI passes (all four jobs).
 4. Describe **what** changed and **why** in the PR body.
 5. No secrets, `.env` files, or local paths in commits.
 
 ## Local docs
 
-Brainstorming specs and implementation plans may live under `docs/superpowers/` on your machine. That directory is **gitignored** and is not part of the plugin distribution.
+Brainstorming specs and implementation plans may live under `docs/superpowers/` on your machine. That directory is not part of the plugin distribution.
 
 ## Questions
 
-For team-specific process (code review owners, release cadence, Jira tickets), use your GoDaddy / Site Designer team channels. For plugin architecture questions, refer to `README.md` and the inline structure in `includes/Packages.php` and `includes/Container.php`.
+For team-specific process, use your team's standard channels. For plugin architecture questions, refer to `README.md` and the inline structure in `includes/Packages.php` and `includes/Container.php`.

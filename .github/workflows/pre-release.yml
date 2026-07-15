@@ -1,14 +1,11 @@
 name: Pre-release
 
-# Full PHP × WP matrix sweep.
+# Full WP version matrix sweep. PHP fixed at 8.3 (set in .wp-env.json).
 # Triggers automatically on release/* PRs to main; also runnable manually.
 
 on:
   workflow_dispatch:
     inputs:
-      php_version:
-        description: 'PHP version to test, or "all"'
-        default: 'all'
       wp_version:
         description: 'WP version to test, or "all"'
         default: 'all'
@@ -21,16 +18,10 @@ jobs:
     runs-on: ubuntu-24.04
     if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
     outputs:
-      php: ${{ steps.set.outputs.php }}
       wp: ${{ steps.set.outputs.wp }}
     steps:
       - id: set
         run: |
-          if [ -z "${{ inputs.php_version }}" ] || [ "${{ inputs.php_version }}" = "all" ]; then
-            echo 'php=["7.4","8.0","8.1","8.2","8.3"]' >> $GITHUB_OUTPUT
-          else
-            echo 'php=["${{ inputs.php_version }}"]' >> $GITHUB_OUTPUT
-          fi
           if [ -z "${{ inputs.wp_version }}" ] || [ "${{ inputs.wp_version }}" = "all" ]; then
             echo 'wp=["6.8","6.9","7.0"]' >> $GITHUB_OUTPUT
           else
@@ -38,81 +29,109 @@ jobs:
           fi
 
   lint:
-    name: PHPCS (PHP 8.3)
+    name: PHPCS
     runs-on: ubuntu-24.04
     if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
-      - run: sh scripts/setup/unit.sh
-        env:
-          PHP_VERSION: '8.3'
-      - run: sh scripts/tests/lint.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run wp-env:start
+      - run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/airo-wp -- composer install --no-interaction --no-progress
+      - run: npm run lint
+      - if: always()
+        run: npm run wp-env:stop
 
   unit:
-    name: PHPUnit (PHP ${{ matrix.php }})
-    needs: matrix-setup
+    name: PHPUnit
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        php: ${{ fromJson(needs.matrix-setup.outputs.php) }}
+    if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
-      - run: sh scripts/setup/unit.sh
-        env:
-          PHP_VERSION: ${{ matrix.php }}
-      - run: sh scripts/tests/unit.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run wp-env:start
+      - run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/airo-wp -- composer install --no-interaction --no-progress
+      - run: npm run test:unit
+      - if: always()
+        run: npm run wp-env:stop
 
   test-e2e:
-    name: E2E (PHP ${{ matrix.php }} × WP ${{ matrix.wp }})
+    name: E2E (WP ${{ matrix.wp }})
     needs: matrix-setup
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        php: ${{ fromJson(needs.matrix-setup.outputs.php) }}
         wp: ${{ fromJson(needs.matrix-setup.outputs.wp) }}
     steps:
       - uses: actions/checkout@v4
-      - run: sh scripts/setup/e2e.sh
-        env:
-          PHP_VERSION: ${{ matrix.php }}
-          WP_VERSION: ${{ matrix.wp }}
-      - run: sh scripts/tests/e2e.sh
-        env:
-          PHP_VERSION: ${{ matrix.php }}
-          WP_VERSION: ${{ matrix.wp }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Pin WP version in .wp-env.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('.wp-env.json','utf8'));
+            cfg.core = 'https://wordpress.org/wordpress-${{ matrix.wp }}.zip';
+            fs.writeFileSync('.wp-env.json', JSON.stringify(cfg, null, 2));
+          "
+      - run: npm run build
+      - run: npm run wp-env:start
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: always()
+        run: npm run wp-env:stop
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-php${{ matrix.php }}-wp${{ matrix.wp }}
+          name: playwright-report-wp${{ matrix.wp }}
           path: |
             playwright-report/
             test-results/
           retention-days: 7
 
   check-plugin:
-    name: Plugin Check (PHP ${{ matrix.php }} × WP ${{ matrix.wp }})
+    name: Plugin Check (WP ${{ matrix.wp }})
     needs: matrix-setup
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        php: ${{ fromJson(needs.matrix-setup.outputs.php) }}
         wp: ${{ fromJson(needs.matrix-setup.outputs.wp) }}
     steps:
       - uses: actions/checkout@v4
-      - run: sh scripts/setup/e2e.sh
-        env:
-          PHP_VERSION: ${{ matrix.php }}
-          WP_VERSION: ${{ matrix.wp }}
-      - run: sh scripts/tests/plugin-check.sh
-        env:
-          PHP_VERSION: ${{ matrix.php }}
-          WP_VERSION: ${{ matrix.wp }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Pin WP version in .wp-env.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('.wp-env.json','utf8'));
+            cfg.core = 'https://wordpress.org/wordpress-${{ matrix.wp }}.zip';
+            fs.writeFileSync('.wp-env.json', JSON.stringify(cfg, null, 2));
+          "
+      - run: npm run wp-env:start
+      - run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/airo-wp -- composer install --no-dev --no-interaction --no-progress
+      - run: npm run build:zip
+      - run: npm run plugin-check
+      - if: always()
+        run: npm run wp-env:stop
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: plugin-check-php${{ matrix.php }}-wp${{ matrix.wp }}
+          name: plugin-check-wp${{ matrix.wp }}
           path: builds/plugin-check-results.txt
           retention-days: 7

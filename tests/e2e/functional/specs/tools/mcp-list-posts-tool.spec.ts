@@ -164,21 +164,28 @@ test.describe('airo-wp/list-posts tool', () => {
   });
 
   test('filters posts by featured_media_id and returns only matching posts', async ({ requestUtils }) => {
-    // Upload an attachment to use as the featured image.
-    const uploadResponse = await callTool(requestUtils, sessionId, 'airo-wp-upload-media', {
-      filename: 'featured-filter-test.png',
-      mime_type: 'image/png',
-      // 1x1 transparent PNG (base64).
-      data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-    }, 8);
+    // Upload a 1×1 transparent PNG via the WP REST Media API.
+    // The MCP server has no base64-upload tool; using the REST API is the
+    // correct way to create a test attachment from raw bytes.
+    const imageBuffer = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64'
+    );
+    const uploadResponse = await requestUtils.request.post(
+      `${process.env.WP_BASE_URL}/wp-json/wp/v2/media`,
+      {
+        headers: {
+          'Content-Disposition': 'attachment; filename="featured-filter-test.png"',
+          'Content-Type': 'image/png',
+          'X-WP-Nonce': requestUtils.storageState!.nonce,
+        },
+        data: imageBuffer,
+      }
+    );
 
-    expect(uploadResponse.status(), `upload-media failed: ${await uploadResponse.text()}`).toBe(200);
+    expect(uploadResponse.status(), `media upload failed: ${await uploadResponse.text()}`).toBe(201);
 
-    const uploadBody = await uploadResponse.json();
-    expect(uploadBody.error, `JSON-RPC error: ${JSON.stringify(uploadBody.error)}`).toBeUndefined();
-
-    const uploadContent: Array<{ type: string; text: string }> = uploadBody.result?.content ?? [];
-    const uploadData = JSON.parse(uploadContent[0].text);
+    const uploadData = await uploadResponse.json();
     const attachmentId: number = uploadData.id;
     expect(attachmentId, 'attachment ID should be a positive integer').toBeGreaterThan(0);
 

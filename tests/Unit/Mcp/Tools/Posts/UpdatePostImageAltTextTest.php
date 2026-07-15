@@ -74,6 +74,23 @@ final class UpdatePostImageAltTextTest extends TestCase {
 		$this->assertStringContainsString( '999', $result['message'] );
 	}
 
+	public function test_user_without_edit_post_permission_returns_error(): void {
+		$post               = new \stdClass();
+		$post->post_content = '';
+
+		Functions\expect( 'get_post' )->once()->with( 1 )->andReturn( $post );
+		Functions\expect( 'current_user_can' )->with( 'edit_post', 1 )->andReturn( false );
+
+		$result = $this->tool->execute( array(
+			'post_id'   => 1,
+			'image_src' => 'https://example.com/img.jpg',
+			'alt'       => 'New alt text',
+		) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
+	}
+
 	public function test_image_not_found_in_post_returns_error(): void {
 		$post               = new \stdClass();
 		$post->post_content = '<!-- wp:paragraph --><p>Hello</p><!-- /wp:paragraph -->';
@@ -82,6 +99,7 @@ final class UpdatePostImageAltTextTest extends TestCase {
 			->once()
 			->with( 1 )
 			->andReturn( $post );
+		Functions\when( 'current_user_can' )->justReturn( true );
 
 		Functions\expect( 'parse_blocks' )
 			->once()
@@ -113,6 +131,7 @@ final class UpdatePostImageAltTextTest extends TestCase {
 			->once()
 			->with( 1 )
 			->andReturn( $post );
+		Functions\when( 'current_user_can' )->justReturn( true );
 
 		Functions\expect( 'parse_blocks' )
 			->once()
@@ -158,6 +177,7 @@ final class UpdatePostImageAltTextTest extends TestCase {
 			->once()
 			->with( 1 )
 			->andReturn( $post );
+		Functions\when( 'current_user_can' )->justReturn( true );
 
 		Functions\expect( 'parse_blocks' )
 			->once()

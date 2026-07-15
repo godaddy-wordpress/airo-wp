@@ -97,6 +97,19 @@ class UpdatePostImageAltText extends BaseTool {
 			);
 		}
 
+		// check_permissions() only validates edit_posts globally; authors cannot edit
+		// other authors' posts, so we need the per-post meta cap after resolving the post.
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return array(
+				'success' => false,
+				'message' => sprintf(
+					/* translators: %d: post ID */
+					__( 'You do not have permission to edit post %d.', 'airo-wp' ),
+					$post_id
+				),
+			);
+		}
+
 		// Parse the post content into blocks.
 		$blocks               = parse_blocks( $post->post_content );
 		$normalized_image_src = $this->normalize_url( $image_src );

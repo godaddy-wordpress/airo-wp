@@ -31,6 +31,10 @@ class UpdateSiteOptions extends BaseTool {
 	/**
 	 * Protected option names that cannot be modified.
 	 *
+	 * All values must be lowercase; is_protected_option() compares against strtolower($name).
+	 * AI service API keys are included because they grant external service access and must
+	 * not be writable via the MCP surface.
+	 *
 	 * @var array<string>
 	 */
 	private const PROTECTED_OPTIONS = array(
@@ -45,6 +49,22 @@ class UpdateSiteOptions extends BaseTool {
 		'secure_auth_salt',
 		'logged_in_salt',
 		'nonce_salt',
+		// AI service credentials.
+		'openai_api_key',
+		'anthropic_api_key',
+	);
+
+	/**
+	 * Protected option name prefixes that cannot be modified.
+	 *
+	 * Any option whose lowercased name starts with one of these prefixes is treated as
+	 * protected. Add vendor-specific credential prefixes here rather than enumerating
+	 * every individual key.
+	 *
+	 * @var array<string>
+	 */
+	private const PROTECTED_PREFIXES = array(
+		'gd_mwcs_', // GoDaddy Managed WooCommerce Connect service credentials.
 	);
 
 	/**
@@ -316,7 +336,20 @@ class UpdateSiteOptions extends BaseTool {
 	 * @return bool True if the option is protected.
 	 */
 	private function is_protected_option( string $name ): bool {
-		return in_array( strtolower( $name ), self::PROTECTED_OPTIONS, true );
+		$lower = strtolower( $name );
+
+		if ( in_array( $lower, self::PROTECTED_OPTIONS, true ) ) {
+			return true;
+		}
+
+		// str_starts_with() requires PHP 8.0+; use strpos() for 7.4 compat.
+		foreach ( self::PROTECTED_PREFIXES as $prefix ) {
+			if ( 0 === strpos( $lower, $prefix ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

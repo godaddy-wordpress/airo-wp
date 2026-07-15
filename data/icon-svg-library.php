@@ -2,11 +2,11 @@
 /**
  * SVG Icon Library - PHP Version
  *
- * Shared icon library for all DesignSetGo blocks.
+ * Shared icon library for all airo-wp blocks.
  * Inline SVG icons to avoid font loading issues.
  * Auto-generated from src/blocks/icon/utils/svg-icons.js
  *
- * @package DesignSetGo
+ * @package airo-wp
  * @since 1.0.0
  */
 
@@ -21,15 +21,15 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @param string $icon_name Icon name (e.g., 'star', 'heart', 'check').
  * @return string SVG markup or empty string if not found.
  */
-function designsetgo_get_icon_svg( $icon_name ) {
-	$icons = designsetgo_get_all_icons();
+function airowp_get_icon_svg( $icon_name ) {
+	$icons = airowp_get_all_icons();
 
 	if ( isset( $icons[ $icon_name ] ) ) {
 		return $icons[ $icon_name ];
 	}
 
 	// Resolve alias to canonical name.
-	$aliases = designsetgo_get_icon_aliases();
+	$aliases = airowp_get_icon_aliases();
 	if ( isset( $aliases[ $icon_name ] ) && isset( $icons[ $aliases[ $icon_name ] ] ) ) {
 		return $icons[ $aliases[ $icon_name ] ];
 	}
@@ -42,7 +42,7 @@ function designsetgo_get_icon_svg( $icon_name ) {
  *
  * Mirrors the JS getIcon() helper (src/blocks/icon/utils/svg-icons.js): the
  * stored markup is the filled variant, and "outlined" is produced purely in CSS
- * via the shared `.dsgo-icon-outlined` rule (src/styles/_icon-outlined.scss),
+ * via the shared `.airo-wp-icon-outlined` rule (src/styles/_icon-outlined.scss),
  * which strips the fills and redraws paths as strokes sized by
  * `--icon-stroke-width`. Falls back to the 'star' icon for unknown names, the
  * same as the JS helper.
@@ -55,12 +55,12 @@ function designsetgo_get_icon_svg( $icon_name ) {
  * @param float|int $stroke_width Stroke width for the outlined style.
  * @return string SVG markup (optionally wrapped for the outlined style).
  */
-function designsetgo_render_icon_svg( $icon_name, $style = 'filled', $stroke_width = 1.5 ) {
-	$svg = designsetgo_get_icon_svg( $icon_name );
+function airowp_render_icon_svg( $icon_name, $style = 'filled', $stroke_width = 1.5 ) {
+	$svg = airowp_get_icon_svg( $icon_name );
 
 	// Mirror the JS fallback to the 'star' icon for unknown names.
 	if ( '' === $svg ) {
-		$svg = designsetgo_get_icon_svg( 'star' );
+		$svg = airowp_get_icon_svg( 'star' );
 	}
 
 	if ( '' === $svg ) {
@@ -73,7 +73,7 @@ function designsetgo_render_icon_svg( $icon_name, $style = 'filled', $stroke_wid
 		$stroke = (float) $stroke_width;
 
 		return sprintf(
-			'<span class="dsgo-icon-outlined" style="display:contents;--icon-stroke-width:%s">%s</span>',
+			'<span class="airo-wp-icon-outlined" style="display:contents;--icon-stroke-width:%s">%s</span>',
 			esc_attr( (string) $stroke ),
 			$svg
 		);
@@ -87,7 +87,7 @@ function designsetgo_render_icon_svg( $icon_name, $style = 'filled', $stroke_wid
  *
  * @return array Associative array of icon_name => svg_markup.
  */
-function designsetgo_get_all_icons() {
+function airowp_get_all_icons() {
 	static $icons = null;
 
 	// Cache icons in static variable for performance.
@@ -268,18 +268,18 @@ function designsetgo_get_all_icons() {
  * Get icon alias map.
  *
  * Maps alternate icon names to their canonical names in the icon library.
- * Single source of truth: includes/data/icon-aliases.json (shared with JS).
+ * Single source of truth: data/icon-aliases.json (shared with JS).
  *
  * @return array Associative array of alias => canonical_name.
  */
-function designsetgo_get_icon_aliases() {
+function airowp_get_icon_aliases() {
 	static $aliases = null;
 
 	if ( null !== $aliases ) {
 		return $aliases;
 	}
 
-	$file = __DIR__ . '/data/icon-aliases.json';
+	$file = dirname( dirname( __DIR__ ) ) . '/data/icon-aliases.json';
 
 	if ( ! file_exists( $file ) ) {
 		$aliases = array();
@@ -300,7 +300,7 @@ function designsetgo_get_icon_aliases() {
  * @param string $icon Icon slug to sanitize.
  * @return string Sanitized icon slug.
  */
-function designsetgo_sanitize_icon_slug( $icon ) {
+function airowp_sanitize_icon_slug( $icon ) {
 	if ( empty( $icon ) || ! is_string( $icon ) ) {
 		return '';
 	}
@@ -317,7 +317,7 @@ function designsetgo_sanitize_icon_slug( $icon ) {
  * @param bool   $is_open    Whether accordion item is open.
  * @return string Icon HTML markup.
  */
-function designsetgo_accordion_render_icon( $icon_style, $is_open ) {
+function airowp_accordion_render_icon( $icon_style, $is_open ) {
 	if ( 'none' === $icon_style ) {
 		return '';
 	}
@@ -340,5 +340,5 @@ function designsetgo_accordion_render_icon( $icon_style, $is_open ) {
 			$icon_svg = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4.427 6.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 6H4.604a.25.25 0 00-.177.427z" /></svg>';
 	}
 
-	return '<span class="dsgo-accordion-item__icon" aria-hidden="true">' . $icon_svg . '</span>';
+	return '<span class="airo-wp-accordion-item__icon" aria-hidden="true">' . $icon_svg . '</span>';
 }

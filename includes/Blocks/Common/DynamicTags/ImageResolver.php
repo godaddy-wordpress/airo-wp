@@ -185,8 +185,8 @@ class ImageResolver {
 			return '';
 		}
 		$args['__airowp_post_id'] = $post_id;
-		$args['subkey']         = $args['subkey'] ?? 'url';
-		$value                  = call_user_func( $binding->get_value_callback, $args, null, 'url' );
+		$args['subkey']           = $args['subkey'] ?? 'url';
+		$value                    = call_user_func( $binding->get_value_callback, $args, null, 'url' );
 		if ( is_string( $value ) && '' !== $value && filter_var( $value, FILTER_VALIDATE_URL ) ) {
 			return $value;
 		}

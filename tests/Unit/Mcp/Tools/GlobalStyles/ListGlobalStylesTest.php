@@ -42,6 +42,7 @@ final class ListGlobalStylesTest extends TestCase {
 		$post1                = new \stdClass();
 		$post1->ID            = 10;
 		$post1->post_title    = 'Theme Styles';
+		$post1->post_name     = 'wp-global-styles-twentytwentyfive';
 		$post1->post_status   = 'publish';
 		$post1->post_date     = '2024-01-01 00:00:00';
 		$post1->post_modified = '2024-01-02 00:00:00';
@@ -49,12 +50,12 @@ final class ListGlobalStylesTest extends TestCase {
 		$post2                = new \stdClass();
 		$post2->ID            = 20;
 		$post2->post_title    = 'Custom Styles';
+		$post2->post_name     = 'wp-global-styles-custom-theme';
 		$post2->post_status   = 'draft';
 		$post2->post_date     = '2024-02-01 00:00:00';
 		$post2->post_modified = '2024-02-02 00:00:00';
 
 		Functions\when( 'get_posts' )->justReturn( array( $post1, $post2 ) );
-		Functions\when( 'get_post_meta' )->justReturn( 'twentytwentyfive' );
 
 		$result = $this->tool->execute( array() );
 
@@ -67,27 +68,30 @@ final class ListGlobalStylesTest extends TestCase {
 	}
 
 	public function test_filters_by_theme(): void {
+		// Both posts are returned by get_posts (DB filtering removed); PHP
+		// applies the theme filter by matching post_name prefix.
 		$post1                = new \stdClass();
 		$post1->ID            = 10;
 		$post1->post_title    = 'Theme Styles';
+		$post1->post_name     = 'wp-global-styles-twentytwentyfive';
 		$post1->post_status   = 'publish';
 		$post1->post_date     = '2024-01-01 00:00:00';
 		$post1->post_modified = '2024-01-02 00:00:00';
 
-		Functions\expect( 'get_posts' )
-			->once()
-			->with( \Mockery::on( function ( $args ) {
-				return isset( $args['meta_query'] )
-					&& 'theme' === $args['meta_query'][0]['key']
-					&& 'twentytwentyfive' === $args['meta_query'][0]['value'];
-			} ) )
-			->andReturn( array( $post1 ) );
+		$post2                = new \stdClass();
+		$post2->ID            = 20;
+		$post2->post_title    = 'Other Theme Styles';
+		$post2->post_name     = 'wp-global-styles-anotherTheme';
+		$post2->post_status   = 'publish';
+		$post2->post_date     = '2024-02-01 00:00:00';
+		$post2->post_modified = '2024-02-02 00:00:00';
 
-		Functions\when( 'get_post_meta' )->justReturn( 'twentytwentyfive' );
+		Functions\when( 'get_posts' )->justReturn( array( $post1, $post2 ) );
 
 		$result = $this->tool->execute( array( 'theme' => 'twentytwentyfive' ) );
 
 		$this->assertTrue( $result['success'] );
 		$this->assertSame( 1, $result['total'] );
+		$this->assertSame( 'twentytwentyfive', $result['styles'][0]['theme'] );
 	}
 }
