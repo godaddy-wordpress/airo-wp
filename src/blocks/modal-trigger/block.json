@@ -63,7 +63,11 @@
 		}
 	},
 	"selectors": {
-		"root": ".wp-block-airo-wp-modal-trigger .airo-wp-modal-trigger"
+		"root": ".wp-block-airo-wp-modal-trigger .airo-wp-modal-trigger",
+		"spacing": {
+			"root": ".wp-block-airo-wp-modal-trigger .airo-wp-modal-trigger",
+			"margin": ".wp-block-airo-wp-modal-trigger"
+		}
 	},
 	"attributes": {
 		"justification": {
@@ -81,6 +85,8 @@
 		},
 		"text": {
 			"type": "string",
+			"source": "html",
+			"selector": ".airo-wp-modal-trigger__text",
 			"default": "Open Modal"
 		},
 		"buttonStyle": {

@@ -10,7 +10,10 @@ export default function ResultCountBadge({ totalItems, loading, error }) {
 	}
 	if (loading) {
 		return (
-			<span className="airo-wp-query__count is-loading" aria-live="polite">
+			<span
+				className="airo-wp-query__count is-loading"
+				aria-live="polite"
+			>
 				{__('Loading\u2026', 'airo-wp')}
 			</span>
 		);

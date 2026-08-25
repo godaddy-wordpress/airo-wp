@@ -53,10 +53,12 @@ export default function FormTimeFieldEdit({
 	}, [fieldName, clientId, setAttributes]);
 
 	// Get context values from parent form
-	const fieldBackgroundColor =
-		context['airo-wp/form/fieldBackgroundColor'];
+	const fieldBackgroundColor = context['airo-wp/form/fieldBackgroundColor'];
 
-	const fieldClasses = classnames('airo-wp-form-field', 'airo-wp-form-field--time');
+	const fieldClasses = classnames(
+		'airo-wp-form-field',
+		'airo-wp-form-field--time'
+	);
 
 	const fieldStyles = {
 		'--airo-wp-form-field-bg': convertColorToCSSVar(fieldBackgroundColor),
@@ -174,10 +176,7 @@ export default function FormTimeFieldEdit({
 							onChange={(value) =>
 								setAttributes({ minTime: value })
 							}
-							help={__(
-								'Format: HH:MM (e.g., 09:00)',
-								'airo-wp'
-							)}
+							help={__('Format: HH:MM (e.g., 09:00)', 'airo-wp')}
 							type="time"
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
@@ -196,10 +195,7 @@ export default function FormTimeFieldEdit({
 							onChange={(value) =>
 								setAttributes({ maxTime: value })
 							}
-							help={__(
-								'Format: HH:MM (e.g., 17:00)',
-								'airo-wp'
-							)}
+							help={__('Format: HH:MM (e.g., 17:00)', 'airo-wp')}
 							type="time"
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
@@ -321,7 +317,10 @@ export default function FormTimeFieldEdit({
 				/>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

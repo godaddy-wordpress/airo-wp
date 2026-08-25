@@ -14,6 +14,126 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Get animation classes/attributes as structured arrays.
+ *
+ * Raw (unescaped) values — callers are responsible for escaping. Mirrors
+ * addAnimationSaveProps() in src/extensions/block-animations/editor.js: the
+ * two must emit identical markup, because a block is served by whichever of
+ * them applies (save filter for static blocks, render filter for dynamic
+ * ones). Returns only the SVG-draw attribute unless dsgoAnimationEnabled is
+ * truthy — that one effect is independent of the entrance/exit system.
+ *
+ * @param array $attributes Block attributes array.
+ * @return array{classes: string[], attrs: array<string,string>}
+ */
+function airowp_get_animation_parts( $attributes ) {
+	$classes = array();
+	$attrs   = array();
+
+	// SVG drawing targets descendant strokes rather than this block's own
+	// opacity, so it is independent of the entrance/exit system and survives
+	// the animations-disabled return below.
+	if ( ! empty( $attributes['dsgoSvgDraw'] ) ) {
+		$attrs['data-airo-wp-svg-draw'] = 'true';
+	}
+
+	$enabled = isset( $attributes['dsgoAnimationEnabled'] ) ? $attributes['dsgoAnimationEnabled'] : false;
+	if ( ! $enabled ) {
+		return array(
+			'classes' => $classes,
+			'attrs'   => $attrs,
+		);
+	}
+
+	$classes[]                            = 'has-airo-wp-animation';
+	$attrs['data-airo-wp-animation-enabled'] = 'true';
+
+	$entrance = isset( $attributes['dsgoEntranceAnimation'] ) ? (string) $attributes['dsgoEntranceAnimation'] : '';
+	if ( '' !== $entrance ) {
+		$classes[]                             = 'airo-wp-animation-' . $entrance;
+		$attrs['data-airo-wp-entrance-animation'] = $entrance;
+	}
+
+	$trigger = isset( $attributes['dsgoAnimationTrigger'] ) ? (string) $attributes['dsgoAnimationTrigger'] : 'scroll';
+	if ( 'scroll' !== $trigger ) {
+		$attrs['data-airo-wp-animation-trigger'] = $trigger;
+	}
+
+	// Scrubbing hands the entrance to the scroll timeline, so it needs an
+	// entrance animation and it only means anything on the scroll trigger:
+	// frontend.js skips scroll-linked elements entirely, so emitting it on a
+	// click- or hover-triggered block would swallow that trigger - and, for
+	// click, the tabindex/role=button keyboard affordance with it. Existing
+	// content can still carry the combination, which is why the trigger is
+	// checked here and not only in the panel.
+	$scroll_linked = ! empty( $attributes['dsgoScrollLinked'] )
+		&& '' !== $entrance
+		&& 'scroll' === $trigger;
+
+	// frontend.js never wires up the exit trigger for a scrubbed element, so
+	// exit markup alongside it would advertise an animation that can never
+	// fire. Dropped here exactly as the save path drops it.
+	$exit = isset( $attributes['dsgoExitAnimation'] ) ? (string) $attributes['dsgoExitAnimation'] : '';
+	if ( $scroll_linked ) {
+		$exit = '';
+	}
+	if ( '' !== $exit ) {
+		$classes[]                         = 'airo-wp-animation-exit-' . $exit;
+		$attrs['data-airo-wp-exit-animation'] = $exit;
+	}
+
+	$duration = isset( $attributes['dsgoAnimationDuration'] ) ? (int) $attributes['dsgoAnimationDuration'] : 600;
+	if ( 600 !== $duration ) {
+		$attrs['data-airo-wp-animation-duration'] = (string) $duration;
+	}
+
+	$delay = isset( $attributes['dsgoAnimationDelay'] ) ? (int) $attributes['dsgoAnimationDelay'] : 0;
+	if ( 0 !== $delay ) {
+		$attrs['data-airo-wp-animation-delay'] = (string) $delay;
+	}
+
+	$easing = isset( $attributes['dsgoAnimationEasing'] ) ? (string) $attributes['dsgoAnimationEasing'] : 'ease-out';
+	if ( 'ease-out' !== $easing ) {
+		$attrs['data-airo-wp-animation-easing'] = $easing;
+	}
+
+	$offset = isset( $attributes['dsgoAnimationOffset'] ) ? (int) $attributes['dsgoAnimationOffset'] : 100;
+	if ( 100 !== $offset ) {
+		$attrs['data-airo-wp-animation-offset'] = (string) $offset;
+	}
+
+	$once = isset( $attributes['dsgoAnimationOnce'] ) ? (bool) $attributes['dsgoAnimationOnce'] : true;
+	if ( ! $once ) {
+		$attrs['data-airo-wp-animation-once'] = 'false';
+	}
+
+	if ( $scroll_linked ) {
+		$attrs['data-airo-wp-scroll-linked'] = 'true';
+	}
+
+	// Stagger moves the motion onto the block's children, so it needs an
+	// animation to move and it rules scrubbing out - the two want the
+	// keyframes on different elements.
+	$stagger = ! empty( $attributes['dsgoStaggerEnabled'] )
+		&& ! $scroll_linked
+		&& ( '' !== $entrance || '' !== $exit );
+
+	if ( $stagger ) {
+		$attrs['data-airo-wp-stagger'] = 'true';
+
+		$step = isset( $attributes['dsgoStaggerStep'] ) ? (int) $attributes['dsgoStaggerStep'] : 80;
+		if ( 80 !== $step ) {
+			$attrs['data-airo-wp-stagger-step'] = (string) $step;
+		}
+	}
+
+	return array(
+		'classes' => $classes,
+		'attrs'   => $attrs,
+	);
+}
+
+/**
  * Get animation data attributes from block attributes
  *
  * Extracts animation-related attributes and returns them as
@@ -23,84 +143,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array Array of data attributes for animations.
  */
 function airowp_get_animation_attributes( $attributes ) {
-	$animation_attrs   = array();
-	$animation_classes = array();
+	$parts = airowp_get_animation_parts( $attributes );
 
-	// Check if animations are enabled.
-	$animation_enabled = isset( $attributes['dsgoAnimationEnabled'] ) ? $attributes['dsgoAnimationEnabled'] : false;
-
-	if ( ! $animation_enabled ) {
+	if ( empty( $parts['classes'] ) && empty( $parts['attrs'] ) ) {
 		return array(
 			'classes' => '',
 			'attrs'   => '',
 		);
 	}
 
-	// Add animation classes.
-	$animation_classes[] = 'has-airo-wp-animation';
+	$classes_string = implode( ' ', array_map( 'esc_attr', $parts['classes'] ) );
 
-	// Add entrance animation class.
-	$entrance_animation = isset( $attributes['dsgoEntranceAnimation'] ) ? $attributes['dsgoEntranceAnimation'] : '';
-	if ( $entrance_animation ) {
-		$animation_classes[] = 'airo-wp-animation-' . esc_attr( $entrance_animation );
-	}
-
-	// Add exit animation class.
-	$exit_animation = isset( $attributes['dsgoExitAnimation'] ) ? $attributes['dsgoExitAnimation'] : '';
-	if ( $exit_animation ) {
-		$animation_classes[] = 'airo-wp-animation-exit-' . esc_attr( $exit_animation );
-	}
-
-	// Always include the enabled flag and animation type(s) — required by frontend JS.
-	$animation_attrs['data-airo-wp-animation-enabled'] = 'true';
-
-	if ( $entrance_animation ) {
-		$animation_attrs['data-airo-wp-entrance-animation'] = esc_attr( $entrance_animation );
-	}
-
-	if ( $exit_animation ) {
-		$animation_attrs['data-airo-wp-exit-animation'] = esc_attr( $exit_animation );
-	}
-
-	// Only output settings that differ from defaults to keep markup lean.
-	// Defaults: trigger=scroll, duration=600, delay=0, easing=ease-out, offset=100, once=true.
-	$trigger = isset( $attributes['dsgoAnimationTrigger'] ) ? $attributes['dsgoAnimationTrigger'] : 'scroll';
-	if ( 'scroll' !== $trigger ) {
-		$animation_attrs['data-airo-wp-animation-trigger'] = esc_attr( $trigger );
-	}
-
-	$duration = isset( $attributes['dsgoAnimationDuration'] ) ? (int) $attributes['dsgoAnimationDuration'] : 600;
-	if ( 600 !== $duration ) {
-		$animation_attrs['data-airo-wp-animation-duration'] = esc_attr( (string) $duration );
-	}
-
-	$delay = isset( $attributes['dsgoAnimationDelay'] ) ? (int) $attributes['dsgoAnimationDelay'] : 0;
-	if ( 0 !== $delay ) {
-		$animation_attrs['data-airo-wp-animation-delay'] = esc_attr( (string) $delay );
-	}
-
-	$easing = isset( $attributes['dsgoAnimationEasing'] ) ? $attributes['dsgoAnimationEasing'] : 'ease-out';
-	if ( 'ease-out' !== $easing ) {
-		$animation_attrs['data-airo-wp-animation-easing'] = esc_attr( $easing );
-	}
-
-	$offset = isset( $attributes['dsgoAnimationOffset'] ) ? (int) $attributes['dsgoAnimationOffset'] : 100;
-	if ( 100 !== $offset ) {
-		$animation_attrs['data-airo-wp-animation-offset'] = esc_attr( (string) $offset );
-	}
-
-	$once = isset( $attributes['dsgoAnimationOnce'] ) ? (bool) $attributes['dsgoAnimationOnce'] : true;
-	if ( ! $once ) {
-		$animation_attrs['data-airo-wp-animation-once'] = 'false';
-	}
-
-	// Convert classes array to string.
-	$classes_string = implode( ' ', $animation_classes );
-
-	// Convert data attributes array to string.
 	$attrs_string = '';
-	foreach ( $animation_attrs as $key => $value ) {
-		$attrs_string .= ' ' . $key . '="' . $value . '"';
+	foreach ( $parts['attrs'] as $key => $value ) {
+		$attrs_string .= ' ' . $key . '="' . esc_attr( $value ) . '"';
 	}
 
 	return array(

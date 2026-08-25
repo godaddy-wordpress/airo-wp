@@ -58,10 +58,12 @@ export default function FormTextFieldEdit({
 	// Get context values from parent form
 	const fieldLabelColor = context['airo-wp/form/fieldLabelColor'];
 	const fieldBorderColor = context['airo-wp/form/fieldBorderColor'];
-	const fieldBackgroundColor =
-		context['airo-wp/form/fieldBackgroundColor'];
+	const fieldBackgroundColor = context['airo-wp/form/fieldBackgroundColor'];
 
-	const fieldClasses = classnames('airo-wp-form-field', 'airo-wp-form-field--text');
+	const fieldClasses = classnames(
+		'airo-wp-form-field',
+		'airo-wp-form-field--text'
+	);
 
 	const fieldStyles = {
 		'--airo-wp-field-label-color': convertColorToCSSVar(fieldLabelColor),
@@ -359,10 +361,7 @@ export default function FormTextFieldEdit({
 							isShownByDefault
 						>
 							<TextControl
-								label={__(
-									'Custom Pattern (Regex)',
-									'airo-wp'
-								)}
+								label={__('Custom Pattern (Regex)', 'airo-wp')}
 								value={validationPattern}
 								onChange={(value) =>
 									setAttributes({ validationPattern: value })

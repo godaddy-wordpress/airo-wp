@@ -294,6 +294,14 @@
 	&.airo-wp-tabs--pills {
 		// Override color variable for pills - white text on colored background
 		--airo-wp-tab-color-active: #fff;
+		// Hover text follows the active *background* color (the accent), not
+		// the active *text* color (white) — white hover text would be
+		// invisible on the light hover background. A user-set hover color
+		// (inline --airo-wp-tab-color-hover) still wins over this default.
+		--airo-wp-tab-color-hover: var(
+			--airo-wp-tab-bg-active,
+			var(--wp--preset--color--accent-2, #2563eb)
+		);
 
 		.airo-wp-tabs__nav {
 			border-bottom: none;

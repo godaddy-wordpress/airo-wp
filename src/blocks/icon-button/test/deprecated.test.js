@@ -179,7 +179,9 @@ describe('icon-button deprecations - v8 themeable-gap migration', () => {
 		// Passthrough migrate pins the gap the old markup carried; the current
 		// save() re-emits it inline and adds the marker class.
 		expect(block.attributes.iconGap).toBe('8px');
-		expect(getBlockContent(block)).toContain('airo-wp-icon-button--has-icon');
+		expect(getBlockContent(block)).toContain(
+			'airo-wp-icon-button--has-icon'
+		);
 		expect(getBlockContent(block)).toContain('gap:8px');
 	});
 

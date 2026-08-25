@@ -39,7 +39,8 @@ export default function CounterGroupSave({ attributes }) {
 			'--airo-wp-counter-gap': gap,
 			// Apply hover color for child Counter blocks to inherit
 			...(hoverColor && {
-				'--airo-wp-counter-hover-color': convertColorToCSSVar(hoverColor),
+				'--airo-wp-counter-hover-color':
+					convertColorToCSSVar(hoverColor),
 			}),
 		},
 		// Data attributes for frontend JavaScript

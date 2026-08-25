@@ -27,10 +27,7 @@ export const modalTemplates = [
 			[
 				'core/paragraph',
 				{
-					placeholder: __(
-						'Add your modal content here…',
-						'airo-wp'
-					),
+					placeholder: __('Add your modal content here…', 'airo-wp'),
 				},
 			],
 		],
@@ -75,10 +72,7 @@ export const modalTemplates = [
 					submitButtonText: __('Subscribe', 'airo-wp'),
 					submitButtonAlignment: 'center',
 					ajaxSubmit: true,
-					successMessage: __(
-						'Thank you for subscribing!',
-						'airo-wp'
-					),
+					successMessage: __('Thank you for subscribing!', 'airo-wp'),
 				},
 				[
 					[
@@ -148,7 +142,6 @@ export const modalTemplates = [
 			width: '800px',
 			maxWidth: '95vw',
 			overlayOpacity: 95,
-			overlayColor: '#000000',
 			animationType: 'zoom',
 			closeButtonPosition: 'top-right',
 		},
@@ -174,7 +167,6 @@ export const modalTemplates = [
 			width: 'auto',
 			maxWidth: '95vw',
 			overlayOpacity: 90,
-			overlayColor: '#000000',
 			overlayBlur: 5,
 			animationType: 'fade',
 			closeButtonPosition: 'inside-top-right',

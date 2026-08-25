@@ -306,7 +306,8 @@ async function dsgoLoadMorePlain(ctx, button) {
 
 	const idleLabel =
 		button.getAttribute('data-airo-wp-label-idle') || button.textContent;
-	const loadingLabel = button.getAttribute('data-airo-wp-label-loading') || '';
+	const loadingLabel =
+		button.getAttribute('data-airo-wp-label-loading') || '';
 	if (loadingLabel) {
 		button.textContent = loadingLabel;
 		button.setAttribute('aria-busy', 'true');
@@ -644,7 +645,9 @@ function dsgoDelegatedClick(event) {
 	if (!(target instanceof HTMLElement)) {
 		return;
 	}
-	const loadMoreButton = target.closest('.airo-wp-query-pagination__loadmore');
+	const loadMoreButton = target.closest(
+		'.airo-wp-query-pagination__loadmore'
+	);
 	if (loadMoreButton) {
 		const ctx = dsgoGetContextFromDom(loadMoreButton);
 		if (!ctx) {

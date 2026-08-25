@@ -98,10 +98,7 @@ export default function ComparisonTableSave({ attributes }) {
 											rel="noopener noreferrer"
 										>
 											{col.linkText ||
-												__(
-													'Get Started',
-													'airo-wp'
-												)}
+												__('Get Started', 'airo-wp')}
 										</a>
 									)}
 

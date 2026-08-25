@@ -64,7 +64,10 @@ export default function IconButtonSave({ attributes }) {
 	// constrained layout caps at the content column. It carries NO visual styles
 	// (those are skip-serialized in block.json and re-applied to the button below).
 	const blockProps = useBlockProps.save({
-		className: clsx('airo-wp-justify', getJustificationClass(justification)),
+		className: clsx(
+			'airo-wp-justify',
+			getJustificationClass(justification)
+		),
 	});
 
 	const border = getBorderClassesAndStyles(attributes);
@@ -100,7 +103,8 @@ export default function IconButtonSave({ attributes }) {
 				convertColorToCSSVar(hoverBackgroundColor),
 		}),
 		...(hoverTextColor && {
-			'--airo-wp-button-hover-color': convertColorToCSSVar(hoverTextColor),
+			'--airo-wp-button-hover-color':
+				convertColorToCSSVar(hoverTextColor),
 		}),
 	};
 
@@ -157,7 +161,9 @@ export default function IconButtonSave({ attributes }) {
 							: rel || undefined,
 				})}
 				{...(!url && { type: 'button' })}
-				{...(modalCloseId && { 'data-airo-wp-modal-close': modalCloseId })}
+				{...(modalCloseId && {
+					'data-airo-wp-modal-close': modalCloseId,
+				})}
 			>
 				{hasIcon && (
 					<span

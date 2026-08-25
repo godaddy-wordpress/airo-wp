@@ -44,7 +44,9 @@ describe('image-accordion save() - themeable overlay', () => {
 	test('default (unset) save omits the overlay custom props but keeps the scrim on', () => {
 		const markup = serialize(createBlock(metadata.name));
 		expect(markup).not.toContain('--airo-wp-image-accordion-overlay-color');
-		expect(markup).not.toContain('--airo-wp-image-accordion-overlay-opacity');
+		expect(markup).not.toContain(
+			'--airo-wp-image-accordion-overlay-opacity'
+		);
 		expect(markup).not.toContain(
 			'--airo-wp-image-accordion-overlay-opacity-expanded'
 		);
@@ -65,7 +67,9 @@ describe('image-accordion save() - themeable overlay', () => {
 		expect(markup).toContain(
 			'--airo-wp-image-accordion-overlay-color:#ff0000'
 		);
-		expect(markup).toContain('--airo-wp-image-accordion-overlay-opacity:0.9');
+		expect(markup).toContain(
+			'--airo-wp-image-accordion-overlay-opacity:0.9'
+		);
 		expect(markup).toContain(
 			'--airo-wp-image-accordion-overlay-opacity-expanded:0.35'
 		);
@@ -75,7 +79,9 @@ describe('image-accordion save() - themeable overlay', () => {
 		const markup = serialize(
 			createBlock(metadata.name, { overlayOpacity: 60 })
 		);
-		expect(markup).toContain('--airo-wp-image-accordion-overlay-opacity:0.6');
+		expect(markup).toContain(
+			'--airo-wp-image-accordion-overlay-opacity:0.6'
+		);
 		expect(markup).not.toContain('--airo-wp-image-accordion-overlay-color');
 		expect(markup).not.toContain(
 			'--airo-wp-image-accordion-overlay-opacity-expanded'
@@ -122,7 +128,9 @@ describe('image-accordion deprecations - v2 themeable overlay migration', () => 
 	);
 
 	test('derived v2 markup differs from canonical as expected', () => {
-		expect(canonical).not.toContain('--airo-wp-image-accordion-overlay-color');
+		expect(canonical).not.toContain(
+			'--airo-wp-image-accordion-overlay-color'
+		);
 		expect(V2_MARKUP).toContain(
 			'--airo-wp-image-accordion-overlay-color:#000000'
 		);
@@ -143,8 +151,12 @@ describe('image-accordion deprecations - v2 themeable overlay migration', () => 
 		expect(block.attributes.overlayOpacityExpanded).toBeUndefined();
 
 		const content = getBlockContent(block);
-		expect(content).not.toContain('--airo-wp-image-accordion-overlay-color');
-		expect(content).not.toContain('--airo-wp-image-accordion-overlay-opacity');
+		expect(content).not.toContain(
+			'--airo-wp-image-accordion-overlay-color'
+		);
+		expect(content).not.toContain(
+			'--airo-wp-image-accordion-overlay-opacity'
+		);
 		// The scrim stays enabled after migration.
 		expect(content).toContain('data-enable-overlay="true"');
 	});
@@ -170,8 +182,12 @@ describe('image-accordion deprecations - v2 themeable overlay migration', () => 
 		expect(block.attributes.overlayOpacityExpanded).toBeUndefined();
 
 		const content = getBlockContent(block);
-		expect(content).toContain('--airo-wp-image-accordion-overlay-opacity:0.6');
-		expect(content).not.toContain('--airo-wp-image-accordion-overlay-color');
+		expect(content).toContain(
+			'--airo-wp-image-accordion-overlay-opacity:0.6'
+		);
+		expect(content).not.toContain(
+			'--airo-wp-image-accordion-overlay-color'
+		);
 	});
 
 	test('a current block with all three overlay props explicit is NOT force-migrated', () => {
@@ -252,7 +268,9 @@ describe('image-accordion deprecations - v1 themeable height/gap migration', () 
 		const content = getBlockContent(block);
 		expect(content).toContain('--airo-wp-image-accordion-height:500px');
 		expect(content).toContain('--airo-wp-image-accordion-gap:4px');
-		expect(content).not.toContain('--airo-wp-image-accordion-overlay-color');
+		expect(content).not.toContain(
+			'--airo-wp-image-accordion-overlay-color'
+		);
 	});
 
 	test('a current block whose explicit height equals the old default is NOT migrated', () => {

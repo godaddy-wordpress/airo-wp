@@ -145,10 +145,7 @@ export default function QueryPaginationEdit({
 							}
 						>
 							<ToggleControl
-								label={__(
-									'Show prev/next arrows',
-									'airo-wp'
-								)}
+								label={__('Show prev/next arrows', 'airo-wp')}
 								checked={!!showPrevNext}
 								onChange={(v) =>
 									setAttributes({ showPrevNext: !!v })
@@ -192,20 +189,14 @@ export default function QueryPaginationEdit({
 								}
 							>
 								<TextControl
-									label={__(
-										'Loading state label',
-										'airo-wp'
-									)}
+									label={__('Loading state label', 'airo-wp')}
 									value={labelLoading}
 									onChange={(v) =>
 										setAttributes({
 											labelLoading: v,
 										})
 									}
-									placeholder={__(
-										'Loading\u2026',
-										'airo-wp'
-									)}
+									placeholder={__('Loading\u2026', 'airo-wp')}
 									__next40pxDefaultSize
 									__nextHasNoMarginBottom
 								/>

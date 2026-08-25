@@ -20,6 +20,8 @@
 	"attributes": {
 		"title": {
 			"type": "string",
+			"source": "html",
+			"selector": ".airo-wp-accordion-item__title",
 			"default": "Accordion Item"
 		},
 		"isOpen": {

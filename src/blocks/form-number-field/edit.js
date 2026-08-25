@@ -55,8 +55,7 @@ export default function FormNumberFieldEdit({
 	}, [fieldName, clientId, setAttributes]);
 
 	// Get context values from parent form
-	const fieldBackgroundColor =
-		context['airo-wp/form/fieldBackgroundColor'];
+	const fieldBackgroundColor = context['airo-wp/form/fieldBackgroundColor'];
 
 	const fieldClasses = classnames(
 		'airo-wp-form-field',
@@ -379,7 +378,10 @@ export default function FormNumberFieldEdit({
 				/>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

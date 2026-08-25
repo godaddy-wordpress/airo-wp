@@ -378,7 +378,8 @@ const v10 = {
 			typography.className,
 			hasIcon && 'airo-wp-icon-button--has-icon',
 			fullWidth && 'airo-wp-icon-button--full-width',
-			hoverAnimation === 'explicit-none' && 'airo-wp-icon-button--no-hover',
+			hoverAnimation === 'explicit-none' &&
+				'airo-wp-icon-button--no-hover',
 			hoverAnimation &&
 				hoverAnimation !== 'none' &&
 				hoverAnimation !== 'explicit-none' &&

@@ -82,7 +82,7 @@ class FormSecurity {
 	 */
 	public function check_rate_limit( string $form_id, int $block_max = 3 ) {
 		$ip_address = $this->get_client_ip();
-		$key        = 'form_submit_' . $form_id . '_' . md5( $ip_address );
+		$key        = 'airowp_form_submit_' . md5( $form_id ) . '_' . md5( $ip_address );
 		$count      = get_transient( $key );
 
 		$max_submissions = apply_filters( 'airowp_form_rate_limit_count', $block_max, $form_id );
@@ -108,7 +108,7 @@ class FormSecurity {
 	 */
 	public function increment_rate_limit( string $form_id, int $block_window = 60 ): void {
 		$ip_address = $this->get_client_ip();
-		$key        = 'form_submit_' . $form_id . '_' . md5( $ip_address );
+		$key        = 'airowp_form_submit_' . md5( $form_id ) . '_' . md5( $ip_address );
 		$count      = get_transient( $key );
 
 		$time_window = apply_filters( 'airowp_form_rate_limit_window', $block_window, $form_id );
@@ -143,6 +143,7 @@ class FormSecurity {
 		// experience. On timeout, wp_remote_post() returns a WP_Error and we degrade
 		// gracefully (let the submission through) rather than punish the user.
 		$response = wp_remote_post(
+			// phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent -- Server-side Turnstile verification API endpoint, not an offloaded asset. The sniff matches any `cloudflare.com` host in any string; no image, script, style or other content is loaded from it.
 			'https://challenges.cloudflare.com/turnstile/v0/siteverify',
 			array(
 				'timeout' => 3,

@@ -70,7 +70,9 @@ export function announceResultCount(
 	if (!doc) {
 		return;
 	}
-	const statusEl = doc.querySelector(`[data-airo-wp-query-status="${queryId}"]`);
+	const statusEl = doc.querySelector(
+		`[data-airo-wp-query-status="${queryId}"]`
+	);
 	if (!statusEl) {
 		return;
 	}

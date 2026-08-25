@@ -193,7 +193,8 @@ const v5 = {
 					),
 				}),
 				...(overlayColor && {
-					'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+					'--airo-wp-overlay-color':
+						convertColorToCSSVar(overlayColor),
 					'--airo-wp-overlay-opacity': '0.8',
 				}),
 			},
@@ -354,7 +355,8 @@ const v4 = {
 					),
 				}),
 				...(overlayColor && {
-					'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+					'--airo-wp-overlay-color':
+						convertColorToCSSVar(overlayColor),
 					'--airo-wp-overlay-opacity': '0.8',
 				}),
 			},
@@ -500,7 +502,8 @@ const v3 = {
 					),
 				}),
 				...(overlayColor && {
-					'--airo-wp-overlay-color': convertPresetToCSSVar(overlayColor),
+					'--airo-wp-overlay-color':
+						convertPresetToCSSVar(overlayColor),
 					'--airo-wp-overlay-opacity': '0.8',
 				}),
 			},
@@ -638,7 +641,8 @@ const v2 = {
 					),
 				}),
 				...(overlayColor && {
-					'--airo-wp-overlay-color': convertPresetToCSSVar(overlayColor),
+					'--airo-wp-overlay-color':
+						convertPresetToCSSVar(overlayColor),
 					'--airo-wp-overlay-opacity': '0.8',
 				}),
 			},

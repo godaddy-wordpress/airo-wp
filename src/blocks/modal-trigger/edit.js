@@ -173,7 +173,10 @@ export default function ModalTriggerEdit({
 	);
 
 	const blockProps = useBlockProps({
-		className: clsx('airo-wp-justify', getJustificationClass(justification)),
+		className: clsx(
+			'airo-wp-justify',
+			getJustificationClass(justification)
+		),
 	});
 
 	return (

@@ -34,7 +34,7 @@ import {
 } from '@wordpress/components';
 import { grid as gridIcon } from '@wordpress/icons';
 import { DsgoInspectorPanel } from '../../components/shared';
-import { useState, useEffect } from '@wordpress/element';
+import { useState, useEffect, useRef } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import {
 	convertPresetToCSSVar,
@@ -48,6 +48,9 @@ import {
 	hasOverlayStyleClass,
 	hoverVariationClasses,
 } from '../../utils/style-variation-classes';
+import { useGridRowMatch } from './utils/use-grid-row-match';
+import { getGridTemplateColumns } from './grid-columns';
+import { useRenderedColumns } from './utils/use-rendered-columns';
 
 /**
  * Grid Container Edit Component
@@ -72,6 +75,7 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 		rowGap,
 		columnGap,
 		alignItems,
+		matchRowHeights,
 		textAlign,
 		overlayColor,
 		hoverBackgroundColor,
@@ -130,6 +134,55 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 		[clientId]
 	);
 
+	// Calculate inner styles declaratively (must match save.js EXACTLY)
+	// IMPORTANT: Always provide a default gap to prevent overlapping items
+	// Priority: blockGap (WordPress spacing) → custom rowGap/columnGap → preset fallback
+	// WordPress 6.1+ stores blockGap as object {top, left} for separate row/column gaps
+	// Also need to convert preset format (var:preset|spacing|X) to CSS variable
+	const blockGapValue = style?.spacing?.blockGap;
+	const isBlockGapObject =
+		typeof blockGapValue === 'object' && blockGapValue !== null;
+	const blockGapRow = convertPresetToCSSVar(
+		isBlockGapObject ? blockGapValue?.top : blockGapValue
+	);
+	const blockGapColumn = convertPresetToCSSVar(
+		isBlockGapObject ? blockGapValue?.left : blockGapValue
+	);
+	const defaultGap = 'var(--wp--preset--spacing--50)';
+	const resolvedColumnGap = blockGapColumn || columnGap || defaultGap;
+
+	// The desktop track list, shared by the inner styles below and the
+	// rendered-column measurement (which re-measures whenever it changes).
+	const gridTemplateColumns = getGridTemplateColumns(
+		columnMinWidth,
+		desktopColumns,
+		resolvedColumnGap
+	);
+
+	// "Align Rows": derive whether the subgrid is active and the per-card row
+	// count to publish (`--airo-wp-row-count` + activation class). The frontend
+	// measures this from the DOM in view.js; in the editor the hook reads it
+	// from the block tree and the previewed device width.
+	const { isRowMatchActive: isRowMatchConfigured, matchRowCount } =
+		useGridRowMatch(clientId, {
+			matchRowHeights,
+			desktopColumns,
+			tabletColumns,
+			mobileColumns,
+		});
+
+	// The configured column count is an upper bound — a column min width can
+	// drop a column rather than overflow (see ./grid-columns.js). Row matching
+	// is only meaningful once the grid actually renders 2+ columns; below that
+	// the row-track spans just absorb row gaps and inflate every card.
+	const innerRef = useRef();
+	const renderedColumns = useRenderedColumns(
+		innerRef,
+		desktopColumns || 3,
+		gridTemplateColumns
+	);
+	const isRowMatchActive = isRowMatchConfigured && renderedColumns > 1;
+
 	// Block wrapper props - outer div stays full width (must match save.js EXACTLY)
 	const hasOverlay = !!overlayColor || hasOverlayStyleClass(className);
 	const TagName = tagName || 'div';
@@ -139,6 +192,7 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 			`airo-wp-grid-cols-${desktopColumns}`,
 			`airo-wp-grid-cols-tablet-${tabletColumns}`,
 			`airo-wp-grid-cols-mobile-${mobileColumns}`,
+			matchRowHeights && 'airo-wp-grid--match-rows',
 			hasOverlay && 'airo-wp-grid--has-overlay',
 			...hoverVariationClasses(className, 'airo-wp-grid'),
 		]
@@ -150,7 +204,8 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 					convertColorToCSSVar(hoverBackgroundColor),
 			}),
 			...(hoverTextColor && {
-				'--airo-wp-hover-text-color': convertColorToCSSVar(hoverTextColor),
+				'--airo-wp-hover-text-color':
+					convertColorToCSSVar(hoverTextColor),
 			}),
 			...(hoverIconBackgroundColor && {
 				'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
@@ -169,30 +224,12 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 		},
 	});
 
-	// Calculate inner styles declaratively (must match save.js EXACTLY)
-	// IMPORTANT: Always provide a default gap to prevent overlapping items
-	// Priority: blockGap (WordPress spacing) → custom rowGap/columnGap → preset fallback
-	// WordPress 6.1+ stores blockGap as object {top, left} for separate row/column gaps
-	// Also need to convert preset format (var:preset|spacing|X) to CSS variable
-	const blockGapValue = style?.spacing?.blockGap;
-	const isBlockGapObject =
-		typeof blockGapValue === 'object' && blockGapValue !== null;
-	const blockGapRow = convertPresetToCSSVar(
-		isBlockGapObject ? blockGapValue?.top : blockGapValue
-	);
-	const blockGapColumn = convertPresetToCSSVar(
-		isBlockGapObject ? blockGapValue?.left : blockGapValue
-	);
-	const defaultGap = 'var(--wp--preset--spacing--50)';
-
 	const innerStyles = {
 		display: 'grid',
-		gridTemplateColumns: columnMinWidth
-			? `repeat(${desktopColumns || 3}, minmax(${columnMinWidth}, 1fr))`
-			: `repeat(${desktopColumns || 3}, 1fr)`,
+		gridTemplateColumns,
 		alignItems: alignItems || 'stretch',
 		rowGap: blockGapRow || rowGap || defaultGap,
-		columnGap: blockGapColumn || columnGap || defaultGap,
+		columnGap: resolvedColumnGap,
 	};
 
 	// Apply width constraints if enabled
@@ -203,10 +240,21 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 		innerStyles.marginRight = 'auto';
 	}
 
+	// Row-matching: publish the per-card span so the subgrid CSS can activate.
+	if (isRowMatchActive) {
+		innerStyles['--airo-wp-row-count'] = matchRowCount;
+	}
+
 	// Merge inner blocks props with inner styles
 	const innerBlocksProps = useInnerBlocksProps(
 		{
-			className: 'airo-wp-grid__inner',
+			ref: innerRef,
+			className: [
+				'airo-wp-grid__inner',
+				isRowMatchActive && 'airo-wp-grid__inner--rows-matched',
+			]
+				.filter(Boolean)
+				.join(' '),
 			style: innerStyles,
 		},
 		{
@@ -230,12 +278,7 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 						).map((count) => ({
 							title: sprintf(
 								/* translators: %d: number of columns */
-								_n(
-									'%d Column',
-									'%d Columns',
-									count,
-									'airo-wp'
-								),
+								_n('%d Column', '%d Columns', count, 'airo-wp'),
 								count
 							),
 							isActive: desktopColumns === count,
@@ -417,6 +460,7 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 							tabletColumns: 2,
 							mobileColumns: 1,
 							alignItems: 'stretch',
+							matchRowHeights: false,
 							rowGap: '',
 							columnGap: '',
 							constrainWidth: false,
@@ -575,6 +619,28 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 								'airo-wp'
 							)}
 							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
+
+					<DsgoInspectorPanel.Item
+						label={__('Align Rows', 'airo-wp')}
+						hasValue={() => matchRowHeights === true}
+						onDeselect={() =>
+							setAttributes({ matchRowHeights: false })
+						}
+						isShownByDefault
+					>
+						<ToggleControl
+							label={__('Align Rows', 'airo-wp')}
+							checked={!!matchRowHeights}
+							onChange={(value) =>
+								setAttributes({ matchRowHeights: value })
+							}
+							help={__(
+								'Line up each row of card content (images, headings, buttons) across columns, so cards with different amounts of text stay aligned. Best with cards that share the same structure.',
+								'airo-wp'
+							)}
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>
@@ -749,7 +815,7 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 							help={__(
-								'Sets a minimum width for each column via minmax(value, 1fr) so columns never get narrower than this. Columns still drop to the tablet/mobile counts on smaller screens.',
+								'Sets a minimum width for each column. Columns never get narrower than this — if they would, one wraps to the next row instead of overflowing the container. Columns still drop to the tablet/mobile counts on smaller screens.',
 								'airo-wp'
 							)}
 						/>

@@ -137,10 +137,7 @@ export default function ScrollSlidesInspector({
 											'Content respects theme content width',
 											'airo-wp'
 										)
-									: __(
-											'Content fills full width',
-											'airo-wp'
-										)
+									: __('Content fills full width', 'airo-wp')
 							}
 							__nextHasNoMarginBottom
 						/>

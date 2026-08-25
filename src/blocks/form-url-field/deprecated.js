@@ -48,7 +48,9 @@ const vStatic = {
 		const innerHTML = getDeprecatedBlockHTML(extra);
 		// Any stored static URL field carries this wrapper class; the dynamic
 		// block saves no inner HTML, so it never matches.
-		return Boolean(innerHTML) && innerHTML.includes('airo-wp-form-field--url');
+		return (
+			Boolean(innerHTML) && innerHTML.includes('airo-wp-form-field--url')
+		);
 	},
 
 	save({ attributes }) {
@@ -112,7 +114,10 @@ const vStatic = {
 				/>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

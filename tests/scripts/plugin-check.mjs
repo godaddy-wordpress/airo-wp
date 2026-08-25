@@ -23,6 +23,11 @@ const WP_ENV_DIR  = path.join( ROOT, 'builds', 'pcp-wp-env' );
 const WP_ENV_JSON = path.join( WP_ENV_DIR, '.wp-env.json' );
 const WP_ENV_HOME = path.join( ROOT, 'builds', 'pcp-wp-env-home' );
 
+// Pin WordPress core. Left unset, wp-env clones WordPress/WordPress and checks
+// out the newest tag, so this lane silently tracks whatever core shipped most
+// recently. Default matches readme.txt's "Tested up to".
+const WP_VERSION = process.env.WP_VERSION || '7.1';
+
 if ( ! existsSync( ZIP_SRC ) ) {
 	console.error( '✗ builds/airo-wp.zip not found — run npm run build:zip first.' );
 	process.exit( 1 );
@@ -40,6 +45,7 @@ const pluginDir = path.join( EXTRACT_DIR, 'airo-wp' );
 // Write isolated wp-env config (separate ports avoid clash with dev instance 9173/9190).
 mkdirSync( WP_ENV_DIR, { recursive: true } );
 writeFileSync( WP_ENV_JSON, JSON.stringify( {
+	core: `https://wordpress.org/wordpress-${ WP_VERSION }.zip`,
 	phpVersion: '8.3',
 	port: 9175,
 	testsPort: 9192,

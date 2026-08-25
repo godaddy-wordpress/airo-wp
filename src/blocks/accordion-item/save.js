@@ -40,8 +40,7 @@ export default function AccordionItemSave({ attributes, context }) {
 
 	// Get context from parent accordion (same as edit.js)
 	const iconStyle = context?.['airo-wp/accordion/iconStyle'] || 'chevron';
-	const iconPosition =
-		context?.['airo-wp/accordion/iconPosition'] || 'right';
+	const iconPosition = context?.['airo-wp/accordion/iconPosition'] || 'right';
 
 	// Same classes as edit.js - MUST MATCH
 	const itemClasses = classnames('airo-wp-accordion-item', {

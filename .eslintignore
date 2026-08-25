@@ -1,0 +1,30 @@
+# Build output
+dist/
+
+# Distributable archives
+builds/
+
+# Strauss-prefixed runtime deps
+dependencies/
+
+# Node modules
+node_modules/
+
+# WordPress environment
+.wp-env/
+
+# Composer vendor
+vendor/
+
+# Test artifacts (minified vendor JS / traces — not lintable)
+playwright-report/
+test-results/
+
+# tests/ holds Node lane-runner scripts (.mjs) + Playwright specs, not block
+# source. lint:js is scoped to src/, so tests/ is never a release-gate target;
+# ignoring it stops `lint-js --fix` from over-scanning and rewriting these files.
+tests/
+
+# Root build/tooling config — airo-wp-owned, not DSG block source. `lint-js
+# --fix src/` otherwise silently reformats it on every dsg-sync.
+webpack.config.js

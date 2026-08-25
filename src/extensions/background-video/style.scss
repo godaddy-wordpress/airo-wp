@@ -1,0 +1,48 @@
+/**
+ * Background Video Extension - Frontend Styles
+ *
+ * Frontend styles for blocks with background videos.
+ *
+ * @package airo-wp
+ */
+
+.airo-wp-has-video-background {
+	position: relative;
+	// Use clip instead of hidden — clips video to border-radius without
+	// creating a scroll container (so position: sticky still works)
+	overflow: clip;
+
+	.airo-wp-video-background {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 0;
+		overflow: hidden;
+		pointer-events: none;
+
+		video {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		// Video overlay color (70% opacity applied via inline styles)
+		.airo-wp-video-overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			z-index: 1;
+			pointer-events: none;
+		}
+	}
+
+	// Ensure content is above video
+	> *:not(.airo-wp-video-background) {
+		position: relative;
+		z-index: 2;
+	}
+}

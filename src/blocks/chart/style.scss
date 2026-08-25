@@ -1,0 +1,93 @@
+/**
+ * Chart Block - Frontend styles
+ */
+
+.wp-block-airo-wp-chart {
+	margin: 0;
+
+	// `screen-reader-text` ships in core's common.css, but a theme that
+	// dequeues wp-block-library would turn the hidden data table into a
+	// visible one under every chart. Scoped copy, same as the slider block.
+	/* stylelint-disable-next-line selector-class-pattern */
+	.screen-reader-text {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border-width: 0;
+	}
+
+	.airo-wp-chart__canvas {
+		display: block;
+		width: 100%;
+		height: auto;
+		overflow: visible;
+	}
+
+	.airo-wp-chart__gridline {
+		stroke: currentcolor;
+		stroke-width: 1;
+		opacity: 0.15;
+	}
+
+	.airo-wp-chart__baseline {
+		stroke: currentcolor;
+		stroke-width: 1;
+		opacity: 0.45;
+	}
+
+	.airo-wp-chart__tick,
+	.airo-wp-chart__value,
+	.airo-wp-chart__category {
+		fill: currentcolor;
+		// The 600-unit viewBox is usually painted narrower than that, so user
+		// units shrink; 14 keeps axis text readable in a mobile column.
+		font-size: 14px;
+	}
+
+	.airo-wp-chart__tick,
+	.airo-wp-chart__category {
+		opacity: 0.7;
+	}
+
+	.airo-wp-chart__legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
+		margin: 0.75rem 0 0;
+		padding: 0;
+		list-style: none;
+		font-size: 0.875em;
+	}
+
+	.airo-wp-chart__legend-item {
+		display: flex;
+		align-items: center;
+		gap: 0.4em;
+	}
+
+	.airo-wp-chart__swatch {
+		width: 0.75em;
+		height: 0.75em;
+		border-radius: 2px;
+		flex-shrink: 0;
+	}
+
+	&.airo-wp-chart--donut {
+
+		.airo-wp-chart__canvas {
+			max-width: 24rem;
+			margin-inline: auto;
+		}
+
+		// The donut is displayed far smaller than its 600-unit viewBox, so its
+		// labels need a larger user-unit size to stay legible once scaled.
+		.airo-wp-chart__value {
+			font-size: 20px;
+		}
+	}
+}

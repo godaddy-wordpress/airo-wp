@@ -44,7 +44,7 @@ const BLOCK_MANIFESTS: BlockManifest[] = globSync('dist/blocks/*/block.json', {
 }, []);
 
 if (BLOCK_MANIFESTS.length === 0) {
-  throw new Error('BLOCK_MANIFESTS is empty — run make dsg-build to compile dist/blocks/');
+  throw new Error('BLOCK_MANIFESTS is empty — run `npm run build` to compile dist/blocks/');
 }
 
 // ---------------------------------------------------------------------------
