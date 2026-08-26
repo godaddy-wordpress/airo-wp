@@ -27,8 +27,7 @@ export const AnimationPanel = ({
 	// Get parent settings from context (with fallback defaults)
 	const parentDuration =
 		context?.['airo-wp/counterGroup/animationDuration'] || 2;
-	const parentDelay =
-		context?.['airo-wp/counterGroup/animationDelay'] || 0;
+	const parentDelay = context?.['airo-wp/counterGroup/animationDelay'] || 0;
 	const parentEasing =
 		context?.['airo-wp/counterGroup/animationEasing'] || 'easeOutQuad';
 
@@ -90,10 +89,7 @@ export const AnimationPanel = ({
 					isShownByDefault
 				>
 					<RangeControl
-						label={__(
-							'Animation Duration (seconds)',
-							'airo-wp'
-						)}
+						label={__('Animation Duration (seconds)', 'airo-wp')}
 						value={customDuration}
 						onChange={(value) =>
 							setAttributes({ customDuration: value })
@@ -127,10 +123,7 @@ export const AnimationPanel = ({
 						min={0}
 						max={2}
 						step={0.1}
-						help={__(
-							'Delay before animation starts',
-							'airo-wp'
-						)}
+						help={__('Delay before animation starts', 'airo-wp')}
 						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 					/>

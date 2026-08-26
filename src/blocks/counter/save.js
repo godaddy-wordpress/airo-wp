@@ -30,17 +30,14 @@ export default function CounterSave({ attributes, context }) {
 	// Get settings from parent Counter Group context (with fallback defaults)
 	const parentDuration =
 		context?.['airo-wp/counterGroup/animationDuration'] || 2;
-	const parentDelay =
-		context?.['airo-wp/counterGroup/animationDelay'] || 0;
+	const parentDelay = context?.['airo-wp/counterGroup/animationDelay'] || 0;
 	const parentEasing =
 		context?.['airo-wp/counterGroup/animationEasing'] || 'easeOutQuad';
 	const parentUseGrouping =
 		context?.['airo-wp/counterGroup/useGrouping'] ?? true;
-	const parentSeparator =
-		context?.['airo-wp/counterGroup/separator'] || ',';
+	const parentSeparator = context?.['airo-wp/counterGroup/separator'] || ',';
 	const parentDecimal = context?.['airo-wp/counterGroup/decimal'] || '.';
-	const parentHoverColor =
-		context?.['airo-wp/counterGroup/hoverColor'] || '';
+	const parentHoverColor = context?.['airo-wp/counterGroup/hoverColor'] || '';
 
 	// Determine active animation settings
 	const activeDuration = overrideAnimation ? customDuration : parentDuration;

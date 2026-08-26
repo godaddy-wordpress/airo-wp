@@ -18,7 +18,11 @@
 		"airo-wp/hoverIconBackgroundColor"
 	],
 	"selectors": {
-		"root": ".wp-block-airo-wp-icon .airo-wp-icon__wrapper"
+		"root": ".wp-block-airo-wp-icon .airo-wp-icon__wrapper",
+		"spacing": {
+			"root": ".wp-block-airo-wp-icon .airo-wp-icon__wrapper",
+			"margin": ".wp-block-airo-wp-icon"
+		}
 	},
 	"supports": {
 		"anchor": true,

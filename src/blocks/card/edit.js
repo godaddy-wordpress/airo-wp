@@ -103,10 +103,7 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 		},
 		{
 			template: [
-				[
-					'airo-wp/icon-button',
-					{ text: __('Learn More', 'airo-wp') },
-				],
+				['airo-wp/icon-button', { text: __('Learn More', 'airo-wp') }],
 			],
 			templateLock: false,
 			allowedBlocks: ['airo-wp/icon-button'],
@@ -255,7 +252,10 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 					className="airo-wp-card__background"
 					style={{ backgroundImage: `url(${imageUrl})` }}
 				>
-					<div className="airo-wp-card__overlay" style={overlayStyles} />
+					<div
+						className="airo-wp-card__overlay"
+						style={overlayStyles}
+					/>
 				</div>
 			);
 		}
@@ -323,10 +323,7 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 					className="airo-wp-card__body"
 					value={bodyText}
 					onChange={(value) => setAttributes({ bodyText: value })}
-					placeholder={__(
-						'Card description goes here…',
-						'airo-wp'
-					)}
+					placeholder={__('Card description goes here…', 'airo-wp')}
 				/>
 			)}
 
@@ -595,10 +592,7 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 								isShownByDefault
 							>
 								<TextControl
-									label={__(
-										'Custom Aspect Ratio',
-										'airo-wp'
-									)}
+									label={__('Custom Aspect Ratio', 'airo-wp')}
 									value={imageCustomAspectRatio}
 									onChange={(value) =>
 										setAttributes({
@@ -834,10 +828,7 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 								onChange={(value) =>
 									setAttributes({ showImage: value })
 								}
-								help={__(
-									'Display the card image.',
-									'airo-wp'
-								)}
+								help={__('Display the card image.', 'airo-wp')}
 								__nextHasNoMarginBottom
 							/>
 						</DsgoInspectorPanel.Item>
@@ -872,10 +863,7 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 							onChange={(value) =>
 								setAttributes({ showSubtitle: value })
 							}
-							help={__(
-								'Display the card subtitle.',
-								'airo-wp'
-							)}
+							help={__('Display the card subtitle.', 'airo-wp')}
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>
@@ -892,10 +880,7 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 							onChange={(value) =>
 								setAttributes({ showBody: value })
 							}
-							help={__(
-								'Display the card body text.',
-								'airo-wp'
-							)}
+							help={__('Display the card body text.', 'airo-wp')}
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>
@@ -912,10 +897,7 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 							onChange={(value) =>
 								setAttributes({ showBadge: value })
 							}
-							help={__(
-								'Display the badge element.',
-								'airo-wp'
-							)}
+							help={__('Display the badge element.', 'airo-wp')}
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>

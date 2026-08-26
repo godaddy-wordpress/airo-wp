@@ -339,10 +339,7 @@ export default function SlideEdit({
 								value={backgroundPosition}
 								options={[
 									{
-										label: __(
-											'Center Center',
-											'airo-wp'
-										),
+										label: __('Center Center', 'airo-wp'),
 										value: 'center center',
 									},
 									{
@@ -350,10 +347,7 @@ export default function SlideEdit({
 										value: 'top center',
 									},
 									{
-										label: __(
-											'Bottom Center',
-											'airo-wp'
-										),
+										label: __('Bottom Center', 'airo-wp'),
 										value: 'bottom center',
 									},
 									{
@@ -361,10 +355,7 @@ export default function SlideEdit({
 										value: 'left center',
 									},
 									{
-										label: __(
-											'Right Center',
-											'airo-wp'
-										),
+										label: __('Right Center', 'airo-wp'),
 										value: 'right center',
 									},
 									{
@@ -380,10 +371,7 @@ export default function SlideEdit({
 										value: 'bottom left',
 									},
 									{
-										label: __(
-											'Bottom Right',
-											'airo-wp'
-										),
+										label: __('Bottom Right', 'airo-wp'),
 										value: 'bottom right',
 									},
 								]}

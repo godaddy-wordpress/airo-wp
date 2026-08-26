@@ -29,7 +29,9 @@ function initScrollAccordions() {
 		accordion.setAttribute('data-airo-wp-initialized', 'true');
 
 		// Get all items
-		const items = accordion.querySelectorAll('.airo-wp-scroll-accordion-item');
+		const items = accordion.querySelectorAll(
+			'.airo-wp-scroll-accordion-item'
+		);
 
 		if (!items.length) {
 			return;

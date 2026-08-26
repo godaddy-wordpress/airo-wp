@@ -100,7 +100,9 @@ const v1 = {
 	},
 	isEligible(attributes, innerBlocks, extra) {
 		const innerHTML = getDeprecatedBlockHTML(extra);
-		return !!innerHTML && innerHTML.includes('--airo-wp-accordion-open-bg:;');
+		return (
+			!!innerHTML && innerHTML.includes('--airo-wp-accordion-open-bg:;')
+		);
 	},
 	save({ attributes }) {
 		const {

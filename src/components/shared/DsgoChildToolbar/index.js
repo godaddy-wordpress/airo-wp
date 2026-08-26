@@ -196,14 +196,10 @@ export default function DsgoChildToolbar({
 	const resolvedRemoveLabel = removeLabel || __('Remove item', 'airo-wp');
 	const resolvedMovePrevLabel =
 		movePrevLabel ||
-		(isVertical
-			? __('Move up', 'airo-wp')
-			: __('Move left', 'airo-wp'));
+		(isVertical ? __('Move up', 'airo-wp') : __('Move left', 'airo-wp'));
 	const resolvedMoveNextLabel =
 		moveNextLabel ||
-		(isVertical
-			? __('Move down', 'airo-wp')
-			: __('Move right', 'airo-wp'));
+		(isVertical ? __('Move down', 'airo-wp') : __('Move right', 'airo-wp'));
 
 	return (
 		<ToolbarGroup label={__('Child block actions', 'airo-wp')}>

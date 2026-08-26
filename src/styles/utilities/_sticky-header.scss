@@ -118,9 +118,45 @@ body:not(.block-editor-page).admin-bar .wp-block-template-part.airo-wp-sticky-he
 		color var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
 }
 
+/**
+ * Every theme-preset cascade below is gated on this feature query, and the
+ * gating is load-bearing rather than defensive.
+ *
+ * A declaration containing var() is only syntax-checked after substitution, so
+ * a color-mix() the browser doesn't understand makes the declaration "invalid
+ * at computed-value time" — which resets background-color to its initial value
+ * (transparent), *not* to any earlier declaration in the cascade. Declaring the
+ * literal first and the color-mix() second therefore does not degrade
+ * gracefully; the second declaration parses cleanly, wins, and only then fails.
+ * @supports is the only construct that keeps a color-mix()-less browser on the
+ * literal.
+ */
+$airo-wp-color-mix-support: "(background-color: color-mix(in srgb, red 95%, transparent))";
+
+/**
+ * Prefer the theme's secondary surface preset; themes without a `base-2`
+ * slug (Twenty Twenty-*) resolve to the historical near-white.
+ */
 .airo-wp-sticky-bg-on-scroll.wp-block-template-part.airo-wp-scrolled {
-	background-color: var(--airo-wp-sticky-scroll-bg-color, rgba(255, 255, 255, 0.95));
-	color: var(--airo-wp-sticky-scroll-text-color, inherit);
+	--airo-wp-sticky-scrolled-bg: rgba(255, 255, 255, 0.95);
+	--airo-wp-sticky-scrolled-fg: inherit;
+
+	background-color: var(--airo-wp-sticky-scroll-bg-color, var(--airo-wp-sticky-scrolled-bg));
+	color: var(--airo-wp-sticky-scroll-text-color, var(--airo-wp-sticky-scrolled-fg));
+
+	/**
+	 * The foreground moves with the background: `base-2` is theme-defined and
+	 * carries no guarantee of lightness, so leaving the text on `inherit`
+	 * would put the theme's body colour on the theme's own surface colour —
+	 * near-1:1 contrast for any palette whose `base-2` is dark. `contrast` is
+	 * guaranteed to oppose the `base` family in any theme.json palette, so the
+	 * pair stays legible; a theme defining neither slug resolves to exactly the
+	 * historical near-white-on-inherited.
+	 */
+	@supports #{$airo-wp-color-mix-support} {
+		--airo-wp-sticky-scrolled-bg: color-mix(in srgb, var(--wp--preset--color--base-2, #fff) 95%, transparent);
+		--airo-wp-sticky-scrolled-fg: var(--wp--preset--color--contrast, inherit);
+	}
 
 	/* Apply text color to navigation elements only — excludes buttons with user-set colors */
 	.wp-block-navigation a,
@@ -138,13 +174,16 @@ body:not(.block-editor-page).admin-bar .wp-block-template-part.airo-wp-sticky-he
 	.wp-block-site-title a:focus-visible,
 	.wp-block-site-title a:visited,
 	.wp-block-site-title a:active {
-		color: var(--airo-wp-sticky-scroll-text-color, inherit);
+		color: var(--airo-wp-sticky-scroll-text-color, var(--airo-wp-sticky-scrolled-fg));
 		transition: color var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
 	}
 
 	/* Navigation SVG icons (hamburger, submenu arrows) */
 	.wp-block-navigation__submenu-icon svg,
 	.wp-block-navigation__responsive-container-open svg {
+
+		/* currentColor, not the fg var: `fill: inherit` would take the parent's
+		   fill rather than the resolved text colour. */
 		fill: var(--airo-wp-sticky-scroll-text-color, currentColor);
 		transition: fill var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
 	}
@@ -207,9 +246,27 @@ body:not(.block-editor-page).admin-bar .wp-block-template-part.airo-wp-sticky-he
 		box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
 	}
 
+	/**
+	 * `contrast`/`base` rather than `base-2` here: this rule hardcodes a light
+	 * foreground, and those two slugs are guaranteed to oppose each other in
+	 * any palette, so the pairing stays readable in light *and* dark themes.
+	 * Themes with neither slug resolve to black-on-white, as before.
+	 *
+	 * --airo-wp-sticky-dark-fg is hoisted because the foreground is read from
+	 * three places below; see $airo-wp-color-mix-support for why the preset
+	 * cascade lives in a feature query.
+	 */
 	.airo-wp-sticky-bg-on-scroll.wp-block-template-part.airo-wp-scrolled {
-		background-color: var(--airo-wp-sticky-scroll-bg-color, rgba(0, 0, 0, 0.95));
-		color: var(--airo-wp-sticky-scroll-text-color, rgba(255, 255, 255, 0.95));
+		--airo-wp-sticky-scrolled-bg: rgba(0, 0, 0, 0.95);
+		--airo-wp-sticky-dark-fg: rgba(255, 255, 255, 0.95);
+
+		background-color: var(--airo-wp-sticky-scroll-bg-color, var(--airo-wp-sticky-scrolled-bg));
+		color: var(--airo-wp-sticky-scroll-text-color, var(--airo-wp-sticky-dark-fg));
+
+		@supports #{$airo-wp-color-mix-support} {
+			--airo-wp-sticky-scrolled-bg: color-mix(in srgb, var(--wp--preset--color--contrast, #000) 95%, transparent);
+			--airo-wp-sticky-dark-fg: color-mix(in srgb, var(--wp--preset--color--base, #fff) 95%, transparent);
+		}
 
 		.wp-block-navigation a,
 		.wp-block-navigation a:hover,
@@ -226,12 +283,12 @@ body:not(.block-editor-page).admin-bar .wp-block-template-part.airo-wp-sticky-he
 		.wp-block-site-title a:focus-visible,
 		.wp-block-site-title a:visited,
 		.wp-block-site-title a:active {
-			color: var(--airo-wp-sticky-scroll-text-color, rgba(255, 255, 255, 0.95));
+			color: var(--airo-wp-sticky-scroll-text-color, var(--airo-wp-sticky-dark-fg));
 		}
 
 		.wp-block-navigation__submenu-icon svg,
 		.wp-block-navigation__responsive-container-open svg {
-			fill: var(--airo-wp-sticky-scroll-text-color, rgba(255, 255, 255, 0.95));
+			fill: var(--airo-wp-sticky-scroll-text-color, var(--airo-wp-sticky-dark-fg));
 		}
 	}
 }
@@ -274,10 +331,35 @@ body:not(.block-editor-page).airo-wp-page-overlay-header header.wp-block-templat
 }
 
 /**
+ * Elements inside the overlay header whose background must be forced
+ * transparent.
+ *
+ * Matching on `.has-background` alone is not enough. A theme can paint a
+ * container background from a *block style variation* (Twenty Twenty-Five's
+ * `is-style-header-section`) or from `styles.blocks` in theme.json — neither
+ * puts a `.has-background` class on the element, so the header stayed opaque.
+ * Matching the container block classes catches those cases too.
+ */
+$airo-wp-overlay-bg-targets: ".wp-block-group, .wp-block-columns, .wp-block-column, .wp-block-cover, .wp-block-cover__background, .wp-block-airo-wp-section, .wp-block-airo-wp-row, .wp-block-airo-wp-grid, .has-background";
+
+/**
+ * Elements that must keep their background while the header is transparent —
+ * they sit over the hero image and become unreadable without one: buttons and
+ * other author-styled calls to action, submenu dropdowns, and the mobile menu
+ * overlay.
+ *
+ * Wrapped in `:where()` so the exclusion chain contributes no specificity. Six
+ * chained `:not()`s would otherwise push these rules well above the
+ * `.has-background` selector they replace, and the whole point is to stay
+ * cascade-neutral — the `!important` below is what does the overriding.
+ */
+$airo-wp-overlay-bg-exceptions: ":where(:not(.wp-block-button__link):not(.wp-element-button):not(.wp-block-navigation__submenu-container):not(.wp-block-navigation__submenu-container *):not(.wp-block-navigation__responsive-container):not(.wp-block-navigation__responsive-container *))";
+
+/**
  * Overlay: force inner header sections transparent so they don't show
  * through over the hero. Uses :where() for zero specificity.
  */
-body:not(.block-editor-page).airo-wp-page-overlay-header:not(.airo-wp-page-overlay-skip-top-bar) :where(header.wp-block-template-part, .wp-block-template-part:not(footer):first-of-type) .has-background {
+body:not(.block-editor-page).airo-wp-page-overlay-header:not(.airo-wp-page-overlay-skip-top-bar) :where(header.wp-block-template-part, .wp-block-template-part:not(footer):first-of-type) :is(#{$airo-wp-overlay-bg-targets})#{$airo-wp-overlay-bg-exceptions} {
 	background-color: transparent !important;
 	background-image: none !important;
 }
@@ -286,8 +368,8 @@ body:not(.block-editor-page).airo-wp-page-overlay-header:not(.airo-wp-page-overl
  * Overlay + Skip Top Bar: only strip backgrounds from the nav row area
  * (second child onwards), preserving the top bar's background.
  */
-body:not(.block-editor-page).airo-wp-page-overlay-header.airo-wp-page-overlay-skip-top-bar :where(header.wp-block-template-part, .wp-block-template-part:not(footer):first-of-type) > * > :not(:first-child) .has-background,
-body:not(.block-editor-page).airo-wp-page-overlay-header.airo-wp-page-overlay-skip-top-bar :where(header.wp-block-template-part, .wp-block-template-part:not(footer):first-of-type) > * > :not(:first-child).has-background {
+body:not(.block-editor-page).airo-wp-page-overlay-header.airo-wp-page-overlay-skip-top-bar :where(header.wp-block-template-part, .wp-block-template-part:not(footer):first-of-type) > * > :not(:first-child) :is(#{$airo-wp-overlay-bg-targets})#{$airo-wp-overlay-bg-exceptions},
+body:not(.block-editor-page).airo-wp-page-overlay-header.airo-wp-page-overlay-skip-top-bar :where(header.wp-block-template-part, .wp-block-template-part:not(footer):first-of-type) > * > :is(#{$airo-wp-overlay-bg-targets}):not(:first-child)#{$airo-wp-overlay-bg-exceptions} {
 	background-color: transparent !important;
 	background-image: none !important;
 }
@@ -323,10 +405,21 @@ body:not(.block-editor-page).admin-bar.airo-wp-page-overlay-header header.wp-blo
  * Overlay Scroll Background
  * When scrolled past threshold, fade in the solid background.
  * Position stays fixed — only background-color transitions.
+ *
+ * Overlay headers never enter the JS branch that sets
+ * --airo-wp-sticky-scroll-bg-color (see utils/sticky-header.js), so this fallback
+ * is the value that actually renders. Prefer the theme's secondary surface;
+ * themes without a `base-2` slug keep the historical near-white.
  */
 body:not(.block-editor-page).airo-wp-page-overlay-header .wp-block-template-part.airo-wp-scrolled:not(footer):first-of-type,
 body:not(.block-editor-page).airo-wp-page-overlay-header header.wp-block-template-part.airo-wp-scrolled {
-	background-color: var(--airo-wp-sticky-scroll-bg-color, rgba(255, 255, 255, 0.95));
+	--airo-wp-sticky-scrolled-bg: rgba(255, 255, 255, 0.95);
+
+	background-color: var(--airo-wp-sticky-scroll-bg-color, var(--airo-wp-sticky-scrolled-bg));
+
+	@supports #{$airo-wp-color-mix-support} {
+		--airo-wp-sticky-scrolled-bg: color-mix(in srgb, var(--wp--preset--color--base-2, #fff) 95%, transparent);
+	}
 }
 
 /**

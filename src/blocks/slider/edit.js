@@ -38,6 +38,28 @@ import useQueryHostPreview, {
 } from '../query/hooks/useQueryHostPreview';
 import useParentQueryAttrs from '../query/hooks/useParentQueryAttrs';
 import QueryHostReadOnlyItem from '../query/components/QueryHostReadOnlyItem';
+import { ARROW_PATHS, ARROW_SVG_ATTRS } from './arrow-icon';
+
+/**
+ * The editor's inert arrow chevron — same path data the frontend builds, so
+ * the placeholder the author sees matches what actually renders.
+ *
+ * @param {Object} props           Component props.
+ * @param {string} props.direction Either `prev` or `next`.
+ */
+function ArrowIcon({ direction }) {
+	return (
+		<svg
+			{...ARROW_SVG_ATTRS}
+			width="1em"
+			height="1em"
+			aria-hidden="true"
+			focusable="false"
+		>
+			<path d={ARROW_PATHS[direction]} />
+		</svg>
+	);
+}
 
 const SINGLE_SLIDE_EFFECTS = ['fade', 'zoom'];
 
@@ -815,10 +837,7 @@ export default function SliderEdit({
 							{ label: __('Zoom', 'airo-wp'), value: 'zoom' },
 						]}
 						onChange={handleEffectChange}
-						help={__(
-							'Animation style between slides',
-							'airo-wp'
-						)}
+						help={__('Animation style between slides', 'airo-wp')}
 						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 					/>
@@ -881,10 +900,7 @@ export default function SliderEdit({
 						onChange={(value) => setAttributes({ autoplay: value })}
 						help={
 							autoplay
-								? __(
-										'Slides advance automatically',
-										'airo-wp'
-									)
+								? __('Slides advance automatically', 'airo-wp')
 								: __('Manual navigation only', 'airo-wp')
 						}
 						__nextHasNoMarginBottom
@@ -893,10 +909,7 @@ export default function SliderEdit({
 					{autoplay && (
 						<>
 							<RangeControl
-								label={__(
-									'Auto-play Interval (ms)',
-									'airo-wp'
-								)}
+								label={__('Auto-play Interval (ms)', 'airo-wp')}
 								value={autoplayInterval}
 								onChange={(value) =>
 									setAttributes({ autoplayInterval: value })
@@ -919,10 +932,7 @@ export default function SliderEdit({
 							/>
 
 							<ToggleControl
-								label={__(
-									'Pause on Interaction',
-									'airo-wp'
-								)}
+								label={__('Pause on Interaction', 'airo-wp')}
 								checked={pauseOnInteraction}
 								onChange={(value) =>
 									setAttributes({ pauseOnInteraction: value })
@@ -1045,10 +1055,7 @@ export default function SliderEdit({
 						onChange={(value) =>
 							setAttributes({ centeredSlides: value })
 						}
-						help={__(
-							'Active slide centered in view',
-							'airo-wp'
-						)}
+						help={__('Active slide centered in view', 'airo-wp')}
 						__nextHasNoMarginBottom
 					/>
 				</PanelBody>
@@ -1181,10 +1188,13 @@ export default function SliderEdit({
 						{slides.map((slide, index) => (
 							<div
 								key={slide.clientId}
-								className={classnames('airo-wp-slider__nav-chip', {
-									'is-active':
-										selectedSlideId === slide.clientId,
-								})}
+								className={classnames(
+									'airo-wp-slider__nav-chip',
+									{
+										'is-active':
+											selectedSlideId === slide.clientId,
+									}
+								)}
 							>
 								<button
 									type="button"
@@ -1200,10 +1210,7 @@ export default function SliderEdit({
 								</button>
 								<div className="airo-wp-slider__nav-chip-actions">
 									<Tooltip
-										text={__(
-											'Duplicate slide',
-											'airo-wp'
-										)}
+										text={__('Duplicate slide', 'airo-wp')}
 									>
 										<Button
 											size="small"
@@ -1262,7 +1269,7 @@ export default function SliderEdit({
 							aria-label={__('Previous slide', 'airo-wp')}
 							onClick={() => scrollToSlide('prev')}
 						>
-							<span>‹</span>
+							<ArrowIcon direction="prev" />
 						</button>
 						<button
 							type="button"
@@ -1270,7 +1277,7 @@ export default function SliderEdit({
 							aria-label={__('Next slide', 'airo-wp')}
 							onClick={() => scrollToSlide('next')}
 						>
-							<span>›</span>
+							<ArrowIcon direction="next" />
 						</button>
 					</div>
 				)}
@@ -1305,11 +1312,11 @@ export default function SliderEdit({
  * InnerBlocks slot (the template slide), items 1..N are read-only server-
  * rendered slides. Each item is wrapped in a BlockContextProvider so any
  * Block Bindings inside the template resolve against the iterated post.
- * @param root0
- * @param root0.innerBlocksProps
- * @param root0.preview
- * @param root0.parentQueryAttrs
- * @param root0.outerContext
+ * @param {Object} root0
+ * @param {Object} root0.innerBlocksProps
+ * @param {Object} root0.preview
+ * @param {Object} root0.parentQueryAttrs
+ * @param {Object} root0.outerContext
  */
 function QueryModeTrack({
 	innerBlocksProps,

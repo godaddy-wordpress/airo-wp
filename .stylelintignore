@@ -1,0 +1,20 @@
+# Build output
+dist/
+build/
+
+# Distributable archives + ephemeral wp-env/plugin-check instances
+builds/
+
+# Strauss-prefixed runtime deps
+dependencies/
+
+# Node modules / Composer vendor
+node_modules/
+vendor/
+
+# WordPress environment
+.wp-env/
+
+# Test artifacts
+playwright-report/
+test-results/

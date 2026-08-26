@@ -42,7 +42,8 @@ export default function Save({ attributes }) {
 	// Styles using CSS custom properties (only set if user has chosen colors)
 	const customStyles = {};
 	if (linkColor) {
-		customStyles['--airo-wp-toc-link-color'] = convertColorToCSSVar(linkColor);
+		customStyles['--airo-wp-toc-link-color'] =
+			convertColorToCSSVar(linkColor);
 	}
 	if (activeLinkColor) {
 		customStyles['--airo-wp-toc-active-link-color'] =
@@ -73,11 +74,21 @@ export default function Save({ attributes }) {
 	return (
 		<div {...blockProps}>
 			<div className="airo-wp-table-of-contents__content">
-				{showTitle && (
-					<div className="airo-wp-table-of-contents__title">
-						{titleText}
-					</div>
-				)}
+				{/*
+				 * The title element is ALWAYS rendered (matching the previous
+				 * `showTitle`-gated markup for shown titles) so `titleText` has a
+				 * stable element to be sourced from — otherwise toggling the title
+				 * off would drop the element and reset the text on reload. When the
+				 * title is hidden it carries a `--hidden` modifier (CSS display:none)
+				 * instead of being omitted from the tree.
+				 */}
+				<div
+					className={classnames('airo-wp-table-of-contents__title', {
+						'airo-wp-table-of-contents__title--hidden': !showTitle,
+					})}
+				>
+					{titleText}
+				</div>
 				{/* Placeholder - frontend JS will populate this */}
 				<ListTag className="airo-wp-table-of-contents__list" />
 			</div>

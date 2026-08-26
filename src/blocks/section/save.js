@@ -8,12 +8,17 @@
  */
 
 import { useBlockProps, useInnerBlocksProps } from '@wordpress/block-editor';
-import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+import {
+	convertColorToCSSVar,
+	convertPresetToCSSVar,
+} from '../../utils/convert-preset-to-css-var';
 import {
 	hasOverlayStyleClass,
 	hoverVariationClasses,
 } from './utils/has-overlay-style';
-import ShapeDivider from './components/ShapeDivider';
+import ShapeDivider, {
+	getRenderedShapeHeight,
+} from './components/ShapeDivider';
 
 /**
  * Section Container Save Component
@@ -40,6 +45,7 @@ export default function SectionSave({ attributes }) {
 		shapeDividerTopFlipX,
 		shapeDividerTopFlipY,
 		shapeDividerTopFront,
+		shapeDividerTopSpacing,
 		shapeDividerBottom,
 		shapeDividerBottomBackgroundColor,
 		shapeDividerBottomHeight,
@@ -47,6 +53,7 @@ export default function SectionSave({ attributes }) {
 		shapeDividerBottomFlipX,
 		shapeDividerBottomFlipY,
 		shapeDividerBottomFront,
+		shapeDividerBottomSpacing,
 	} = attributes;
 
 	// Shape divider band: explicit color only. Omit when unset so the
@@ -92,7 +99,8 @@ export default function SectionSave({ attributes }) {
 					convertColorToCSSVar(hoverBackgroundColor),
 			}),
 			...(hoverTextColor && {
-				'--airo-wp-hover-text-color': convertColorToCSSVar(hoverTextColor),
+				'--airo-wp-hover-text-color':
+					convertColorToCSSVar(hoverTextColor),
 			}),
 			...(hoverIconBackgroundColor && {
 				'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
@@ -108,6 +116,31 @@ export default function SectionSave({ attributes }) {
 				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
 				'--airo-wp-overlay-opacity': '0.8',
 			}),
+			// Default content clearance: expose the divider's RENDERED height on
+			// the wrapper so the stylesheet fallback (see _shape-divider.scss)
+			// reserves inner padding that MATCHES what the divider paints
+			// instead of a flat default. Uses getRenderedShapeHeight so the
+			// value tracks the divider's own clamp (10–500) rather than a raw
+			// out-of-range attribute. Omitted when the height is unset — the
+			// divider then inherits the theme.json height token and the
+			// stylesheet resolves the clearance from that SAME token, so
+			// pinning a px snapshot here would desync the two. Also omitted when
+			// an explicit "Content Clearance" spacing is set (its inline padding
+			// wins). Must match edit.js EXACTLY.
+			...(shapeDividerTop &&
+				!shapeDividerTopSpacing &&
+				getRenderedShapeHeight(shapeDividerTopHeight) !== null && {
+					'--airo-wp-shape-clearance-top': `${getRenderedShapeHeight(
+						shapeDividerTopHeight
+					)}px`,
+				}),
+			...(shapeDividerBottom &&
+				!shapeDividerBottomSpacing &&
+				getRenderedShapeHeight(shapeDividerBottomHeight) !== null && {
+					'--airo-wp-shape-clearance-bottom': `${getRenderedShapeHeight(
+						shapeDividerBottomHeight
+					)}px`,
+				}),
 		},
 	});
 
@@ -121,12 +154,17 @@ export default function SectionSave({ attributes }) {
 		innerStyle.marginRight = 'auto';
 	}
 
-	// Add padding to clear shape dividers (must match edit.js EXACTLY)
-	if (shapeDividerTop) {
-		innerStyle.paddingTop = `${shapeDividerTopHeight || 100}px`;
+	// Inner content clearance for shape dividers. The value is a block-user
+	// defined WordPress spacing token (var:preset|spacing|NN) or a raw CSS
+	// length; serialize exactly what was set and emit nothing when unset.
+	// Must match edit.js EXACTLY.
+	if (shapeDividerTop && shapeDividerTopSpacing) {
+		innerStyle.paddingTop = convertPresetToCSSVar(shapeDividerTopSpacing);
 	}
-	if (shapeDividerBottom) {
-		innerStyle.paddingBottom = `${shapeDividerBottomHeight || 100}px`;
+	if (shapeDividerBottom && shapeDividerBottomSpacing) {
+		innerStyle.paddingBottom = convertPresetToCSSVar(
+			shapeDividerBottomSpacing
+		);
 	}
 
 	// Merge inner blocks props without the outer block props

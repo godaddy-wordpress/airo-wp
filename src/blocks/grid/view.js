@@ -19,6 +19,12 @@
 			this.tabletBreakpoint = 1024;
 			this.mobileBreakpoint = 767;
 
+			// "Align Rows" — publish the per-card subgrid row count so the
+			// stylesheet's subgrid rules can activate (see style.scss).
+			this.matchRows = element.classList.contains(
+				'airo-wp-grid--match-rows'
+			);
+
 			this.init();
 		}
 
@@ -75,14 +81,147 @@
 		handleResize() {
 			const config = this.getResponsiveColumns();
 
+			// Effective columns at the current breakpoint (desktop reports
+			// null, so fall back to the desktop column class), then narrowed
+			// to what the grid is actually rendering — a column min width can
+			// drop a column instead of overflowing.
+			//
+			// Only Align Rows consumes this, and the measurement forces a
+			// synchronous layout flush, so skip it entirely for grids without
+			// the feature: `applyRowMatching()` treats a falsy count the same
+			// way it treats a single column, and returns before using it.
+			const configuredColumns =
+				config.columns === null
+					? this.getDesktopColumns()
+					: config.columns;
+			const effectiveColumns = this.matchRows
+				? this.getRenderedColumns(configuredColumns)
+				: null;
+
 			// Desktop: Remove all constraints
 			if (config.breakpoint === 'desktop') {
 				this.removeConstraints();
+			} else {
+				// Mobile/Tablet: Constrain spans
+				this.applyConstraints(config.columns);
+			}
+
+			this.applyRowMatching(effectiveColumns);
+		}
+
+		/**
+		 * Read the configured desktop column count from the `airo-wp-grid-cols-{n}`
+		 * class (the desktop breakpoint sets no responsive override).
+		 *
+		 * @return {number} Column count (defaults to 1 if none found).
+		 */
+		getDesktopColumns() {
+			for (let i = 12; i >= 1; i--) {
+				if (this.element.classList.contains(`airo-wp-grid-cols-${i}`)) {
+					return i;
+				}
+			}
+			return 1;
+		}
+
+		/**
+		 * Count the columns the grid is ACTUALLY rendering, by reading the
+		 * resolved track list off the computed style.
+		 *
+		 * This can be fewer than the configured desktop count: the column min
+		 * width builds an `auto-fill` track list that drops a column rather
+		 * than overflowing the container (see utils/grid-columns.js). Row
+		 * matching must key off the rendered count, not the configured one —
+		 * a card spanning `--airo-wp-row-count` row tracks in a grid that has
+		 * wrapped to a single column absorbs the row gaps between those tracks
+		 * and grows taller for no benefit, since there is nothing beside it to
+		 * align to.
+		 *
+		 * @param {number} fallback Count to use when the track list is
+		 *                          unreadable (detached or `display: none`).
+		 * @return {number} Rendered column count.
+		 */
+		getRenderedColumns(fallback) {
+			const tracks = window.getComputedStyle(
+				this.inner
+			).gridTemplateColumns;
+
+			// 'none' (no grid), '' (detached / jsdom without layout), or any
+			// unresolved value: fall back to the configured count.
+			if (!tracks || tracks === 'none') {
+				return fallback;
+			}
+
+			// Resolved track lists are space-separated used values
+			// ('364px 364px 364px'). `minmax()`/`repeat()` only survive here if
+			// the browser could not resolve them, which the guard above covers.
+			return tracks.split(/\s+/).filter(Boolean).length || fallback;
+		}
+
+		/**
+		 * Count the content rows a card contributes to the subgrid. Mirrors the
+		 * CSS allowlist: Section (`.airo-wp-stack__inner`) and Flex
+		 * (`.airo-wp-flex__inner`) cards count their wrapper's children, Group
+		 * (`.wp-block-group`) counts its own children, and anything else (e.g.
+		 * the Card block, which the CSS also leaves alone) returns 0 so it
+		 * neither aligns nor inflates the shared row count.
+		 *
+		 * The "supported cards" set is defined in four places — see the note on
+		 * SUPPORTED_CARD_BLOCKS in utils/use-grid-row-match.js. This one and the
+		 * CSS match by class (rename-proof); the editor list matches by name.
+		 *
+		 * @param {HTMLElement} child A direct child (card) of the inner grid.
+		 * @return {number} Number of element rows in the card (0 if unsupported).
+		 */
+		countCardRows(child) {
+			const rowHost =
+				child.querySelector(
+					':scope > .airo-wp-stack__inner, :scope > .airo-wp-flex__inner'
+				) ||
+				(child.classList.contains('wp-block-group') ? child : null);
+			if (!rowHost) {
+				return 0;
+			}
+			// `.children` is an HTMLCollection — element nodes only (unlike
+			// `.childNodes`), so no text/comment filtering is needed.
+			return rowHost.children.length;
+		}
+
+		/**
+		 * Activate (or clear) subgrid row matching. Only meaningful with 2+
+		 * columns; on a single column the cards stack and need no alignment.
+		 *
+		 * @param {number} effectiveColumns Columns at the current breakpoint.
+		 */
+		applyRowMatching(effectiveColumns) {
+			if (!this.matchRows) {
 				return;
 			}
 
-			// Mobile/Tablet: Constrain spans
-			this.applyConstraints(config.columns);
+			const MATCHED = 'airo-wp-grid__inner--rows-matched';
+
+			if (!effectiveColumns || effectiveColumns <= 1) {
+				this.inner.classList.remove(MATCHED);
+				this.inner.style.removeProperty('--airo-wp-row-count');
+				return;
+			}
+
+			const rowCount = Array.from(this.inner.children).reduce(
+				(max, child) => Math.max(max, this.countCardRows(child)),
+				0
+			);
+
+			if (rowCount < 1) {
+				this.inner.classList.remove(MATCHED);
+				this.inner.style.removeProperty('--airo-wp-row-count');
+				return;
+			}
+
+			this.inner.style.setProperty(
+				'--airo-wp-row-count',
+				String(rowCount)
+			);
+			this.inner.classList.add(MATCHED);
 		}
 
 		applyConstraints(maxColumns) {

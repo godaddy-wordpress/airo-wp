@@ -1,0 +1,97 @@
+/**
+ * Background Video Extension - Editor Styles
+ *
+ * Editor-only styles for blocks with background videos.
+ * CRITICAL: Must be duplicated from style.scss for editor/frontend parity
+ *
+ * @package airo-wp
+ */
+
+/**
+ * Fix alignfull behavior when video background wrapper is inside root container
+ *
+ * When a block has a video background, it gets wrapped in .airo-wp-has-video-background.
+ * This wrapper needs to:
+ * 1. Remove max-width constraint that WordPress applies via :where(:not(.alignfull))
+ * 2. Apply negative margins to break out of the root container's padding
+ *
+ * WordPress applies constraints via these selectors:
+ * - .is-root-container > :where(:not(.alignfull)) { max-width: 1200px; margin: auto; }
+ * - .is-layout-constrained > :where(:not(.alignfull)) { max-width: content-size; margin: auto; }
+ *
+ * The inner block inherits alignfull from WordPress, but the wrapper needs these overrides.
+ */
+// Override WordPress max-width and margin:auto constraints on the wrapper
+.block-editor-block-list__layout.is-root-container > .airo-wp-has-video-background,
+.is-layout-constrained > .airo-wp-has-video-background {
+	max-width: none !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+}
+
+// Apply negative margins to break out of global padding
+.block-editor-block-list__layout.is-root-container.has-global-padding > .airo-wp-has-video-background {
+	margin-right: calc(var(--wp--style--root--padding-right) * -1) !important;
+	margin-left: calc(var(--wp--style--root--padding-left) * -1) !important;
+}
+
+.airo-wp-has-video-background {
+	position: relative;
+	// Use clip instead of hidden — clips video to border-radius without
+	// creating a scroll container (so position: sticky still works)
+	overflow: clip;
+
+	// CRITICAL: Must match style.scss for frontend parity
+	.airo-wp-video-background,
+	.airo-wp-video-background-editor {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 0;
+		overflow: hidden;
+		pointer-events: none;
+
+		video {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+
+		// Video overlay color (70% opacity applied via inline styles)
+		.airo-wp-video-overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			z-index: 1;
+			pointer-events: none;
+		}
+	}
+
+	// CRITICAL: Ensure content is above video - must match style.scss
+	> *:not(.airo-wp-video-background):not(.airo-wp-video-background-editor) {
+		position: relative;
+		z-index: 2;
+	}
+
+	// Visual indicator in editor only
+	&::after {
+		content: 'Video Background';
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		background: rgba(37, 99, 235, 0.9);
+		color: #fff;
+		padding: 4px 8px;
+		border-radius: 4px;
+		font-size: 11px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		z-index: 10;
+		pointer-events: none;
+	}
+}

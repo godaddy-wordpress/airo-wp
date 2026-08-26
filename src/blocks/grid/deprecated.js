@@ -233,6 +233,136 @@ const styleVariationClasses = {
 	},
 };
 
+// Before the column min width switched from a fixed `repeat(N, minmax(<min>,
+// 1fr))` track list to the auto-fill form in ./grid-columns.js. The fixed
+// repeat count could never drop a track, so a grid whose columns could not
+// all fit their min width (a narrow theme contentSize, say) overflowed its
+// container instead of wrapping items to the next row.
+//
+// Markup changed, so stored grids with a columnMinWidth are invalid against
+// the current save() and WordPress picks this entry by reproducing their HTML
+// — no isEligible needed, and none wanted (grids WITHOUT a columnMinWidth are
+// byte-identical under both forms and must not be re-migrated). migrate() is
+// a passthrough: only the serialised track list differs, no attribute does.
+//
+// This entry is listed FIRST so it wins over styleVariationClasses, whose
+// save() collapses to the same output for content with no style variation.
+const fixedColumnMinWidthTracks = {
+	apiVersion: 3,
+	supports: metadata.supports,
+	attributes: { ...metadata.attributes },
+	save({ attributes }) {
+		const {
+			tagName = 'div',
+			constrainWidth,
+			contentWidth,
+			columnMinWidth,
+			desktopColumns,
+			tabletColumns,
+			mobileColumns,
+			rowGap,
+			columnGap,
+			alignItems,
+			matchRowHeights,
+			overlayColor,
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			style,
+		} = attributes;
+
+		const hasOverlay =
+			!!overlayColor || hasOverlayStyleClass(attributes.className);
+
+		const className = [
+			'airo-wp-grid',
+			`airo-wp-grid-cols-${desktopColumns}`,
+			`airo-wp-grid-cols-tablet-${tabletColumns}`,
+			`airo-wp-grid-cols-mobile-${mobileColumns}`,
+			!constrainWidth && 'airo-wp-no-width-constraint',
+			matchRowHeights && 'airo-wp-grid--match-rows',
+			hasOverlay && 'airo-wp-grid--has-overlay',
+			...hoverVariationClasses(attributes.className, 'airo-wp-grid'),
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		const TagName = tagName || 'div';
+		const blockProps = useBlockProps.save({
+			className,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertColorToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertColorToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertColorToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+				...(overlayColor && {
+					'--airo-wp-overlay-color':
+						convertColorToCSSVar(overlayColor),
+					'--airo-wp-overlay-opacity': '0.8',
+				}),
+			},
+		});
+
+		const blockGapValue = style?.spacing?.blockGap;
+		const isBlockGapObject =
+			typeof blockGapValue === 'object' && blockGapValue !== null;
+		const blockGapRow = convertPresetToCSSVar(
+			isBlockGapObject ? blockGapValue?.top : blockGapValue
+		);
+		const blockGapColumn = convertPresetToCSSVar(
+			isBlockGapObject ? blockGapValue?.left : blockGapValue
+		);
+		const defaultGap = 'var(--wp--preset--spacing--50)';
+
+		const innerStyles = {
+			display: 'grid',
+			gridTemplateColumns: columnMinWidth
+				? `repeat(${desktopColumns || 3}, minmax(${columnMinWidth}, 1fr))`
+				: `repeat(${desktopColumns || 3}, 1fr)`,
+			alignItems: alignItems || 'stretch',
+			rowGap: blockGapRow || rowGap || defaultGap,
+			columnGap: blockGapColumn || columnGap || defaultGap,
+		};
+
+		if (constrainWidth) {
+			innerStyles.maxWidth =
+				contentWidth ||
+				'var(--wp--style--global--content-size, 1140px)';
+			innerStyles.marginLeft = 'auto';
+			innerStyles.marginRight = 'auto';
+		}
+
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-grid__inner',
+			style: innerStyles,
+		});
+
+		return (
+			<TagName {...blockProps}>
+				<div {...innerBlocksProps} />
+			</TagName>
+		);
+	},
+	migrate(attributes) {
+		return attributes;
+	},
+};
+
 // Version 1: Before align attribute - used className for alignment
 const v1 = {
 	supports: sharedSupports,
@@ -353,6 +483,162 @@ const v1 = {
 		return {
 			...oldAttributes,
 			align,
+			className: cleanClassName || undefined,
+		};
+	},
+};
+
+/**
+ * Site-designer responsive-grid markup where the tablet column count lived in a
+ * `className` (e.g. `airo-wp-grid-cols-tablet-1`) rather than the `tabletColumns`
+ * attribute — and the block comment's `tabletColumns` drifted away from it.
+ *
+ * These grids combine the legacy min-width-in-CSS shape (see `legacyMinWidth`
+ * below) with a `airo-wp-grid-cols-tablet-N` class supplied through `className`,
+ * while the comment still carries a stale `tabletColumns` (usually the default).
+ * The current save() emits a SECOND tablet class from that attribute
+ * (`airo-wp-grid-cols-tablet-2`), which the stored markup never had, so the block
+ * fails validation. WordPress compares the `class` attribute as an unordered
+ * SET, so reproducing the class set exactly is what matters.
+ *
+ * This entry omits the attribute-derived tablet class (the stored one comes from
+ * `className`) and reproduces the inner grid-template-columns verbatim from the
+ * captured style, so the block validates. migrate() recovers the min width into
+ * `columnMinWidth`, lifts the real tablet count out of the class into
+ * `tabletColumns`, and drops the now-redundant `airo-wp-grid-cols-tablet-N` class —
+ * after which the current save() reproduces the (now consistent) markup.
+ */
+const legacyResponsiveTabletClass = {
+	supports: sharedSupports,
+	attributes: {
+		...metadata.attributes,
+		legacyInnerStyle: {
+			type: 'string',
+			source: 'attribute',
+			selector: '.airo-wp-grid__inner',
+			attribute: 'style',
+		},
+	},
+	// No isEligible: markup-change deprecation, reached by save-matching on the
+	// invalid stored HTML. The omitted tablet class means this only matches grids
+	// whose stored class set lacks an attribute-derived tablet class (i.e. it came
+	// from className) — normal grids keep their tablet class and fall through.
+	save({ attributes }) {
+		const {
+			tagName = 'div',
+			constrainWidth,
+			contentWidth,
+			desktopColumns,
+			mobileColumns,
+			rowGap,
+			columnGap,
+			alignItems,
+			hoverBackgroundColor,
+			hoverTextColor,
+			hoverIconBackgroundColor,
+			hoverButtonBackgroundColor,
+			style,
+			legacyInnerStyle,
+		} = attributes;
+
+		// NOTE: no `airo-wp-grid-cols-tablet-${tabletColumns}` — the stored tablet
+		// class is supplied via className, and adding one from the drifted
+		// attribute would introduce a class the stored markup never had.
+		const className = [
+			'airo-wp-grid',
+			`airo-wp-grid-cols-${desktopColumns}`,
+			`airo-wp-grid-cols-mobile-${mobileColumns}`,
+			!constrainWidth && 'airo-wp-no-width-constraint',
+		]
+			.filter(Boolean)
+			.join(' ');
+
+		const TagName = tagName || 'div';
+		const blockProps = useBlockProps.save({
+			className,
+			style: {
+				...(hoverBackgroundColor && {
+					'--airo-wp-hover-bg-color':
+						convertColorToCSSVar(hoverBackgroundColor),
+				}),
+				...(hoverTextColor && {
+					'--airo-wp-hover-text-color':
+						convertColorToCSSVar(hoverTextColor),
+				}),
+				...(hoverIconBackgroundColor && {
+					'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
+						hoverIconBackgroundColor
+					),
+				}),
+				...(hoverButtonBackgroundColor && {
+					'--airo-wp-parent-hover-button-bg': convertColorToCSSVar(
+						hoverButtonBackgroundColor
+					),
+				}),
+			},
+		});
+
+		const blockGapValue = style?.spacing?.blockGap;
+		const isBlockGapObject =
+			typeof blockGapValue === 'object' && blockGapValue !== null;
+		const blockGapRow = convertPresetToCSSVar(
+			isBlockGapObject ? blockGapValue?.top : blockGapValue
+		);
+		const blockGapColumn = convertPresetToCSSVar(
+			isBlockGapObject ? blockGapValue?.left : blockGapValue
+		);
+		const defaultGap = 'var(--wp--preset--spacing--50)';
+
+		const gtc = (legacyInnerStyle || '').match(
+			/grid-template-columns:\s*([^;]+)/i
+		);
+
+		const innerStyles = {
+			display: 'grid',
+			gridTemplateColumns: gtc
+				? gtc[1].trim()
+				: `repeat(${desktopColumns || 3}, 1fr)`,
+			alignItems: alignItems || 'stretch',
+			rowGap: blockGapRow || rowGap || defaultGap,
+			columnGap: blockGapColumn || columnGap || defaultGap,
+		};
+
+		if (constrainWidth) {
+			innerStyles.maxWidth =
+				contentWidth ||
+				'var(--wp--style--global--content-size, 1140px)';
+			innerStyles.marginLeft = 'auto';
+			innerStyles.marginRight = 'auto';
+		}
+
+		const innerBlocksProps = useInnerBlocksProps.save({
+			className: 'airo-wp-grid__inner',
+			style: innerStyles,
+		});
+
+		return (
+			<TagName {...blockProps}>
+				<div {...innerBlocksProps} />
+			</TagName>
+		);
+	},
+	migrate(attributes) {
+		const { legacyInnerStyle, className, ...rest } = attributes;
+		const gtc = (legacyInnerStyle || '').match(
+			/grid-template-columns:\s*([^;]+)/i
+		);
+		const mm = gtc ? gtc[1].match(MIN_WIDTH_RE) : null;
+		const tabletMatch = (className || '').match(
+			/airo-wp-grid-cols-tablet-(\d+)/
+		);
+		const cleanClassName = (className || '')
+			.split(/\s+/)
+			.filter((c) => c && !/^airo-wp-grid-cols-tablet-\d+$/.test(c))
+			.join(' ');
+		return {
+			...rest,
+			columnMinWidth: mm ? mm[1] : '',
+			...(tabletMatch && { tabletColumns: Number(tabletMatch[1]) }),
 			className: cleanClassName || undefined,
 		};
 	},
@@ -515,4 +801,19 @@ const legacyMinWidth = {
 // columnMinWidth attribute from stored HTML. styleVariationClasses.migrate()
 // is a passthrough, so if it "won" for such content, columnMinWidth would be
 // silently dropped (columns collapse to 1fr) with no recovery warning.
-export default [legacyMinWidth, styleVariationClasses, v1];
+// Named exports exist so tests can reference an entry without depending on its
+// position in the array below.
+export {
+	fixedColumnMinWidthTracks,
+	legacyResponsiveTabletClass,
+	legacyMinWidth,
+	styleVariationClasses,
+};
+
+export default [
+	fixedColumnMinWidthTracks,
+	legacyResponsiveTabletClass,
+	legacyMinWidth,
+	styleVariationClasses,
+	v1,
+];

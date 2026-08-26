@@ -1,0 +1,246 @@
+/**
+ * Block Animations - Editor Extension
+ *
+ * Adds animation controls and classes to blocks in the editor
+ *
+ * @package
+ * @since 1.0.0
+ */
+
+import { addFilter } from '@wordpress/hooks';
+import { createHigherOrderComponent } from '@wordpress/compose';
+import { InspectorControls } from '@wordpress/block-editor';
+import { lazy, Suspense } from '@wordpress/element';
+import { DEFAULT_ANIMATION_SETTINGS } from './constants';
+
+// Lazy-load animation UI components to reduce initial bundle size
+const AnimationPanel = lazy(
+	() =>
+		import(
+			/* webpackChunkName: "ext-block-animations" */ './components/AnimationPanel'
+		)
+);
+const AnimationToolbar = lazy(
+	() =>
+		import(
+			/* webpackChunkName: "ext-block-animations" */ './components/AnimationToolbar'
+		)
+);
+
+/**
+ * Add animation controls to block edit component
+ */
+const withAnimationControls = createHigherOrderComponent((BlockEdit) => {
+	return (props) => {
+		const { attributes, setAttributes, name } = props;
+
+		// Skip core embed blocks and other blocks that shouldn't have animations
+		if (name.startsWith('core-embed/') || name === 'core/freeform') {
+			return <BlockEdit {...props} />;
+		}
+
+		return (
+			<>
+				<Suspense fallback={null}>
+					<AnimationToolbar
+						attributes={attributes}
+						setAttributes={setAttributes}
+					/>
+				</Suspense>
+				<BlockEdit {...props} />
+				<InspectorControls>
+					<Suspense fallback={null}>
+						<AnimationPanel
+							name={name}
+							attributes={attributes}
+							setAttributes={setAttributes}
+						/>
+					</Suspense>
+				</InspectorControls>
+			</>
+		);
+	};
+}, 'withAnimationControls');
+
+/**
+ * Add animation classes to block wrapper
+ */
+const withAnimationClasses = createHigherOrderComponent((BlockListBlock) => {
+	return (props) => {
+		const { attributes, name } = props;
+		const {
+			dsgoAnimationEnabled,
+			dsgoEntranceAnimation,
+			dsgoExitAnimation,
+		} = attributes;
+
+		// Skip if animations not enabled or block not supported
+		if (
+			!dsgoAnimationEnabled ||
+			name.startsWith('core-embed/') ||
+			name === 'core/freeform'
+		) {
+			return <BlockListBlock {...props} />;
+		}
+
+		// Build animation classes
+		let className = props.className || '';
+
+		if (dsgoAnimationEnabled) {
+			className += ' has-airo-wp-animation';
+			if (dsgoEntranceAnimation) {
+				className += ` airo-wp-animation-${dsgoEntranceAnimation}`;
+			}
+			if (dsgoExitAnimation) {
+				className += ` airo-wp-animation-exit-${dsgoExitAnimation}`;
+			}
+		}
+
+		return <BlockListBlock {...props} className={className.trim()} />;
+	};
+}, 'withAnimationClasses');
+
+/**
+ * Add animation data attributes to save props
+ *
+ * @param {Object} extraProps - Extra props to add to the block
+ * @param {Object} blockType  - Block type object
+ * @param {Object} attributes - Block attributes
+ * @return {Object} Modified extra props with animation data attributes
+ */
+function addAnimationSaveProps(extraProps, blockType, attributes) {
+	const {
+		dsgoAnimationEnabled,
+		dsgoEntranceAnimation,
+		dsgoExitAnimation,
+		dsgoAnimationTrigger,
+		dsgoAnimationDuration,
+		dsgoAnimationDelay,
+		dsgoAnimationEasing,
+		dsgoAnimationOffset,
+		dsgoAnimationOnce,
+		dsgoStaggerEnabled,
+		dsgoStaggerStep,
+		dsgoScrollLinked,
+		dsgoSvgDraw,
+	} = attributes;
+
+	// SVG drawing targets descendant strokes rather than this block's own
+	// opacity, so it is independent of the entrance/exit system and has to
+	// survive the animations-disabled return below.
+	const svgDrawProps = dsgoSvgDraw ? { 'data-airo-wp-svg-draw': 'true' } : {};
+
+	// Skip if animations not enabled
+	if (!dsgoAnimationEnabled) {
+		return dsgoSvgDraw ? { ...extraProps, ...svgDrawProps } : extraProps;
+	}
+
+	// Always include the enabled flag and animation type(s) — these are required
+	const dataAttributes = {
+		'data-airo-wp-animation-enabled': 'true',
+	};
+
+	// Scrubbing drives the block's own entrance from the scroll timeline, so
+	// it needs an entrance animation, and it only means anything on the
+	// scroll trigger: frontend.js skips scroll-linked elements entirely, so
+	// emitting it on a click- or hover-triggered block would swallow that
+	// trigger - and, for click, the tabindex/role=button keyboard affordance
+	// with it. Existing content can still carry the combination, so the check
+	// lives here as well as in the panel.
+	const isScrubbing =
+		!!dsgoScrollLinked &&
+		!!dsgoEntranceAnimation &&
+		dsgoAnimationTrigger === 'scroll';
+
+	// frontend.js never wires up the exit trigger for a scrubbed element, so
+	// emitting exit markup alongside it would advertise an animation that can
+	// never fire. Dropped here; the panel hides its control to match.
+	const exitAnimation = isScrubbing ? '' : dsgoExitAnimation;
+
+	if (dsgoEntranceAnimation) {
+		dataAttributes['data-airo-wp-entrance-animation'] =
+			dsgoEntranceAnimation;
+	}
+	if (exitAnimation) {
+		dataAttributes['data-airo-wp-exit-animation'] = exitAnimation;
+	}
+
+	// Only output settings that differ from defaults to keep markup lean
+	if (dsgoAnimationTrigger !== DEFAULT_ANIMATION_SETTINGS.trigger) {
+		dataAttributes['data-airo-wp-animation-trigger'] = dsgoAnimationTrigger;
+	}
+	if (dsgoAnimationDuration !== DEFAULT_ANIMATION_SETTINGS.duration) {
+		dataAttributes['data-airo-wp-animation-duration'] =
+			dsgoAnimationDuration;
+	}
+	if (dsgoAnimationDelay !== DEFAULT_ANIMATION_SETTINGS.delay) {
+		dataAttributes['data-airo-wp-animation-delay'] = dsgoAnimationDelay;
+	}
+	if (dsgoAnimationEasing !== DEFAULT_ANIMATION_SETTINGS.easing) {
+		dataAttributes['data-airo-wp-animation-easing'] = dsgoAnimationEasing;
+	}
+	if (dsgoAnimationOffset !== DEFAULT_ANIMATION_SETTINGS.offset) {
+		dataAttributes['data-airo-wp-animation-offset'] = dsgoAnimationOffset;
+	}
+	if (Boolean(dsgoAnimationOnce) !== DEFAULT_ANIMATION_SETTINGS.once) {
+		dataAttributes['data-airo-wp-animation-once'] = dsgoAnimationOnce
+			? 'true'
+			: 'false';
+	}
+
+	if (isScrubbing) {
+		dataAttributes['data-airo-wp-scroll-linked'] = 'true';
+	}
+
+	// Stagger moves the motion from this block onto its direct children, so it
+	// is only meaningful once an animation has actually been chosen.
+	if (
+		dsgoStaggerEnabled &&
+		!isScrubbing &&
+		(dsgoEntranceAnimation || exitAnimation)
+	) {
+		dataAttributes['data-airo-wp-stagger'] = 'true';
+
+		if (dsgoStaggerStep !== DEFAULT_ANIMATION_SETTINGS.staggerStep) {
+			dataAttributes['data-airo-wp-stagger-step'] = dsgoStaggerStep;
+		}
+	}
+
+	// Build animation classes
+	let className = extraProps.className || '';
+	className += ' has-airo-wp-animation';
+
+	if (dsgoEntranceAnimation) {
+		className += ` airo-wp-animation-${dsgoEntranceAnimation}`;
+	}
+	if (exitAnimation) {
+		className += ` airo-wp-animation-exit-${exitAnimation}`;
+	}
+
+	return {
+		...extraProps,
+		...dataAttributes,
+		...svgDrawProps,
+		className: className.trim(),
+	};
+}
+
+// Register filters
+addFilter(
+	'editor.BlockEdit',
+	'airo-wp/block-animations/with-controls',
+	withAnimationControls,
+	100 // After core styling - animations are effects applied to styled blocks
+);
+
+addFilter(
+	'editor.BlockListBlock',
+	'airo-wp/block-animations/with-classes',
+	withAnimationClasses
+);
+
+addFilter(
+	'blocks.getSaveContent.extraProps',
+	'airo-wp/block-animations/save-props',
+	addAnimationSaveProps
+);

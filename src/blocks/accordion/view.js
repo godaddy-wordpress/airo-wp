@@ -52,7 +52,9 @@ function initAccordions() {
 		accordion.insertBefore(skipLink, accordion.firstChild);
 
 		items.forEach((item) => {
-			const trigger = item.querySelector('.airo-wp-accordion-item__trigger');
+			const trigger = item.querySelector(
+				'.airo-wp-accordion-item__trigger'
+			);
 			const panel = item.querySelector('.airo-wp-accordion-item__panel');
 
 			if (!trigger || !panel) {

@@ -1,94 +1,127 @@
 #!/usr/bin/env node
 /**
- * Runs a wp-env tests-cli composer subcommand with smart lifecycle management.
+ * Runs one or more commands inside wp-env tests-wordpress with smart lifecycle management.
  * Starts wp-env if not running; stops it only if this script started it.
  *
- * Usage: node tests/scripts/wp-env-exec.mjs <composer-subcommand>
- * Called by: npm run test:unit, npm run lint
+ * Usage: node tests/scripts/wp-env-exec.mjs <cmd> [args...] [-- <cmd> [args...] ...]
+ * Called by: npm run test:unit:php, npm run lint, npm run lint:php, npm run format:php
  */
 
-import { createHash } from 'node:crypto';
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createLifecycle } from './wp-env-lifecycle.mjs';
 
-const ROOT       = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '../..' );
-const subcommand = process.argv[ 2 ];
+const ROOT = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	'../..'
+);
 
-if ( ! subcommand ) {
-	console.error( 'Usage: node wp-env-exec.mjs <composer-subcommand>' );
-	process.exit( 1 );
-}
-
-// Detect whether wp-env containers are already running by checking docker ps
-// for any container whose name contains the env hash.
-const hash = createHash( 'md5' ).update( `${ ROOT }/.wp-env.json` ).digest( 'hex' );
-let alreadyRunning = false;
-try {
-	const out = execSync(
-		`docker ps --filter "name=${ hash }" --format "{{.Names}}"`,
-		{ encoding: 'utf8', stdio: [ 'pipe', 'pipe', 'pipe' ] }
-	);
-	alreadyRunning = out.trim().length > 0;
-} catch {
-	// docker unavailable — wp-env start will surface the error below
-}
-
-if ( ! alreadyRunning ) {
-	spawnSync( 'npx', [ 'wp-env', 'start' ], { cwd: ROOT, stdio: 'inherit' } );
-
-	// afterStart may fail (e.g. transient composer install error on macOS bind mounts)
-	// even when the containers came up successfully. Verify containers are actually
-	// running before proceeding rather than trusting wp-env start's exit code.
-	let containersUp = false;
-	try {
-		const out = execSync(
-			`docker ps --filter "name=${ hash }" --format "{{.Names}}"`,
-			{ encoding: 'utf8', stdio: [ 'pipe', 'pipe', 'pipe' ] }
-		);
-		containersUp = out.trim().length > 0;
-	} catch { /* ignore */ }
-
-	if ( ! containersUp ) {
-		console.error( '✗ wp-env start failed and no containers are running.' );
-		process.exit( 1 );
+// Split argv on '--' to support multiple sequential commands in one lifecycle run.
+const commands = [];
+let current = [];
+for (const arg of process.argv.slice(2)) {
+	if (arg === '--') {
+		if (current.length) {
+			commands.push(current);
+		}
+		current = [];
+	} else {
+		current.push(arg);
 	}
+}
+if (current.length) {
+	commands.push(current);
+}
 
-	// MySQL startup timing race: wp-env start sometimes skips the WordPress
-	// installation when MySQL isn't fully initialised. A second start always
-	// succeeds because MySQL is already up. Skip the retry if afterStart also
-	// failed (non-zero exit from the composer install step is tolerated).
-	const wpCheck = spawnSync(
+if (!commands.length) {
+	console.error(
+		'Usage: node wp-env-exec.mjs <cmd> [args...] [-- <cmd> [args...] ...]'
+	);
+	process.exit(1);
+}
+
+const lc = createLifecycle(ROOT);
+
+/**
+ * Ensure the plugin's Composer dependencies are installed inside the container.
+ *
+ * wp-env installs the composer *binary* and a global phpunit, but never runs
+ * `composer install` for the mapped plugin. vendor/ is gitignored (absent on a
+ * fresh checkout / CI), so `composer lint` (phpcs) and `composer test`
+ * (vendor/bin/phpunit) would fail with "not found". Install once, guarded on
+ * vendor/bin/phpcs so repeat runs stay fast. The post-install-cmd also runs
+ * Strauss to regenerate dependencies/, mirroring the private lane's first run.
+ */
+function ensureComposerDeps() {
+	const check = spawnSync(
 		'npx',
-		[ 'wp-env', 'run', 'tests-cli', '--', 'wp', 'core', 'is-installed' ],
+		[
+			'wp-env',
+			'run',
+			'tests-wordpress',
+			'--env-cwd=wp-content/plugins/airo-wp',
+			'--',
+			'test',
+			'-f',
+			'vendor/bin/phpcs',
+		],
 		{ cwd: ROOT, stdio: 'pipe' }
 	);
-	if ( wpCheck.status !== 0 ) {
-		console.log( 'WordPress not installed after wp-env start (MySQL timing race) — retrying wp-env start...' );
-		spawnSync( 'npx', [ 'wp-env', 'start' ], { cwd: ROOT, stdio: 'inherit' } );
+	if (check.status === 0) {
+		return;
+	}
+
+	console.log('Installing Composer dependencies (vendor/ missing)…');
+	const install = spawnSync(
+		'npx',
+		[
+			'wp-env',
+			'run',
+			'tests-wordpress',
+			'--env-cwd=wp-content/plugins/airo-wp',
+			'--',
+			'composer',
+			'install',
+			'--no-interaction',
+		],
+		{ cwd: ROOT, stdio: 'inherit' }
+	);
+	if ((install.status ?? 1) !== 0) {
+		console.error('✗ composer install failed.');
+		lc.exit(install.status ?? 1);
+		process.exit(install.status ?? 1);
 	}
 }
 
-// Ensure vendor/ is populated regardless of whether afterStart's composer install
-// succeeded — mirrors the old CI's explicit "Install PHP dependencies" step.
-const install = spawnSync(
-	'npx',
-	[ 'wp-env', 'run', 'tests-cli', '--env-cwd=wp-content/plugins/airo-wp', '--', 'composer', 'install', '--no-interaction', '--no-progress' ],
-	{ cwd: ROOT, stdio: 'inherit' }
-);
-if ( install.status !== 0 ) {
-	if ( ! alreadyRunning ) spawnSync( 'npx', [ 'wp-env', 'stop' ], { cwd: ROOT, stdio: 'inherit' } );
-	process.exit( install.status ?? 1 );
-}
+lc.on('run', () => {
+	ensureComposerDeps();
 
-const result = spawnSync(
-	'npx',
-	[ 'wp-env', 'run', 'tests-cli', '--env-cwd=wp-content/plugins/airo-wp', '--', 'composer', subcommand ],
-	{ cwd: ROOT, stdio: 'inherit' }
-);
+	for (const cmd of commands) {
+		const result = spawnSync(
+			'npx',
+			[
+				'wp-env',
+				'run',
+				'tests-wordpress',
+				'--env-cwd=wp-content/plugins/airo-wp',
+				'--',
+				...cmd,
+			],
+			{ cwd: ROOT, stdio: 'inherit' }
+		);
 
-if ( ! alreadyRunning ) {
-	spawnSync( 'npx', [ 'wp-env', 'stop' ], { cwd: ROOT, stdio: 'inherit' } );
-}
+		// PHPCBF exits 1 when it applies fixes (not an error), 2 when unfixable errors remain.
+		// Normalise 1 → 0 for `composer format` so npm doesn't report a false failure.
+		const isComposerFormat = cmd[0] === 'composer' && cmd[1] === 'format';
+		const exitCode =
+			isComposerFormat && result.status === 1 ? 0 : (result.status ?? 1);
+		if (exitCode !== 0) {
+			lc.exit(exitCode);
+			return;
+		}
+	}
+	lc.exit(0);
+});
 
-process.exit( result.status ?? 1 );
+lc.execute();

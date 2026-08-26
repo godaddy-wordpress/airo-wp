@@ -1,0 +1,14 @@
+.wp-block-airo-wp-hotspot {
+
+	:where(.airo-wp-hotspot__image-wrap--editor) {
+		min-height: 12rem;
+	}
+
+	&.airo-wp-hotspot--editor-selected-only {
+
+		:where(.airo-wp-hotspot-item:not(.is-selected)) {
+			visibility: hidden;
+			pointer-events: none;
+		}
+	}
+}

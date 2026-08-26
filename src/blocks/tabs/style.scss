@@ -2,6 +2,8 @@
  * Tabs Block - Frontend Styles
  */
 
+@use '../../styles/mixins' as *;
+
 // Ensure WordPress block wrapper doesn't cause overflow
 .wp-block-airo-wp-tabs {
 	max-width: 100%;
@@ -127,9 +129,15 @@
 			background: var(--airo-wp-tab-bg-hover, transparent);
 		}
 
-		&:focus,
-		&:focus-visible {
+		// Pointer users keep the clean look; keyboard users get a ring. Same
+		// specificity, so source order decides and :focus-visible wins.
+		&:focus {
 			outline: none;
+		}
+
+		&:focus-visible {
+
+			@include focus-ring;
 		}
 
 		&.is-active {
@@ -294,6 +302,14 @@
 	&.airo-wp-tabs--pills {
 		// Override color variable for pills - white text on colored background
 		--airo-wp-tab-color-active: #fff;
+		// Hover text follows the active *background* color (the accent), not
+		// the active *text* color (white) — white hover text would be
+		// invisible on the light hover background. A user-set hover color
+		// (inline --airo-wp-tab-color-hover) still wins over this default.
+		--airo-wp-tab-color-hover: var(
+			--airo-wp-tab-bg-active,
+			var(--wp--preset--color--accent-2, #2563eb)
+		);
 
 		.airo-wp-tabs__nav {
 			border-bottom: none;
@@ -486,7 +502,8 @@
 			margin-bottom: var(--wp--preset--spacing--40, 1.5rem);
 
 			&:focus-visible {
-				outline: none;
+
+				@include focus-ring;
 			}
 		}
 	}

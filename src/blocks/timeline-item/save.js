@@ -109,8 +109,7 @@ export default function TimelineItemSave({ attributes, context }) {
 	} = attributes;
 
 	// Get context from parent timeline
-	const markerStyle =
-		context?.['airo-wp/timeline/markerStyle'] || 'circle';
+	const markerStyle = context?.['airo-wp/timeline/markerStyle'] || 'circle';
 	const markerSize = context?.['airo-wp/timeline/markerSize'] || 16;
 	const markerColor = context?.['airo-wp/timeline/markerColor'] || '';
 	const markerBorderColor =

@@ -7,6 +7,7 @@ import {
 	RichText,
 } from '@wordpress/block-editor';
 import { __ } from '@wordpress/i18n';
+import classnames from 'classnames';
 import { isValidImageUrl } from '../../utils/is-valid-image-url';
 
 /**
@@ -113,16 +114,22 @@ export default function CardSave({ attributes }) {
 	// Content alignment class
 	const contentAlignmentClass = `airo-wp-card__content--${contentAlignment}`;
 
-	// Render badge
+	// Render badge. The badge element stays in the markup whenever there is badge
+	// text so `badgeText` always has an element to be sourced from; the "hide
+	// badge" toggle applies a `--hidden` modifier (CSS display:none) instead of
+	// dropping the element, which would reset the sourced text on reload.
 	const renderBadge = () => {
-		if (!showBadge || !badgeText) {
+		if (!badgeText) {
 			return null;
 		}
 
-		const badgeClass =
+		const badgeClass = classnames(
+			'airo-wp-card__badge',
 			badgeStyle === 'floating'
-				? `airo-wp-card__badge airo-wp-card__badge--floating airo-wp-card__badge--${badgeFloatingPosition}`
-				: `airo-wp-card__badge airo-wp-card__badge--inline airo-wp-card__badge--${badgeInlinePosition}`;
+				? `airo-wp-card__badge--floating airo-wp-card__badge--${badgeFloatingPosition}`
+				: `airo-wp-card__badge--inline airo-wp-card__badge--${badgeInlinePosition}`,
+			!showBadge && 'airo-wp-card__badge--hidden'
+		);
 
 		return (
 			<span
@@ -153,7 +160,10 @@ export default function CardSave({ attributes }) {
 					className="airo-wp-card__background"
 					style={{ backgroundImage: `url(${imageUrl})` }}
 				>
-					<div className="airo-wp-card__overlay" style={overlayStyles} />
+					<div
+						className="airo-wp-card__overlay"
+						style={overlayStyles}
+					/>
 				</div>
 			);
 		}
@@ -190,10 +200,12 @@ export default function CardSave({ attributes }) {
 				badgeInlinePosition === 'above-title' &&
 				renderBadge()}
 
-			{showTitle && title && (
+			{title && (
 				<RichText.Content
 					tagName="h3"
-					className="airo-wp-card__title"
+					className={classnames('airo-wp-card__title', {
+						'airo-wp-card__title--hidden': !showTitle,
+					})}
 					value={title}
 				/>
 			)}
@@ -202,18 +214,22 @@ export default function CardSave({ attributes }) {
 				badgeInlinePosition === 'below-title' &&
 				renderBadge()}
 
-			{showSubtitle && subtitle && (
+			{subtitle && (
 				<RichText.Content
 					tagName="p"
-					className="airo-wp-card__subtitle"
+					className={classnames('airo-wp-card__subtitle', {
+						'airo-wp-card__subtitle--hidden': !showSubtitle,
+					})}
 					value={subtitle}
 				/>
 			)}
 
-			{showBody && bodyText && (
+			{bodyText && (
 				<RichText.Content
 					tagName="p"
-					className="airo-wp-card__body"
+					className={classnames('airo-wp-card__body', {
+						'airo-wp-card__body--hidden': !showBody,
+					})}
 					value={bodyText}
 				/>
 			)}

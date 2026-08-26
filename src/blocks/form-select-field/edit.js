@@ -72,8 +72,7 @@ export default function FormSelectFieldEdit({
 	}, [fieldName, clientId, setAttributes]);
 
 	// Get context values from parent form
-	const fieldBackgroundColor =
-		context['airo-wp/form/fieldBackgroundColor'];
+	const fieldBackgroundColor = context['airo-wp/form/fieldBackgroundColor'];
 
 	const fieldClasses = classnames(
 		'airo-wp-form-field',
@@ -254,10 +253,7 @@ export default function FormSelectFieldEdit({
 									<Button
 										isDestructive
 										icon="trash"
-										label={__(
-											'Remove option',
-											'airo-wp'
-										)}
+										label={__('Remove option', 'airo-wp')}
 										onClick={() => removeOption(index)}
 										disabled={options.length === 1}
 									/>
@@ -305,10 +301,7 @@ export default function FormSelectFieldEdit({
 							onChange={(value) =>
 								setAttributes({ defaultValue: value })
 							}
-							help={__(
-								'Pre-selected option value',
-								'airo-wp'
-							)}
+							help={__('Pre-selected option value', 'airo-wp')}
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>
@@ -388,7 +381,10 @@ export default function FormSelectFieldEdit({
 				</select>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

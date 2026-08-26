@@ -2,9 +2,9 @@
 Contributors: godaddy
 Tags: airo, godaddy, mcp, ai, block-patterns
 Requires at least: 6.9
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.2.5
+Stable tag: 0.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,6 +70,14 @@ PHP 7.4 is the minimum. PHP 8.3 is the recommended version for local development
 Runtime Composer packages are namespace-prefixed with Strauss into `dependencies/` so they do not clash with other plugins' autoloaders.
 
 == Changelog ==
+
+= 0.3.1 =
+* Maintenance release: release-pipeline and test-lane fixes only, no user-facing changes
+
+= 0.3.0 =
+* Added block editor extensions (animations, hover effects, sticky headers, dynamic tags, and more) to the bundled block source
+* Confirmed compatibility with WordPress 7.1
+* Added plugin-directory icon and banner artwork
 
 = 0.2.5 =
 * Hardened permission checks on four MCP tools

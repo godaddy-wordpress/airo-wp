@@ -27,7 +27,12 @@
       "fontSize": true
     }
   },
-  "usesContext": ["airo-wp/queryId", "airo-wp/querySource", "airo-wp/queryPostType"],
+  "usesContext": [
+    "airo-wp/queryId",
+    "airo-wp/querySource",
+    "airo-wp/queryPostType",
+    "airo-wp/queryTaxQuery"
+  ],
   "attributes": {
     "filterKind": { "type": "string", "default": "checkbox", "enum": ["checkbox", "select", "search", "sort", "active", "reset"] },
     "taxonomy":   { "type": "string", "default": "category" },

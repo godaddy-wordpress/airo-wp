@@ -27,7 +27,6 @@ const variations = [
 			exitIntentMinTime: 10,
 			autoTriggerFrequency: 'once',
 			cookieDuration: 30,
-			overlayColor: '#000000',
 			overlayOpacity: 80,
 			animationType: 'slide-up',
 		},
@@ -90,7 +89,6 @@ const variations = [
 			maxWidth: '95vw',
 			height: 'auto',
 			maxHeight: '95vh',
-			overlayColor: '#000000',
 			overlayOpacity: 95,
 			animationType: 'zoom',
 			closeButtonPosition: 'outside-top-right',
@@ -122,7 +120,6 @@ const variations = [
 			maxWidth: '95vw',
 			height: 'auto',
 			maxHeight: '95vh',
-			overlayColor: '#000000',
 			overlayOpacity: 90,
 			overlayBlur: 5,
 			animationType: 'fade',
@@ -167,7 +164,6 @@ const variations = [
 			autoTriggerType: 'pageLoad',
 			autoTriggerDelay: 2000,
 			autoTriggerFrequency: 'session',
-			overlayColor: '#000000',
 			overlayOpacity: 70,
 			animationType: 'zoom',
 		},
@@ -225,7 +221,6 @@ const variations = [
 			autoTriggerDelay: 1000,
 			autoTriggerFrequency: 'once',
 			cookieDuration: 365,
-			overlayColor: '#000000',
 			overlayOpacity: 50,
 			animationType: 'slide-up',
 			closeOnBackdrop: false,
@@ -290,7 +285,6 @@ const variations = [
 			maxWidth: '95vw',
 			height: 'auto',
 			maxHeight: '95vh',
-			overlayColor: '#000000',
 			overlayOpacity: 95,
 			overlayBlur: 3,
 			animationType: 'fade',
@@ -317,10 +311,7 @@ const variations = [
 			[
 				'core/paragraph',
 				{
-					content: __(
-						'Add image caption or description…',
-						'airo-wp'
-					),
+					content: __('Add image caption or description…', 'airo-wp'),
 					align: 'center',
 					style: {
 						color: {
@@ -345,7 +336,6 @@ const variations = [
 			maxWidth: '95vw',
 			height: 'auto',
 			maxHeight: '90vh',
-			overlayColor: '#000000',
 			overlayOpacity: 85,
 			animationType: 'slide-up',
 			closeButtonPosition: 'inside-top-right',
@@ -408,10 +398,7 @@ const variations = [
 									[
 										'core/button',
 										{
-											text: __(
-												'View Product',
-												'airo-wp'
-											),
+											text: __('View Product', 'airo-wp'),
 										},
 									],
 								],
@@ -436,7 +423,6 @@ const variations = [
 			maxWidth: '95vw',
 			height: 'auto',
 			maxHeight: '90vh',
-			overlayColor: '#000000',
 			overlayOpacity: 90,
 			animationType: 'zoom',
 			closeButtonPosition: 'top-right',
@@ -514,7 +500,6 @@ const variations = [
 			maxWidth: '90vw',
 			height: 'auto',
 			maxHeight: '90vh',
-			overlayColor: '#000000',
 			overlayOpacity: 75,
 			animationType: 'slide-down',
 			closeButtonPosition: 'inside-top-right',
@@ -559,10 +544,7 @@ const variations = [
 								'core/heading',
 								{
 									level: 3,
-									content: __(
-										'Team Member Name',
-										'airo-wp'
-									),
+									content: __('Team Member Name', 'airo-wp'),
 								},
 							],
 							[
@@ -604,6 +586,50 @@ const variations = [
 			],
 		],
 		scope: ['block'],
+	},
+	{
+		name: 'off-canvas',
+		title: __('Off-Canvas Panel', 'airo-wp'),
+		description: __(
+			'A panel that slides in from the edge of the screen. Useful for menus, filters, and carts.',
+			'airo-wp'
+		),
+		icon: 'align-right',
+		attributes: {
+			displayMode: 'panel',
+			panelEdge: 'right',
+			panelSize: '24rem',
+			// 'fade' rather than 'none': the panel's slide is a transform on
+			// the dialog, and airo-wp-modal--animation-none sets
+			// `transition: none !important` on that same element, which would
+			// suppress it. 'fade' only animates opacity, so the two compose.
+			animationType: 'fade',
+			overlayOpacity: 40,
+			closeOnBackdrop: true,
+			closeOnEsc: true,
+			showCloseButton: true,
+			// Outside positions sit at -12px, which a screen-edge panel clips.
+			closeButtonPosition: 'inside-top-right',
+		},
+		innerBlocks: [
+			[
+				'core/heading',
+				{
+					level: 2,
+					content: __('Menu', 'airo-wp'),
+				},
+			],
+			['core/paragraph', { content: '' }],
+		],
+		isActive: ['displayMode'],
+		// Deliberately NOT scope: ['block'] like the nine variations above.
+		// Those are content templates offered inside the modal's own placeholder
+		// once you have already chosen a modal. An off-canvas panel is a
+		// different structural choice — an author looking for a slide-in menu
+		// searches the inserter for "panel", not for "modal" — so it is exposed
+		// as its own inserter entry and transform target, the way core exposes
+		// media-text alongside columns.
+		scope: ['inserter', 'transform'],
 	},
 ];
 

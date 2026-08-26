@@ -7,6 +7,10 @@ import {
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
 import InfiniteScrollControls from './components/InfiniteScrollControls';
+import CarouselNotice from './components/CarouselNotice';
+import useQueryItemHost, {
+	hostSupportsInfiniteScroll,
+} from '../query/hooks/useQueryItemHost';
 
 /**
  * Canvas preview for the pagination block in the editor.
@@ -92,9 +96,17 @@ export default function QueryPaginationEdit({
 		alignment,
 	} = attributes;
 
-	// Determine the effective kind: paginationKind takes precedence when set
+	// Determine the requested kind: paginationKind takes precedence when set
 	// to a non-default value; fall back to mode for backwards compatibility.
-	const effectiveKind = paginationKind !== 'numbered' ? paginationKind : mode;
+	const requestedKind = paginationKind !== 'numbered' ? paginationKind : mode;
+
+	// Carousel presentation wins over infinite scroll — see CarouselNotice and
+	// airowp_query_host_supports_infinite_scroll(). Preview what the front
+	// end will actually render rather than a sentinel that never fires.
+	const itemHost = useQueryItemHost(clientId);
+	const degradesToLoadMore =
+		requestedKind === 'infinite' && !hostSupportsInfiniteScroll(itemHost);
+	const effectiveKind = degradesToLoadMore ? 'loadmore' : requestedKind;
 
 	const blockProps = useBlockProps({
 		className: `airo-wp-query-pagination is-editor is-align-${
@@ -105,6 +117,12 @@ export default function QueryPaginationEdit({
 	return (
 		<>
 			<InspectorControls>
+				{degradesToLoadMore && (
+					<CarouselNotice
+						itemHost={itemHost}
+						setAttributes={setAttributes}
+					/>
+				)}
 				<DsgoInspectorPanel
 					title={__('Settings', 'airo-wp')}
 					panelName="settings"
@@ -145,10 +163,7 @@ export default function QueryPaginationEdit({
 							}
 						>
 							<ToggleControl
-								label={__(
-									'Show prev/next arrows',
-									'airo-wp'
-								)}
+								label={__('Show prev/next arrows', 'airo-wp')}
 								checked={!!showPrevNext}
 								onChange={(v) =>
 									setAttributes({ showPrevNext: !!v })
@@ -192,20 +207,14 @@ export default function QueryPaginationEdit({
 								}
 							>
 								<TextControl
-									label={__(
-										'Loading state label',
-										'airo-wp'
-									)}
+									label={__('Loading state label', 'airo-wp')}
 									value={labelLoading}
 									onChange={(v) =>
 										setAttributes({
 											labelLoading: v,
 										})
 									}
-									placeholder={__(
-										'Loading\u2026',
-										'airo-wp'
-									)}
+									placeholder={__('Loading\u2026', 'airo-wp')}
 									__next40pxDefaultSize
 									__nextHasNoMarginBottom
 								/>
@@ -218,6 +227,7 @@ export default function QueryPaginationEdit({
 							attributes={attributes}
 							setAttributes={setAttributes}
 							panelId={clientId}
+							sentinelDisabled={degradesToLoadMore}
 						/>
 					)}
 
@@ -243,9 +253,24 @@ export default function QueryPaginationEdit({
 				<PaginationPreview
 					effectiveKind={effectiveKind}
 					showPrevNext={showPrevNext}
-					labelLoadMore={labelLoadMore}
+					labelLoadMore={
+						degradesToLoadMore
+							? labelLoadMore || buttonLabelWhenPaused
+							: labelLoadMore
+					}
 					buttonLabelWhenPaused={buttonLabelWhenPaused}
 				/>
+				{degradesToLoadMore && (
+					<span
+						className="airo-wp-query-pagination__fallback-hint"
+						contentEditable={false}
+					>
+						{__(
+							'Infinite scroll falls back to Load more inside a carousel.',
+							'airo-wp'
+						)}
+					</span>
+				)}
 			</div>
 		</>
 	);

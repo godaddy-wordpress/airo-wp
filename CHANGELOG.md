@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1
+
+- Maintenance release: release-pipeline and test-lane fixes only, no user-facing changes
+
+## 0.3.0
+
+- Added block editor extensions (animations, hover effects, sticky headers, dynamic tags, and more) to the bundled block source
+- Confirmed compatibility with WordPress 7.1
+- Added plugin-directory icon and banner artwork
+
 ## 0.2.5
 
 - Hardened permission checks on four MCP tools

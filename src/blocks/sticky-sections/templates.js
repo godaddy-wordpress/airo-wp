@@ -87,10 +87,7 @@ const stickySectionsTemplates = [
 	{
 		name: 'feature-cards',
 		title: __('Feature Cards', 'airo-wp'),
-		description: __(
-			'Pre-filled sections showcasing features',
-			'airo-wp'
-		),
+		description: __('Pre-filled sections showcasing features', 'airo-wp'),
 		icon: 'screenoptions',
 		attributes: {
 			align: 'full',
