@@ -175,10 +175,7 @@ export default function GallerySettings({ attributes, setAttributes }) {
 						onChange={(value) =>
 							setAttributes({ navigationPosition: value })
 						}
-						help={__(
-							'Position of navigation buttons.',
-							'airo-wp'
-						)}
+						help={__('Position of navigation buttons.', 'airo-wp')}
 						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 					/>

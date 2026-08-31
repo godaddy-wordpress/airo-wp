@@ -121,7 +121,9 @@ describe('row deprecations - style-kit hover variation migration', () => {
 		expect(block.name).toBe('airo-wp/row');
 		expect(block.isValid).toBe(true);
 		expect(block.attributes.className).toBe('is-style-hover-text-light');
-		expect(getBlockContent(block)).toContain('airo-wp-flex--has-hover-text');
+		expect(getBlockContent(block)).toContain(
+			'airo-wp-flex--has-hover-text'
+		);
 	});
 
 	test('isEligible detects a hover-icon variation lacking its activation class', () => {

@@ -16,6 +16,10 @@
 	],
 	"textdomain": "airo-wp",
 	"icon": "controls-repeat",
+	"selectors": {
+		"root": ".wp-block-airo-wp-scroll-marquee",
+		"border": ".wp-block-airo-wp-scroll-marquee .airo-wp-scroll-marquee__image"
+	},
 	"supports": {
 		"anchor": true,
 		"align": false,

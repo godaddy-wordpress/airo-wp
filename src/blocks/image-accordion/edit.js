@@ -392,10 +392,7 @@ export default function ImageAccordionEdit({
 
 					{enableOverlay && (
 						<DsgoInspectorPanel.Item
-							label={__(
-								'Overlay Opacity (Default)',
-								'airo-wp'
-							)}
+							label={__('Overlay Opacity (Default)', 'airo-wp')}
 							hasValue={() => overlayOpacity !== undefined}
 							onDeselect={() =>
 								setAttributes({ overlayOpacity: undefined })
@@ -425,10 +422,7 @@ export default function ImageAccordionEdit({
 
 					{enableOverlay && (
 						<DsgoInspectorPanel.Item
-							label={__(
-								'Overlay Opacity (Expanded)',
-								'airo-wp'
-							)}
+							label={__('Overlay Opacity (Expanded)', 'airo-wp')}
 							hasValue={() =>
 								overlayOpacityExpanded !== undefined
 							}

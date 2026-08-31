@@ -78,7 +78,8 @@ function CounterGroupEdit({ attributes, setAttributes, clientId }) {
 			'--airo-wp-counter-gap': gap,
 			// Apply hover color for child Counter blocks to inherit
 			...(hoverColor && {
-				'--airo-wp-counter-hover-color': convertColorToCSSVar(hoverColor),
+				'--airo-wp-counter-hover-color':
+					convertColorToCSSVar(hoverColor),
 			}),
 		},
 	});
@@ -285,10 +286,7 @@ function CounterGroupEdit({ attributes, setAttributes, clientId }) {
 					</DsgoInspectorPanel.Item>
 
 					<DsgoInspectorPanel.Item
-						label={__(
-							'Animation Duration (seconds)',
-							'airo-wp'
-						)}
+						label={__('Animation Duration (seconds)', 'airo-wp')}
 						hasValue={() => animationDuration !== 2}
 						onDeselect={() =>
 							setAttributes({ animationDuration: 2 })
@@ -323,10 +321,7 @@ function CounterGroupEdit({ attributes, setAttributes, clientId }) {
 						isShownByDefault
 					>
 						<RangeControl
-							label={__(
-								'Animation Delay (seconds)',
-								'airo-wp'
-							)}
+							label={__('Animation Delay (seconds)', 'airo-wp')}
 							value={animationDelay}
 							onChange={(value) =>
 								setAttributes({ animationDelay: value })

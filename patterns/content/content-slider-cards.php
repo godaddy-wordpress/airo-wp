@@ -37,7 +37,7 @@ return array(
 <p class="has-small-font-size">Our optimized infrastructure ensures sub-second load times for all your pages and assets.</p>
 <!-- /wp:paragraph -->
 
-<!-- wp:airo-wp/icon-button {"text":"Learn More","icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
+<!-- wp:airo-wp/icon-button {"icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left" style="margin-top:var(--wp--preset--spacing--30)"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button airo-wp-icon-button--has-icon airo-wp-icon-button--icon-end" style="gap:8px" type="button"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="arrow-right"></span><span class="airo-wp-icon-button__text">Learn More</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section --></div></div>
@@ -55,7 +55,7 @@ return array(
 <p class="has-small-font-size">Bank-level encryption and security protocols protect your data around the clock.</p>
 <!-- /wp:paragraph -->
 
-<!-- wp:airo-wp/icon-button {"text":"Learn More","icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
+<!-- wp:airo-wp/icon-button {"icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left" style="margin-top:var(--wp--preset--spacing--30)"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button airo-wp-icon-button--has-icon airo-wp-icon-button--icon-end" style="gap:8px" type="button"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="arrow-right"></span><span class="airo-wp-icon-button__text">Learn More</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section --></div></div>
@@ -73,7 +73,7 @@ return array(
 <p class="has-small-font-size">Work together seamlessly with real-time editing and commenting features.</p>
 <!-- /wp:paragraph -->
 
-<!-- wp:airo-wp/icon-button {"text":"Learn More","icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
+<!-- wp:airo-wp/icon-button {"icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left" style="margin-top:var(--wp--preset--spacing--30)"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button airo-wp-icon-button--has-icon airo-wp-icon-button--icon-end" style="gap:8px" type="button"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="arrow-right"></span><span class="airo-wp-icon-button__text">Learn More</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section --></div></div>
@@ -91,7 +91,7 @@ return array(
 <p class="has-small-font-size">Track performance metrics and gain actionable insights with our powerful dashboard.</p>
 <!-- /wp:paragraph -->
 
-<!-- wp:airo-wp/icon-button {"text":"Learn More","icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
+<!-- wp:airo-wp/icon-button {"icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left" style="margin-top:var(--wp--preset--spacing--30)"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button airo-wp-icon-button--has-icon airo-wp-icon-button--icon-end" style="gap:8px" type="button"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="arrow-right"></span><span class="airo-wp-icon-button__text">Learn More</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section --></div></div>
@@ -109,7 +109,7 @@ return array(
 <p class="has-small-font-size">Content delivered from edge locations worldwide for minimal latency everywhere.</p>
 <!-- /wp:paragraph -->
 
-<!-- wp:airo-wp/icon-button {"text":"Learn More","icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
+<!-- wp:airo-wp/icon-button {"icon":"arrow-right","iconPosition":"end","iconGap":"8px","style":{"spacing":{"margin":{"top":"var:preset|spacing|30"}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left" style="margin-top:var(--wp--preset--spacing--30)"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button airo-wp-icon-button--has-icon airo-wp-icon-button--icon-end" style="gap:8px" type="button"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="arrow-right"></span><span class="airo-wp-icon-button__text">Learn More</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section --></div></div>

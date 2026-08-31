@@ -183,10 +183,7 @@ export default function TimelineEdit({ attributes, setAttributes, clientId }) {
 										value: 'alternating',
 									},
 									{
-										label: __(
-											'Right Side Only',
-											'airo-wp'
-										),
+										label: __('Right Side Only', 'airo-wp'),
 										value: 'right',
 									},
 								]}
@@ -368,10 +365,7 @@ export default function TimelineEdit({ attributes, setAttributes, clientId }) {
 							isShownByDefault
 						>
 							<RangeControl
-								label={__(
-									'Animation Duration (ms)',
-									'airo-wp'
-								)}
+								label={__('Animation Duration (ms)', 'airo-wp')}
 								value={animationDuration}
 								onChange={(value) =>
 									setAttributes({ animationDuration: value })

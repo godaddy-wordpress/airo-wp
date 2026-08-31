@@ -16,7 +16,7 @@
 	"textdomain": "airo-wp",
 	"icon": "feedback",
 	"supports": {
-		"anchor": true,
+		"anchor": false,
 		"align": false,
 		"html": false,
 		"customClassName": true,
@@ -182,6 +182,28 @@
 			"type": "string",
 			"default": "90vh"
 		},
+		"displayMode": {
+			"type": "string",
+			"enum": [
+				"dialog",
+				"panel"
+			],
+			"default": "dialog"
+		},
+		"panelEdge": {
+			"type": "string",
+			"enum": [
+				"left",
+				"right",
+				"top",
+				"bottom"
+			],
+			"default": "right"
+		},
+		"panelSize": {
+			"type": "string",
+			"default": "24rem"
+		},
 		"animationType": {
 			"type": "string",
 			"default": "fade"
@@ -195,8 +217,7 @@
 			"default": 80
 		},
 		"overlayColor": {
-			"type": "string",
-			"default": "#000000"
+			"type": "string"
 		},
 		"overlayBlur": {
 			"type": "number",

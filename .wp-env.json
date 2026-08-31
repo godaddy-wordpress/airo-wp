@@ -1,12 +1,9 @@
 {
+  "core": "https://wordpress.org/wordpress-7.1.zip",
   "phpVersion": "8.3",
   "port": 9173,
   "testsPort": 9190,
   "plugins": [
-    ".",
-    "https://downloads.wordpress.org/plugin/plugin-check.2.0.0.zip"
-  ],
-  "lifecycleScripts": {
-    "afterStart": "npx wp-env run tests-cli -- sh -c 'command -v composer || curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer' && npx wp-env run tests-cli --env-cwd=wp-content/plugins/airo-wp -- composer install && npx wp-env run tests-cli -- wp rewrite structure '/%postname%/' && npx wp-env run tests-cli -- wp rewrite flush --hard && npx wp-env run tests-cli -- wp plugin install hello-dolly --version=1.7.2 --force"
-  }
+    "."
+  ]
 }

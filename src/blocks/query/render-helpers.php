@@ -20,6 +20,14 @@
  *                                              render state (pages, items, page).
  *                                              Used by pagination + no-results
  *                                              siblings (Tasks 13, 15).
+ *  - airowp_query_set_item_host() / airowp_query_get_item_host()
+ *                                              In-memory per-request registry
+ *                                              of which layout block presented
+ *                                              each Query ID's results, paired
+ *                                              with
+ *                                              airowp_query_host_supports_infinite_scroll()
+ *                                              so the pagination sibling can
+ *                                              adapt to a carousel host.
  *
  * @package airo-wp
  * @since 2.1.0
@@ -104,6 +112,85 @@ if ( ! function_exists( 'airowp_query_item_host_block_names' ) ) :
 			)
 		);
 		return array_values( array_filter( array_map( 'strval', (array) $hosts ) ) );
+	}
+
+endif;
+
+if ( ! function_exists( 'airowp_query_set_item_host' ) ) :
+
+	/**
+	 * Record which item host block rendered a given Query ID this request.
+	 *
+	 * Sibling blocks render after the host, so they can read this to adapt
+	 * their own output to the presentation the author chose — the pagination
+	 * block uses it to decide whether infinite scroll is viable.
+	 *
+	 * Not a persistent cache — lives only for the current request, alongside
+	 * airowp_query_set_last_state().
+	 *
+	 * @param string $query_id  Unique query identifier.
+	 * @param string $host_name Block name of the resolved item host.
+	 */
+	function airowp_query_set_item_host( $query_id, $host_name ) {
+		if ( ! isset( $GLOBALS['airowp_query_item_hosts'] ) || ! is_array( $GLOBALS['airowp_query_item_hosts'] ) ) {
+			$GLOBALS['airowp_query_item_hosts'] = array();
+		}
+		$GLOBALS['airowp_query_item_hosts'][ (string) $query_id ] = (string) $host_name;
+	}
+
+	/**
+	 * Retrieve the item host block name recorded for a Query ID.
+	 *
+	 * @param string $query_id Unique query identifier.
+	 * @return string Block name, or '' when the host has not rendered yet.
+	 */
+	function airowp_query_get_item_host( $query_id ) {
+		$hosts = isset( $GLOBALS['airowp_query_item_hosts'] ) ? (array) $GLOBALS['airowp_query_item_hosts'] : array();
+		return isset( $hosts[ (string) $query_id ] ) ? (string) $hosts[ (string) $query_id ] : '';
+	}
+
+endif;
+
+if ( ! function_exists( 'airowp_query_host_supports_infinite_scroll' ) ) :
+
+	/**
+	 * Whether an item host can carry infinite-scroll pagination.
+	 *
+	 * Infinite scroll hangs on a sentinel element placed after the items: as
+	 * the reader scrolls down the document and the sentinel enters the
+	 * viewport, the next page loads. That signal only exists when the items
+	 * grow the page vertically.
+	 *
+	 * Carousel-shaped hosts (slider, scroll-slides) lay their items out inside
+	 * a fixed-height viewport, so the sentinel's position no longer tracks how
+	 * far the reader has got through the results. It sits just below the
+	 * carousel, where it either intersects on first paint — firing page after
+	 * page until the query is exhausted — or never intersects at all. Neither
+	 * is pagination, so the presentation wins and the pagination block falls
+	 * back to a Load more button (see query-pagination/render.php).
+	 *
+	 * @param string $host_name Item host block name.
+	 * @return bool True when the host grows vertically with its items.
+	 */
+	function airowp_query_host_supports_infinite_scroll( $host_name ) {
+		$host_name = (string) $host_name;
+
+		// An empty host name means no host block rendered (legacy trees where
+		// the template blocks are direct children of the query). Those emit a
+		// vertical grid, so infinite scroll is fine.
+		$supported = ( '' === $host_name || 'airo-wp/query-results' === $host_name );
+
+		/**
+		 * Filter whether an item host supports infinite-scroll pagination.
+		 *
+		 * Third-party hosts registered via `airowp_query_item_host_block_names`
+		 * default to unsupported (they are non-grid by definition); return true
+		 * here if the host does grow the page vertically as items are appended.
+		 *
+		 * @param bool   $supported Whether infinite scroll is viable.
+		 * @param string $host_name Item host block name.
+		 */
+		return (bool) apply_filters( 'airowp_query_host_supports_infinite_scroll', $supported, $host_name );
 	}
 
 endif;
@@ -457,7 +544,14 @@ if ( ! function_exists( 'airowp_query_render' ) ) :
 	 * @return array
 	 */
 	function airowp_query_extract_params_from_request() {
-		$allowed = apply_filters( 'airowp_query_url_params', array( 'q', 'sort' ) );
+		// `filter_*` is accepted wildcard-style below. The rest are WooCommerce's
+		// own filter-block query vars, read from its source: min_price/max_price
+		// (ProductFilterPrice), rating_filter (RatingFilter), and query_type_<attr>
+		// which pairs with filter_<attr> to switch IN vs AND.
+		$allowed = apply_filters(
+			'airowp_query_url_params',
+			array( 'q', 'sort', 'min_price', 'max_price', 'rating_filter' )
+		);
 		$params  = array();
 
 		if ( empty( $_GET ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -469,7 +563,9 @@ if ( ! function_exists( 'airowp_query_render' ) ) :
 			if ( '' === $key ) {
 				continue;
 			}
-			if ( ! in_array( $key, $allowed, true ) && 0 !== strpos( $key, 'filter_' ) ) {
+			if ( ! in_array( $key, $allowed, true )
+				&& 0 !== strpos( $key, 'filter_' )
+				&& 0 !== strpos( $key, 'query_type_' ) ) {
 				continue;
 			}
 			if ( is_array( $value ) ) {
@@ -633,6 +729,7 @@ if ( ! function_exists( 'airowp_query_render_container' ) ) :
 		// presentation and treat all children as template blocks.
 		$effective_attrs = $attributes;
 		$template_blocks = array();
+		$host_name       = '';
 
 		if ( $results_child ) {
 			$host_name       = (string) ( $results_child['blockName'] ?? '' );
@@ -686,6 +783,11 @@ if ( ! function_exists( 'airowp_query_render_container' ) ) :
 		}
 
 		if ( '' !== $query_id ) {
+			// Record the resolved host so sibling blocks rendered later in the
+			// tree can adapt to the presentation — airo-wp/query-pagination
+			// reads it to decide whether infinite scroll is viable in a carousel.
+			airowp_query_set_item_host( $query_id, $host_name );
+
 			$template_html = '';
 			foreach ( $template_blocks as $tb ) {
 				if ( function_exists( 'serialize_block' ) ) {
@@ -769,6 +871,12 @@ if ( ! function_exists( 'airowp_query_render_container' ) ) :
 				'airo-wp/queryId'       => $query_id,
 				'airo-wp/querySource'   => $source,
 				'airo-wp/queryPostType' => (string) ( $attributes['postType'] ?? 'post' ),
+				// Lets a sibling narrow itself to what this query can actually
+				// return — query-filter uses it so it never offers a term the
+				// taxQuery has already excluded.
+				'airo-wp/queryTaxQuery' => isset( $attributes['taxQuery'] ) && is_array( $attributes['taxQuery'] )
+					? $attributes['taxQuery']
+					: array(),
 			)
 		);
 

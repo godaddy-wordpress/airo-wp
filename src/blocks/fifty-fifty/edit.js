@@ -236,10 +236,7 @@ export default function FiftyFiftyEdit({
 						isShownByDefault
 					>
 						<SelectControl
-							label={__(
-								'Content Vertical Alignment',
-								'airo-wp'
-							)}
+							label={__('Content Vertical Alignment', 'airo-wp')}
 							value={verticalAlignment}
 							options={[
 								{
@@ -351,10 +348,7 @@ export default function FiftyFiftyEdit({
 													marginBottom: '12px',
 												}}
 											>
-												{__(
-													'Select Image',
-													'airo-wp'
-												)}
+												{__('Select Image', 'airo-wp')}
 											</Button>
 										)}
 									</>

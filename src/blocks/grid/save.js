@@ -15,6 +15,7 @@ import {
 	hasOverlayStyleClass,
 	hoverVariationClasses,
 } from '../../utils/style-variation-classes';
+import { getGridTemplateColumns } from './grid-columns';
 
 /**
  * Grid Container Save Component
@@ -35,6 +36,7 @@ export default function GridSave({ attributes }) {
 		rowGap,
 		columnGap,
 		alignItems,
+		matchRowHeights,
 		overlayColor,
 		hoverBackgroundColor,
 		hoverTextColor,
@@ -59,6 +61,7 @@ export default function GridSave({ attributes }) {
 		`airo-wp-grid-cols-tablet-${tabletColumns}`,
 		`airo-wp-grid-cols-mobile-${mobileColumns}`,
 		!constrainWidth && 'airo-wp-no-width-constraint',
+		matchRowHeights && 'airo-wp-grid--match-rows',
 		hasOverlay && 'airo-wp-grid--has-overlay',
 		...hoverVariationClasses(attributes.className, 'airo-wp-grid'),
 	]
@@ -75,7 +78,8 @@ export default function GridSave({ attributes }) {
 					convertColorToCSSVar(hoverBackgroundColor),
 			}),
 			...(hoverTextColor && {
-				'--airo-wp-hover-text-color': convertColorToCSSVar(hoverTextColor),
+				'--airo-wp-hover-text-color':
+					convertColorToCSSVar(hoverTextColor),
 			}),
 			...(hoverIconBackgroundColor && {
 				'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
@@ -109,15 +113,18 @@ export default function GridSave({ attributes }) {
 		isBlockGapObject ? blockGapValue?.left : blockGapValue
 	);
 	const defaultGap = 'var(--wp--preset--spacing--50)';
+	const resolvedColumnGap = blockGapColumn || columnGap || defaultGap;
 
 	const innerStyles = {
 		display: 'grid',
-		gridTemplateColumns: columnMinWidth
-			? `repeat(${desktopColumns || 3}, minmax(${columnMinWidth}, 1fr))`
-			: `repeat(${desktopColumns || 3}, 1fr)`,
+		gridTemplateColumns: getGridTemplateColumns(
+			columnMinWidth,
+			desktopColumns,
+			resolvedColumnGap
+		),
 		alignItems: alignItems || 'stretch',
 		rowGap: blockGapRow || rowGap || defaultGap,
-		columnGap: blockGapColumn || columnGap || defaultGap,
+		columnGap: resolvedColumnGap,
 	};
 
 	// Apply width constraints to inner container

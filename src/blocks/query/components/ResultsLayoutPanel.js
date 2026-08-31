@@ -20,8 +20,7 @@ export default function ResultsLayoutPanel({ clientId }) {
 			const block = select(blockEditorStore).getBlock(clientId);
 			const inner = block?.innerBlocks || [];
 			return (
-				inner.find((b) => b?.name === 'airo-wp/query-results') ||
-				null
+				inner.find((b) => b?.name === 'airo-wp/query-results') || null
 			);
 		},
 		[clientId]

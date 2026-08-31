@@ -136,8 +136,7 @@ export default function IconButtonEdit({
 	}
 
 	// Get hover button background from parent container context
-	const parentHoverButtonBg =
-		context['airo-wp/hoverButtonBackgroundColor'];
+	const parentHoverButtonBg = context['airo-wp/hoverButtonBackgroundColor'];
 
 	// Get theme color palette and gradient settings
 	const colorGradientSettings = useMultipleOriginColorsAndGradients();
@@ -179,7 +178,8 @@ export default function IconButtonEdit({
 				convertColorToCSSVar(hoverBackgroundColor),
 		}),
 		...(hoverTextColor && {
-			'--airo-wp-button-hover-color': convertColorToCSSVar(hoverTextColor),
+			'--airo-wp-button-hover-color':
+				convertColorToCSSVar(hoverTextColor),
 		}),
 		...(parentHoverButtonBg && {
 			'--airo-wp-parent-hover-button-bg':
@@ -231,7 +231,10 @@ export default function IconButtonEdit({
 	);
 
 	const blockProps = useBlockProps({
-		className: clsx('airo-wp-justify', getJustificationClass(justification)),
+		className: clsx(
+			'airo-wp-justify',
+			getJustificationClass(justification)
+		),
 	});
 
 	return (

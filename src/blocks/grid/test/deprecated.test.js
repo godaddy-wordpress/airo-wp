@@ -18,18 +18,16 @@ import {
 } from '@wordpress/block-editor/node_modules/@wordpress/blocks';
 import metadata from '../block.json';
 import save from '../save';
-import deprecated from '../deprecated';
+import deprecated, {
+	legacyMinWidth as legacyMinWidthDeprecation,
+	styleVariationClasses as styleVariationClassesDeprecation,
+} from '../deprecated';
 
 setCategories([{ slug: 'airo-wp', title: 'airo-wp' }]);
 
 registerBlockType(metadata.name, { ...metadata, save, deprecated });
 
 describe('grid deprecations - style-kit overlay variation migration', () => {
-	// deprecated.js exports: [legacyMinWidth, styleVariationClasses, v1].
-	// legacyMinWidth is first so its narrower isEligible (minmax(...) inline
-	// style) wins over styleVariationClasses when a legacy grid matches both.
-	const [, styleVariationClassesDeprecation] = deprecated;
-
 	const canonicalOverlayMarkup = serialize(
 		createBlock(metadata.name, { className: 'is-style-overlay-dark' })
 	);
@@ -97,8 +95,6 @@ describe('grid deprecations - style-kit overlay variation migration', () => {
 });
 
 describe('grid deprecations - style-kit hover variation migration', () => {
-	const [, styleVariationClassesDeprecation] = deprecated;
-
 	const canonicalHoverMarkup = serialize(
 		createBlock(metadata.name, { className: 'is-style-hover-text-light' })
 	);
@@ -122,7 +118,9 @@ describe('grid deprecations - style-kit hover variation migration', () => {
 		expect(block.name).toBe('airo-wp/grid');
 		expect(block.isValid).toBe(true);
 		expect(block.attributes.className).toBe('is-style-hover-text-light');
-		expect(getBlockContent(block)).toContain('airo-wp-grid--has-hover-text');
+		expect(getBlockContent(block)).toContain(
+			'airo-wp-grid--has-hover-text'
+		);
 	});
 
 	test('isEligible detects a hover-icon variation lacking its activation class', () => {
@@ -164,8 +162,6 @@ describe('grid deprecations - legacyMinWidth precedence over styleVariationClass
 	// case — it's the only one that recovers `columnMinWidth` on migrate();
 	// styleVariationClasses.migrate() is a passthrough and would silently
 	// drop it.
-	const [legacyMinWidthDeprecation, styleVariationClassesDeprecation] =
-		deprecated;
 
 	const canonicalOverlayMarkup = serialize(
 		createBlock(metadata.name, { className: 'is-style-overlay-dark' })
@@ -212,5 +208,43 @@ describe('grid deprecations - legacyMinWidth precedence over styleVariationClass
 		expect(block.name).toBe('airo-wp/grid');
 		expect(block.isValid).toBe(true);
 		expect(block.attributes.columnMinWidth).toBe('200px');
+	});
+});
+
+describe('grid deprecations - fixed columnMinWidth track migration', () => {
+	// Grids saved before the auto-fill switch carry a fixed
+	// `repeat(N, minmax(<min>, 1fr))` track list, which overflowed its
+	// container whenever N columns couldn't all hold their min width.
+	const canonicalMinWidthMarkup = serialize(
+		createBlock(metadata.name, { columnMinWidth: '480px' })
+	);
+	const OLD_FIXED_TRACK_MARKUP = canonicalMinWidthMarkup.replace(
+		/grid-template-columns:[^;"]+/,
+		'grid-template-columns:repeat(3, minmax(480px, 1fr))'
+	);
+
+	test('current save() emits an auto-fill track that can drop a column', () => {
+		expect(canonicalMinWidthMarkup).toContain('repeat(auto-fill');
+		expect(canonicalMinWidthMarkup).toContain('max(480px');
+		expect(canonicalMinWidthMarkup).not.toContain('repeat(3, minmax(');
+	});
+
+	test('old fixed-track grid migrates silently and keeps columnMinWidth', () => {
+		const [block] = parse(OLD_FIXED_TRACK_MARKUP);
+
+		expect(console).toHaveInformed();
+
+		expect(block.name).toBe('airo-wp/grid');
+		expect(block.isValid).toBe(true);
+		expect(block.attributes.columnMinWidth).toBe('480px');
+		expect(getBlockContent(block)).toContain('repeat(auto-fill');
+	});
+
+	test('grids without a columnMinWidth are untouched by the deprecation', () => {
+		const markup = serialize(createBlock(metadata.name, {}));
+		const [block] = parse(markup);
+
+		expect(block.isValid).toBe(true);
+		expect(getBlockContent(block)).toContain('repeat(3, 1fr)');
 	});
 });

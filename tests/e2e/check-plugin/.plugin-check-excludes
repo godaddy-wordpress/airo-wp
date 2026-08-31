@@ -2,8 +2,10 @@
 .dev
 .git
 .github
+.wordpress-org
 bin
 builds
 docs
+node_modules
 scripts
 tests

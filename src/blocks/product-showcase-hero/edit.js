@@ -110,9 +110,7 @@ export default function ProductShowcaseHeroEdit({
 		apiFetch({ path: `/wc/store/v1/products/${effectiveProductId}` })
 			.then((data) => setProductData(data))
 			.catch(() => {
-				setError(
-					__('Product not found or unavailable.', 'airo-wp')
-				);
+				setError(__('Product not found or unavailable.', 'airo-wp'));
 				setProductData(null);
 			})
 			.finally(() => setIsLoading(false));

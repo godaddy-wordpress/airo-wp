@@ -31,7 +31,9 @@ function initImageAccordions() {
 			accordion.getAttribute('data-trigger-type') || 'hover';
 		const defaultExpandedIndex =
 			parseInt(accordion.getAttribute('data-default-expanded'), 10) || 0;
-		const items = accordion.querySelectorAll('.airo-wp-image-accordion-item');
+		const items = accordion.querySelectorAll(
+			'.airo-wp-image-accordion-item'
+		);
 
 		if (items.length === 0) {
 			return;

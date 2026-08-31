@@ -13,6 +13,20 @@
 	.airo-wp-heading-segment + .airo-wp-heading-segment {
 		margin-inline-start: var(--airo-wp-segment-gap, 0);
 	}
+
+	// The serializer writes a newline between each segment block, and that
+	// whitespace collapses to a single space on the frontend. The editor
+	// renders the segments adjacent with no text node between them, so the
+	// space has to be added back here or the canvas shows them run together.
+	// A segment renders either __animated or __text, never both, so these
+	// two rules cannot double up on the same element.
+	.airo-wp-heading-segment:not(:first-child) .airo-wp-heading-segment__animated {
+		margin-inline-start: var(--airo-wp-editor-segment-gap);
+	}
+
+	.airo-wp-heading-segment:not(:first-child) .airo-wp-heading-segment__text {
+		margin-inline-start: var(--airo-wp-editor-segment-gap);
+	}
 }
 
 // Heading level picker in the inspector
@@ -56,6 +70,13 @@
 		border-color: var(--wp-components-color-foreground, #1e1e1e);
 		color: var(--wp-components-color-background, #fff);
 	}
+}
+
+.airo-wp-advanced-heading__animation-notice {
+	margin: 0;
+	padding: 12px;
+	border-left: 3px solid var(--wp-components-color-accent, #3858e9);
+	background: var(--wp-components-color-gray-100, #f0f0f0);
 }
 
 // Text alignment support in editor

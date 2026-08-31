@@ -1,0 +1,640 @@
+/**
+ * Block Animations - CSS Animations
+ *
+ * Entrance and exit animation keyframes and styles
+ *
+ * @package airo-wp
+ * @since 1.0.0
+ */
+
+// The elements a stagger container actually animates.
+// DSGo container blocks follow the two-div pattern - the block root wraps a
+// `*__inner` div holding the real items (grid, row, section, ...) - so `> *`
+// from the root would find one wrapper, not six children. Reach through it
+// when it is there, and fall back to direct children when it is not. Where
+// `:has()` is unsupported only that second rule drops out, which costs a
+// plain container its stagger rather than breaking the page.
+@mixin airo-wp-stagger-items {
+
+	> [class*="__inner"] > * {
+		@content;
+	}
+
+	&:not(:has(> [class*="__inner"])) > * {
+		@content;
+	}
+}
+
+// Keyframe names, keyed by the attribute value that selects them. Kept as maps
+// so the class rules and the stagger rules below cannot drift apart.
+$airo-wp-entrance-keyframes: (
+	"fadeIn": "dsgFadeIn",
+	"fadeInUp": "dsgFadeInUp",
+	"fadeInDown": "dsgFadeInDown",
+	"fadeInLeft": "dsgFadeInLeft",
+	"fadeInRight": "dsgFadeInRight",
+	"slideInUp": "dsgSlideInUp",
+	"slideInDown": "dsgSlideInDown",
+	"slideInLeft": "dsgSlideInLeft",
+	"slideInRight": "dsgSlideInRight",
+	"zoomIn": "dsgZoomIn",
+	"bounceIn": "dsgBounceIn",
+	"flipInX": "dsgFlipInX",
+	"flipInY": "dsgFlipInY",
+);
+
+$airo-wp-exit-keyframes: (
+	"fadeOut": "dsgFadeOut",
+	"fadeOutUp": "dsgFadeOutUp",
+	"fadeOutDown": "dsgFadeOutDown",
+	"fadeOutLeft": "dsgFadeOutLeft",
+	"fadeOutRight": "dsgFadeOutRight",
+	"slideOutUp": "dsgSlideOutUp",
+	"slideOutDown": "dsgSlideOutDown",
+	"slideOutLeft": "dsgSlideOutLeft",
+	"slideOutRight": "dsgSlideOutRight",
+	"zoomOut": "dsgZoomOut",
+	"bounceOut": "dsgBounceOut",
+);
+
+// Base animation class - only hide on frontend, not in editor
+body:not(.block-editor-page):not(.wp-admin) {
+
+	.has-airo-wp-animation {
+		// Will be animated by JavaScript
+		// Hide elements until entrance animation is triggered
+		&:not(.airo-wp-entrance-active):not(.airo-wp-exit-active) {
+			opacity: 0;
+		}
+
+		// Apply animation settings when active
+		&.airo-wp-entrance-active,
+		&.airo-wp-exit-active {
+			animation-fill-mode: both;
+		}
+
+		// Show content immediately for users who prefer reduced motion
+		@media (prefers-reduced-motion: reduce) {
+
+			&:not(.airo-wp-entrance-active):not(.airo-wp-exit-active) {
+				opacity: 1;
+			}
+
+			&.airo-wp-entrance-active,
+			&.airo-wp-exit-active {
+				animation: none !important;
+			}
+		}
+	}
+
+	// Entrance animations - apply animation names to active blocks.
+	// The keyframe name is also published as a custom property, because a
+	// stagger container has to hand its animation down to its children and
+	// animation-name is not an inherited property while a custom property is.
+	@each $name, $keyframe in $airo-wp-entrance-keyframes {
+
+		.airo-wp-animation-#{$name} {
+			--airo-wp-animation-name: #{$keyframe};
+		}
+
+		.airo-wp-entrance-active.airo-wp-animation-#{$name} {
+			animation-name: #{$keyframe};
+		}
+	}
+
+	// Exit animations - apply animation names to active blocks
+	@each $name, $keyframe in $airo-wp-exit-keyframes {
+
+		.airo-wp-animation-exit-#{$name} {
+			--airo-wp-animation-exit-name: #{$keyframe};
+		}
+
+		.airo-wp-exit-active.airo-wp-animation-exit-#{$name} {
+			animation-name: #{$keyframe};
+		}
+	}
+
+	// ============================================
+	// SCROLL-LINKED INTERPOLATION
+	// ============================================
+	// `animation-timeline: view()` scrubs the entrance keyframes against the
+	// element's position in the viewport instead of playing them on a clock,
+	// so no class toggle is involved and frontend.js skips these elements.
+	// Where the property is unsupported the whole @supports block is dropped
+	// and only the opacity reset below survives, which is the correct
+	// degradation for decorative motion: visible content, no animation.
+
+	.has-airo-wp-animation[data-airo-wp-scroll-linked="true"]:not(.airo-wp-entrance-active):not(.airo-wp-exit-active) {
+		opacity: 1;
+	}
+
+	@supports (animation-timeline: view()) {
+
+		.has-airo-wp-animation[data-airo-wp-scroll-linked="true"] {
+			// Duration stays `auto` so the timeline, not a clock, sets progress.
+			animation-fill-mode: both;
+			animation-name: var(--airo-wp-animation-name);
+			animation-range: entry 0% cover 40%;
+			animation-timeline: view();
+			animation-timing-function: linear;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+
+		.has-airo-wp-animation[data-airo-wp-scroll-linked="true"] {
+			animation: none !important; // Accessibility override.
+			animation-timeline: auto !important; // Accessibility override.
+			opacity: 1 !important; // Accessibility override.
+		}
+	}
+
+	// ============================================
+	// CHILD STAGGER
+	// ============================================
+	// With stagger on, the container stops animating and its direct children
+	// carry the motion instead, each delayed by a multiple of the step.
+	// Bounded at 20 children: past that the delay outlasts any plausible
+	// viewport dwell time, and an unbounded loop would only bloat the sheet.
+
+	.has-airo-wp-animation[data-airo-wp-stagger="true"] {
+
+		// The container is a plain box now - only the items move.
+		&.airo-wp-entrance-active,
+		&.airo-wp-exit-active {
+			animation-name: none;
+		}
+
+		// ...so it must not sit at opacity 0 waiting for a class that is
+		// doing nothing for it. The items hide instead.
+		&:not(.airo-wp-entrance-active):not(.airo-wp-exit-active) {
+			opacity: 1;
+
+			@include airo-wp-stagger-items {
+				opacity: 0;
+			}
+		}
+
+		@include airo-wp-stagger-items {
+			animation-duration: var(--airo-wp-animation-duration, 600ms);
+			animation-fill-mode: both;
+			animation-timing-function: var(--airo-wp-animation-easing, ease-out);
+		}
+
+		&.airo-wp-entrance-active {
+
+			@include airo-wp-stagger-items {
+				animation-name: var(--airo-wp-animation-name);
+			}
+		}
+
+		&.airo-wp-exit-active {
+
+			@include airo-wp-stagger-items {
+				animation-name: var(--airo-wp-animation-exit-name);
+			}
+		}
+
+		// Two rules per index, never one selector list: a selector list is not
+		// forgiving, so a browser without `:has()` would drop the `__inner`
+		// branch along with the branch it cannot parse and two-div containers
+		// would animate with no stagger at all. Split, they degrade the way
+		// the mixin above promises - the plain-container branch drops, the
+		// two-div branch keeps its delays.
+		@for $i from 1 through 20 {
+			$delay: calc(var(--airo-wp-animation-delay, 0ms) + var(--airo-wp-stagger-step, 80ms) * #{$i - 1});
+
+			> [class*="__inner"] > :nth-child(#{$i}) {
+				animation-delay: $delay;
+			}
+
+			&:not(:has(> [class*="__inner"])) > :nth-child(#{$i}) {
+				animation-delay: $delay;
+			}
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+
+			@include airo-wp-stagger-items {
+				animation: none !important; // Accessibility override.
+				animation-delay: 0s !important; // Accessibility override.
+				opacity: 1 !important; // Accessibility override.
+			}
+		}
+	}
+}
+
+// ============================================
+// ENTRANCE ANIMATIONS
+// ============================================
+
+// Fade In
+@keyframes dsgFadeIn {
+
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+// Fade In Up
+@keyframes dsgFadeInUp {
+
+	from {
+		opacity: 0;
+		transform: translate3d(0, 40px, 0);
+	}
+
+	to {
+		opacity: 1;
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+// Fade In Down
+@keyframes dsgFadeInDown {
+
+	from {
+		opacity: 0;
+		transform: translate3d(0, -40px, 0);
+	}
+
+	to {
+		opacity: 1;
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+// Fade In Left
+@keyframes dsgFadeInLeft {
+
+	from {
+		opacity: 0;
+		transform: translate3d(-40px, 0, 0);
+	}
+
+	to {
+		opacity: 1;
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+// Fade In Right
+@keyframes dsgFadeInRight {
+
+	from {
+		opacity: 0;
+		transform: translate3d(40px, 0, 0);
+	}
+
+	to {
+		opacity: 1;
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+// Slide In Up
+@keyframes dsgSlideInUp {
+
+	from {
+		transform: translate3d(0, 100%, 0);
+		visibility: visible;
+	}
+
+	to {
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+// Slide In Down
+@keyframes dsgSlideInDown {
+
+	from {
+		transform: translate3d(0, -100%, 0);
+		visibility: visible;
+	}
+
+	to {
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+// Slide In Left
+@keyframes dsgSlideInLeft {
+
+	from {
+		transform: translate3d(-100%, 0, 0);
+		visibility: visible;
+	}
+
+	to {
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+// Slide In Right
+@keyframes dsgSlideInRight {
+
+	from {
+		transform: translate3d(100%, 0, 0);
+		visibility: visible;
+	}
+
+	to {
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+// Zoom In
+@keyframes dsgZoomIn {
+
+	from {
+		opacity: 0;
+		transform: scale3d(0.3, 0.3, 0.3);
+	}
+
+	50% {
+		opacity: 1;
+	}
+}
+
+// Bounce In
+@keyframes dsgBounceIn {
+
+	0% {
+		opacity: 0;
+		transform: scale3d(0.3, 0.3, 0.3);
+		animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+	}
+
+	20% {
+		transform: scale3d(1.1, 1.1, 1.1);
+		animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+	}
+
+	40% {
+		transform: scale3d(0.9, 0.9, 0.9);
+		animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+	}
+
+	60% {
+		opacity: 1;
+		transform: scale3d(1.03, 1.03, 1.03);
+		animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+	}
+
+	80% {
+		transform: scale3d(0.97, 0.97, 0.97);
+		animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+	}
+
+	to {
+		opacity: 1;
+		transform: scale3d(1, 1, 1);
+		animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+	}
+}
+
+// Flip In X
+@keyframes dsgFlipInX {
+
+	from {
+		transform: perspective(400px) rotate3d(1, 0, 0, 90deg);
+		animation-timing-function: ease-in;
+		opacity: 0;
+	}
+
+	40% {
+		transform: perspective(400px) rotate3d(1, 0, 0, -20deg);
+		animation-timing-function: ease-in;
+	}
+
+	60% {
+		transform: perspective(400px) rotate3d(1, 0, 0, 10deg);
+		opacity: 1;
+	}
+
+	80% {
+		transform: perspective(400px) rotate3d(1, 0, 0, -5deg);
+	}
+
+	to {
+		transform: perspective(400px);
+	}
+}
+
+// Flip In Y
+@keyframes dsgFlipInY {
+
+	from {
+		transform: perspective(400px) rotate3d(0, 1, 0, 90deg);
+		animation-timing-function: ease-in;
+		opacity: 0;
+	}
+
+	40% {
+		transform: perspective(400px) rotate3d(0, 1, 0, -20deg);
+		animation-timing-function: ease-in;
+	}
+
+	60% {
+		transform: perspective(400px) rotate3d(0, 1, 0, 10deg);
+		opacity: 1;
+	}
+
+	80% {
+		transform: perspective(400px) rotate3d(0, 1, 0, -5deg);
+	}
+
+	to {
+		transform: perspective(400px);
+	}
+}
+
+// ============================================
+// EXIT ANIMATIONS
+// ============================================
+
+// Fade Out
+@keyframes dsgFadeOut {
+
+	from {
+		opacity: 1;
+	}
+
+	to {
+		opacity: 0;
+	}
+}
+
+// Fade Out Up
+@keyframes dsgFadeOutUp {
+
+	from {
+		opacity: 1;
+	}
+
+	to {
+		opacity: 0;
+		transform: translate3d(0, -40px, 0);
+	}
+}
+
+// Fade Out Down
+@keyframes dsgFadeOutDown {
+
+	from {
+		opacity: 1;
+	}
+
+	to {
+		opacity: 0;
+		transform: translate3d(0, 40px, 0);
+	}
+}
+
+// Fade Out Left
+@keyframes dsgFadeOutLeft {
+
+	from {
+		opacity: 1;
+	}
+
+	to {
+		opacity: 0;
+		transform: translate3d(-40px, 0, 0);
+	}
+}
+
+// Fade Out Right
+@keyframes dsgFadeOutRight {
+
+	from {
+		opacity: 1;
+	}
+
+	to {
+		opacity: 0;
+		transform: translate3d(40px, 0, 0);
+	}
+}
+
+// Slide Out Up
+@keyframes dsgSlideOutUp {
+
+	from {
+		transform: translate3d(0, 0, 0);
+	}
+
+	to {
+		visibility: hidden;
+		transform: translate3d(0, -100%, 0);
+	}
+}
+
+// Slide Out Down
+@keyframes dsgSlideOutDown {
+
+	from {
+		transform: translate3d(0, 0, 0);
+	}
+
+	to {
+		visibility: hidden;
+		transform: translate3d(0, 100%, 0);
+	}
+}
+
+// Slide Out Left
+@keyframes dsgSlideOutLeft {
+
+	from {
+		transform: translate3d(0, 0, 0);
+	}
+
+	to {
+		visibility: hidden;
+		transform: translate3d(-100%, 0, 0);
+	}
+}
+
+// Slide Out Right
+@keyframes dsgSlideOutRight {
+
+	from {
+		transform: translate3d(0, 0, 0);
+	}
+
+	to {
+		visibility: hidden;
+		transform: translate3d(100%, 0, 0);
+	}
+}
+
+// Zoom Out
+@keyframes dsgZoomOut {
+
+	from {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0;
+		transform: scale3d(0.3, 0.3, 0.3);
+	}
+
+	to {
+		opacity: 0;
+	}
+}
+
+// Bounce Out
+@keyframes dsgBounceOut {
+
+	20% {
+		transform: scale3d(0.9, 0.9, 0.9);
+	}
+
+	50%,
+	55% {
+		opacity: 1;
+		transform: scale3d(1.1, 1.1, 1.1);
+	}
+
+	to {
+		opacity: 0;
+		transform: scale3d(0.3, 0.3, 0.3);
+	}
+}
+
+// ============================================
+// SVG PATH DRAWING
+// ============================================
+// svg-draw.js measures each shape and sets stroke-dasharray/dashoffset
+// inline; this transition animates the offset back to zero.
+
+.airo-wp-svg-draw-ready {
+	--airo-wp-svg-draw-duration: 1.5s;
+
+	:where(path, line, polyline, circle, ellipse, rect) {
+		transition: stroke-dashoffset var(--airo-wp-svg-draw-duration, 1.5s) ease-in-out;
+	}
+}
+
+.airo-wp-svg-draw-active {
+
+	:where(path, line, polyline, circle, ellipse, rect) {
+		stroke-dashoffset: 0 !important; // Overrides the inline priming value.
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-svg-draw-ready :where(path, line, polyline, circle, ellipse, rect) {
+		stroke-dashoffset: 0 !important; // Accessibility override.
+		transition: none;
+	}
+}

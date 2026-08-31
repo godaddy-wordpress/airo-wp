@@ -109,7 +109,10 @@ const vStatic = {
 				</div>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

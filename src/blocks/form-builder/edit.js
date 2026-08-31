@@ -38,6 +38,10 @@ import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
 import { validateCSSLength } from '../../utils/css-generator';
 import FormBuilderPlaceholder from './components/FormBuilderPlaceholder';
 
+// Non-default submitButtonVariation values from block.json. Allowlisted before
+// interpolation into the class name. MUST MATCH save.js.
+const SUBMIT_BUTTON_VARIATIONS = ['secondary', 'outline'];
+
 // Blocks that Gutenberg identifies as form fields for the reply-to dropdown.
 const EMAILABLE_FIELD_BLOCKS = new Set([
 	'airo-wp/form-text-field',
@@ -63,6 +67,7 @@ export default function FormBuilderEdit({
 		submitButtonText,
 		submitButtonAlignment,
 		submitButtonPosition,
+		submitButtonVariation,
 		ajaxSubmit,
 		successMessage,
 		errorMessage,
@@ -130,6 +135,16 @@ export default function FormBuilderEdit({
 			? ` airo-wp-form__submit--${effectiveAnimation}`
 			: '';
 
+	// Optional semantic style for the submit button, allowlisted against the
+	// block.json enum before interpolation - MUST MATCH save.js. Uses the
+	// `is-style-` namespace (not `airo-wp-form__submit--*`) so it can never collide
+	// with the layout/state/animation modifiers that share that BEM namespace.
+	const submitVariationClass = SUBMIT_BUTTON_VARIATIONS.includes(
+		submitButtonVariation
+	)
+		? ` is-style-${submitButtonVariation}`
+		: '';
+
 	useUniqueBlockId({
 		clientId,
 		attributeName: 'formId',
@@ -178,7 +193,8 @@ export default function FormBuilderEdit({
 	const formClasses = classnames('airo-wp-form-builder', {
 		[`airo-wp-form-builder--align-${submitButtonAlignment}`]:
 			submitButtonAlignment && submitButtonPosition === 'below',
-		'airo-wp-form-builder--button-inline': submitButtonPosition === 'inline',
+		'airo-wp-form-builder--button-inline':
+			submitButtonPosition === 'inline',
 	});
 
 	// Apply form settings as CSS custom properties - MUST MATCH save.js.
@@ -284,6 +300,7 @@ export default function FormBuilderEdit({
 							submitButtonText: 'Submit',
 							submitButtonAlignment: 'left',
 							submitButtonPosition: 'below',
+							submitButtonVariation: 'default',
 							ajaxSubmit: true,
 							successMessage:
 								'Thank you! Your form has been submitted successfully.',
@@ -388,6 +405,43 @@ export default function FormBuilderEdit({
 						/>
 					</DsgoInspectorPanel.Item>
 
+					<DsgoInspectorPanel.Item
+						label={__('Button Style', 'airo-wp')}
+						hasValue={() => submitButtonVariation !== 'default'}
+						onDeselect={() =>
+							setAttributes({ submitButtonVariation: 'default' })
+						}
+						isShownByDefault
+					>
+						<SelectControl
+							label={__('Button Style', 'airo-wp')}
+							value={submitButtonVariation}
+							options={[
+								{
+									label: __('Default', 'airo-wp'),
+									value: 'default',
+								},
+								{
+									label: __('Secondary', 'airo-wp'),
+									value: 'secondary',
+								},
+								{
+									label: __('Outline', 'airo-wp'),
+									value: 'outline',
+								},
+							]}
+							onChange={(value) =>
+								setAttributes({ submitButtonVariation: value })
+							}
+							help={__(
+								'Semantic style for the submit button, useful for forms on alternate backgrounds. A custom Button Background/Text Color (in the Color panel) is applied inline and takes precedence over Secondary/Outline — clear it to use the ghost style.',
+								'airo-wp'
+							)}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
+
 					{submitButtonPosition === 'below' && (
 						<DsgoInspectorPanel.Item
 							label={__('Button Alignment', 'airo-wp')}
@@ -468,10 +522,7 @@ export default function FormBuilderEdit({
 						isShownByDefault
 					>
 						<UnitControl
-							label={__(
-								'Button Padding (Vertical)',
-								'airo-wp'
-							)}
+							label={__('Button Padding (Vertical)', 'airo-wp')}
 							value={submitButtonPaddingVertical}
 							onChange={(value) =>
 								setAttributes({
@@ -505,10 +556,7 @@ export default function FormBuilderEdit({
 						isShownByDefault
 					>
 						<UnitControl
-							label={__(
-								'Button Padding (Horizontal)',
-								'airo-wp'
-							)}
+							label={__('Button Padding (Horizontal)', 'airo-wp')}
 							value={submitButtonPaddingHorizontal}
 							onChange={(value) =>
 								setAttributes({
@@ -584,10 +632,7 @@ export default function FormBuilderEdit({
 							]}
 							min={0}
 							max={100}
-							help={__(
-								'Space between form fields',
-								'airo-wp'
-							)}
+							help={__('Space between form fields', 'airo-wp')}
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>
@@ -642,10 +687,7 @@ export default function FormBuilderEdit({
 							]}
 							min={0}
 							max={50}
-							help={__(
-								'Padding inside input fields',
-								'airo-wp'
-							)}
+							help={__('Padding inside input fields', 'airo-wp')}
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>
@@ -849,10 +891,7 @@ export default function FormBuilderEdit({
 							isShownByDefault
 						>
 							<RangeControl
-								label={__(
-									'Time Window (seconds)',
-									'airo-wp'
-								)}
+								label={__('Time Window (seconds)', 'airo-wp')}
 								value={rateLimitWindow}
 								onChange={(value) =>
 									setAttributes({ rateLimitWindow: value })
@@ -879,10 +918,7 @@ export default function FormBuilderEdit({
 						isShownByDefault
 					>
 						<ToggleControl
-							label={__(
-								'Enable Cloudflare Turnstile',
-								'airo-wp'
-							)}
+							label={__('Enable Cloudflare Turnstile', 'airo-wp')}
 							checked={enableTurnstile}
 							onChange={(value) =>
 								setAttributes({ enableTurnstile: value })
@@ -911,10 +947,7 @@ export default function FormBuilderEdit({
 										'airo-wp'
 									)}
 								>
-									{__(
-										'Settings → Integrations',
-										'airo-wp'
-									)}
+									{__('Settings → Integrations', 'airo-wp')}
 								</a>
 								.{' '}
 								{__(
@@ -932,10 +965,7 @@ export default function FormBuilderEdit({
 						isShownByDefault
 					>
 						<ToggleControl
-							label={__(
-								'Enable Email Notifications',
-								'airo-wp'
-							)}
+							label={__('Enable Email Notifications', 'airo-wp')}
 							checked={enableEmail}
 							onChange={(value) =>
 								setAttributes({ enableEmail: value })
@@ -1144,10 +1174,7 @@ export default function FormBuilderEdit({
 								placeholder={
 									__('New form submission:', 'airo-wp') +
 									'\n\n{all_fields}\n\n' +
-									__(
-										'Submitted from: {page_url}',
-										'airo-wp'
-									)
+									__('Submitted from: {page_url}', 'airo-wp')
 								}
 								help={__(
 									'Email content template. Use {field_name} for specific fields or {all_fields} for all submitted data.',
@@ -1299,7 +1326,7 @@ export default function FormBuilderEdit({
 					{submitButtonPosition === 'inline' && (
 						<button
 							type="button"
-							className={`airo-wp-form__submit airo-wp-form__submit--inline wp-element-button${submitAnimationClass}`}
+							className={`airo-wp-form__submit airo-wp-form__submit--inline${submitVariationClass} wp-element-button${submitAnimationClass}`}
 							disabled
 							style={submitButtonStyle}
 						>
@@ -1312,7 +1339,7 @@ export default function FormBuilderEdit({
 					<div className="airo-wp-form__footer">
 						<button
 							type="button"
-							className={`airo-wp-form__submit wp-element-button${submitAnimationClass}`}
+							className={`airo-wp-form__submit${submitVariationClass} wp-element-button${submitAnimationClass}`}
 							disabled
 							style={submitButtonStyle}
 						>

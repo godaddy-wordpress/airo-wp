@@ -81,11 +81,9 @@ export default function CounterEdit({
 	// Get formatting settings from parent Counter Group context (with fallback defaults)
 	const parentUseGrouping =
 		context?.['airo-wp/counterGroup/useGrouping'] ?? true;
-	const parentSeparator =
-		context?.['airo-wp/counterGroup/separator'] || ',';
+	const parentSeparator = context?.['airo-wp/counterGroup/separator'] || ',';
 	const parentDecimal = context?.['airo-wp/counterGroup/decimal'] || '.';
-	const parentHoverColor =
-		context?.['airo-wp/counterGroup/hoverColor'] || '';
+	const parentHoverColor = context?.['airo-wp/counterGroup/hoverColor'] || '';
 
 	// Get theme accent-2 color as default
 	const themeColors = colorSettings?.theme || [];
@@ -226,7 +224,9 @@ export default function CounterEdit({
 					</div>
 				)}
 
-				<div className={`airo-wp-counter__content icon-${iconPosition}`}>
+				<div
+					className={`airo-wp-counter__content icon-${iconPosition}`}
+				>
 					{/* Icon (if enabled and position is left) */}
 					{showIcon && iconPosition === 'left' && (
 						<div className="airo-wp-counter__icon airo-wp-counter__icon--left">
@@ -235,7 +235,9 @@ export default function CounterEdit({
 					)}
 
 					{/* Number */}
-					<div className="airo-wp-counter__number">{displayValue}</div>
+					<div className="airo-wp-counter__number">
+						{displayValue}
+					</div>
 
 					{/* Icon (if enabled and position is right) */}
 					{showIcon && iconPosition === 'right' && (

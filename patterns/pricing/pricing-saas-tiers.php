@@ -60,7 +60,7 @@ return array(
 <!-- /wp:list-item --></ul>
 <!-- /wp:list -->
 
-<!-- wp:airo-wp/icon-button {"text":"Purchase","icon":"arrow-right","iconPosition":"end","iconGap":"8px"} -->
+<!-- wp:airo-wp/icon-button {"icon":"arrow-right","iconPosition":"end","iconGap":"8px"} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button airo-wp-icon-button--has-icon airo-wp-icon-button--icon-end" style="gap:8px" type="button"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="arrow-right"></span><span class="airo-wp-icon-button__text">Purchase</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section -->
@@ -106,7 +106,7 @@ return array(
 <!-- /wp:list-item --></ul>
 <!-- /wp:list -->
 
-<!-- wp:airo-wp/icon-button {"text":"Purchase","icon":"arrow-right","iconPosition":"end","iconGap":"8px","backgroundColor":"base","textColor":"contrast","style":{"elements":{"link":{"color":{"text":"var:preset|color|contrast"}}}}} -->
+<!-- wp:airo-wp/icon-button {"icon":"arrow-right","iconPosition":"end","iconGap":"8px","backgroundColor":"base","textColor":"contrast","style":{"elements":{"link":{"color":{"text":"var:preset|color|contrast"}}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-contrast-color has-base-background-color has-text-color has-background has-link-color airo-wp-icon-button--has-icon airo-wp-icon-button--icon-end" style="gap:8px" type="button"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="arrow-right"></span><span class="airo-wp-icon-button__text">Purchase</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section -->
@@ -150,7 +150,7 @@ return array(
 <!-- /wp:list-item --></ul>
 <!-- /wp:list -->
 
-<!-- wp:airo-wp/icon-button {"text":"Purchase","icon":"arrow-right","iconPosition":"end","iconGap":"8px"} -->
+<!-- wp:airo-wp/icon-button {"icon":"arrow-right","iconPosition":"end","iconGap":"8px"} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button airo-wp-icon-button--has-icon airo-wp-icon-button--icon-end" style="gap:8px" type="button"><span class="airo-wp-icon-button__icon airo-wp-lazy-icon" data-icon-name="arrow-right"></span><span class="airo-wp-icon-button__text">Purchase</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section --></div></div>

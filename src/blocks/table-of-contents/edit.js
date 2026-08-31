@@ -69,7 +69,8 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 	// Styles using CSS custom properties (only set if user has chosen colors)
 	const customStyles = {};
 	if (linkColor) {
-		customStyles['--airo-wp-toc-link-color'] = convertColorToCSSVar(linkColor);
+		customStyles['--airo-wp-toc-link-color'] =
+			convertColorToCSSVar(linkColor);
 	}
 	if (activeLinkColor) {
 		customStyles['--airo-wp-toc-active-link-color'] =
@@ -120,7 +121,10 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 			return (
 				<ListTag className="airo-wp-table-of-contents__list">
 					{previewHeadings.map((heading, idx) => (
-						<li key={idx} className="airo-wp-table-of-contents__item">
+						<li
+							key={idx}
+							className="airo-wp-table-of-contents__item"
+						>
 							<a
 								href={`#${heading.id}`}
 								className="airo-wp-table-of-contents__link"

@@ -36,10 +36,7 @@ const imageAccordionTemplates = [
 	{
 		name: 'showcase',
 		title: __('Showcase', 'airo-wp'),
-		description: __(
-			'Three feature panels with hover-to-expand',
-			'airo-wp'
-		),
+		description: __('Three feature panels with hover-to-expand', 'airo-wp'),
 		icon: 'images-alt2',
 		attributes: {
 			triggerType: 'hover',

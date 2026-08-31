@@ -145,10 +145,7 @@ const flipCardTemplates = [
 	{
 		name: 'cta',
 		title: __('Call to Action', 'airo-wp'),
-		description: __(
-			'Lead with a hook, finish with a button',
-			'airo-wp'
-		),
+		description: __('Lead with a hook, finish with a button', 'airo-wp'),
 		icon: 'megaphone',
 		attributes: { flipTrigger: 'hover', flipEffect: 'flip' },
 		innerBlocks: [
