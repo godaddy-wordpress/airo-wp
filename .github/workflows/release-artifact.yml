@@ -89,28 +89,6 @@ jobs:
             echo "Tag v${VERSION} is free — will build and release."
           fi
 
-      # Creating a tag and a Release needs contents: write, which is declared above
-      # but only actually granted if the repository allows it (Settings -> Actions ->
-      # General -> Workflow permissions). Surface a likely problem now rather than
-      # after several minutes of building.
-      #
-      # Deliberately a warning, not a failure: this reads the authenticated actor's
-      # push permission, and if that ever reports false for a token that can in fact
-      # write, a hard gate here would block every release for no reason. The
-      # authoritative check is the release step itself, which fails loudly.
-      - name: Warn early if the token looks unable to write
-        if: steps.gate.outputs.release == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          can_push=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.permissions.push // false' 2>/dev/null || echo unknown)
-          if [ "${can_push}" = "true" ]; then
-            echo "Token reports write access."
-          else
-            echo "::warning::Token write access reported as '${can_push}'. If the release step fails with a 403, set Settings -> Actions -> General -> Workflow permissions to 'Read and write permissions'."
-          fi
-
       - uses: actions/setup-node@v4
         if: steps.gate.outputs.release == 'true'
         with:
@@ -162,6 +140,14 @@ jobs:
           # never inside the plugin users install.
           if printf '%s\n' "${manifest}" | grep -q '\.wordpress-org'; then
             echo "::error::${ZIP} contains .wordpress-org/, which must never ship inside the plugin."
+            exit 1
+          fi
+
+          # src/ is deliberately not shipped: it was 37% of the payload, and users run
+          # dist/, never the sources. Assert it stays out so a later edit to
+          # package.json "files" cannot quietly put ~6 MB back into every download.
+          if printf '%s\n' "${manifest}" | grep -q '^airo-wp/src/'; then
+            echo "::error::${ZIP} contains src/. Uncompiled sources must not ship - users run dist/. Remove 'src/' from package.json \"files\"."
             exit 1
           fi
 

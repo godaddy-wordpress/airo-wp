@@ -37,18 +37,6 @@ for ( const cmd of [
 	}
 }
 
-function removeTestDirs( dir ) {
-	for ( const entry of readdirSync( dir, { withFileTypes: true } ) ) {
-		if ( ! entry.isDirectory() ) continue;
-		const entryPath = path.join( dir, entry.name );
-		if ( entry.name === 'test' ) {
-			rmSync( entryPath, { recursive: true, force: true } );
-		} else {
-			removeTestDirs( entryPath );
-		}
-	}
-}
-
 // Strip dev artifacts from Strauss-prefixed dependencies (mirrors build-zip.sh cleanup)
 const DEV_DIR_NAMES = new Set( [ '.github', 'tests', 'docs' ] );
 function cleanDevArtifacts( dir ) {
@@ -69,9 +57,55 @@ const depsDir = path.join( ROOT, 'dependencies' );
 if ( existsSync( depsDir ) ) {
 	cleanDevArtifacts( depsDir );
 }
-const srcDir = path.join( ROOT, 'src' );
-if ( existsSync( srcDir ) ) {
-	removeTestDirs( srcDir );
+
+// The zip no longer ships src/, so dist/ is the only copy of the block code that
+// reaches users. That makes a skipped or stale build silent and fatal rather than
+// merely wasteful: the archive would contain neither compiled blocks nor the source
+// they came from, and a plugin that registers nothing can still pass a lint.
+//
+// Assert instead that every block in src/ has a compiled counterpart in dist/. This
+// catches a build that never ran AND a build that predates a newly added block.
+// npm run build:zip runs wp-scripts build first, so a failure here means the build
+// was skipped or it failed without stopping the pipeline.
+{
+	const blockNames = ( dir ) => {
+		const base = path.join( ROOT, dir, 'blocks' );
+		if ( ! existsSync( base ) ) return null;
+		return new Set(
+			readdirSync( base, { withFileTypes: true } )
+				.filter( ( e ) => e.isDirectory() && existsSync( path.join( base, e.name, 'block.json' ) ) )
+				.map( ( e ) => e.name )
+		);
+	};
+
+	const src = blockNames( 'src' );
+	const dist = blockNames( 'dist' );
+
+	if ( ! src ) {
+		console.error( 'build-zip.mjs: src/blocks/ not found — cannot verify the build.' );
+		process.exit( 1 );
+	}
+
+	if ( ! dist ) {
+		console.error(
+			'build-zip.mjs: dist/blocks/ is missing. The asset build did not run.\n' +
+				'  Run `npm run build:zip` (which builds first), not build-zip.mjs directly.'
+		);
+		process.exit( 1 );
+	}
+
+	const missing = [ ...src ].filter( ( name ) => ! dist.has( name ) ).sort();
+
+	if ( missing.length > 0 ) {
+		console.error(
+			`build-zip.mjs: ${ missing.length } block(s) in src/ have no compiled output in dist/:\n` +
+				missing.map( ( n ) => `  ${ n }` ).join( '\n' ) +
+				'\n  dist/ is stale or the build failed. Re-run `npm run build`.'
+		);
+		process.exit( 1 );
+	}
+
+	console.log( `build-zip.mjs: build verified — ${ dist.size } compiled blocks match src/.` );
 }
 
 const result = spawnSync( 'npx', [ 'wp-scripts', 'plugin-zip' ], {

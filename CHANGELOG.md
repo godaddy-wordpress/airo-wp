@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.5
+
+- Reduced the download by 41%: uncompiled block sources are no longer shipped inside the plugin. Only the compiled output users actually run is included
+- The build is now a hard precondition of packaging, so a skipped or stale asset build fails the release instead of producing a plugin that registers nothing
+
 ## 0.3.4
 
 - Added Git Updater support: `GitHub Plugin URI`, `Primary Branch` and `Release Asset` plugin headers, so the plugin can update itself from this repository's GitHub Releases
