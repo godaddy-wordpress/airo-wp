@@ -64,10 +64,12 @@ export default function AccordionEdit({ attributes, setAttributes, clientId }) {
 
 	// Apply colors and gap as CSS custom properties that will cascade to accordion items
 	const customStyles = {
-		'--airo-wp-accordion-open-bg': convertColorToCSSVar(openBackgroundColor),
+		'--airo-wp-accordion-open-bg':
+			convertColorToCSSVar(openBackgroundColor),
 		'--airo-wp-accordion-open-text': convertColorToCSSVar(openTextColor),
 		'--airo-wp-accordion-hover-bg': convertColorToCSSVar(effectiveHoverBg),
-		'--airo-wp-accordion-hover-text': convertColorToCSSVar(effectiveHoverText),
+		'--airo-wp-accordion-hover-text':
+			convertColorToCSSVar(effectiveHoverText),
 		'--airo-wp-accordion-gap': itemGap,
 		...(borderBetweenColor && {
 			'--airo-wp-accordion-border-color':

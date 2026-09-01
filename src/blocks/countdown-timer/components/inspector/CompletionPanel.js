@@ -70,10 +70,7 @@ export default function CompletionPanel({ attributes, setAttributes }) {
 						onChange={(value) =>
 							setAttributes({ completionMessage: value })
 						}
-						placeholder={__(
-							'The countdown has ended!',
-							'airo-wp'
-						)}
+						placeholder={__('The countdown has ended!', 'airo-wp')}
 						help={__(
 							'This message will replace the countdown timer when it reaches zero.',
 							'airo-wp'

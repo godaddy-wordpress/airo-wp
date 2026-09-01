@@ -25,6 +25,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if ( ! function_exists( 'airowp_map_privacy_overlay' ) ) {
+	/**
+	 * Builds the click-to-load overlay shared by every map provider.
+	 *
+	 * @param string $notice Author-supplied notice text.
+	 * @return string Overlay markup.
+	 */
+	function airowp_map_privacy_overlay( $notice ) {
+		// Fallback mirrors the block.json default so render.php stays self-consistent
+		// even if it is ever invoked with attributes that weren't merged with defaults.
+		$text = '' !== $notice
+			? $notice
+			: __( 'This map will load content from external services. Click to load and view the map.', 'airo-wp' );
+
+		$html  = '<div class="airo-wp-map__privacy-overlay"><div class="airo-wp-map__privacy-content">';
+		$html .= '<svg class="airo-wp-map__privacy-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
+		$html .= '<p class="airo-wp-map__privacy-text">' . esc_html( $text ) . '</p>';
+		$html .= '<button class="airo-wp-map__load-button" type="button" aria-label="' . esc_attr__( 'Load map. This will connect to external map services.', 'airo-wp' ) . '">' . esc_html__( 'Load Map', 'airo-wp' ) . '</button>';
+		$html .= '</div></div>';
+
+		return $html;
+	}
+}
+
 if ( ! function_exists( 'airowp_render_map' ) ) {
 	/**
 	 * Renders the Map block on the front end.
@@ -107,29 +131,46 @@ if ( ! function_exists( 'airowp_render_map' ) ) {
 			'data-airo-wp-privacy-mode' => $privacy_mode ? 'true' : 'false',
 			'data-airo-wp-map-style'    => $map_style,
 		);
-		$data_attr_html = '';
+		$data_attr_html  = '';
 		foreach ( $data_attributes as $key => $value ) {
 			$data_attr_html .= ' ' . $key . '="' . esc_attr( $value ) . '"';
 		}
 
+		$aria_label = '' !== $address
+			/* translators: %s: The address being shown on the map */
+			? sprintf( __( 'Map showing %s', 'airo-wp' ), $address )
+			: __( 'Interactive map', 'airo-wp' );
+
+		// The keyless Google provider is a plain iframe built server-side: no
+		// Maps JS API, no Leaflet, and no geocoding round-trip, so outside of
+		// privacy mode the block needs no JavaScript at all. The marker icon /
+		// colour and map style attributes have no effect here — Google owns the
+		// rendering — which is why the inspector hides those controls.
+		if ( 'googlemaps-embed' === $provider ) {
+			$embed_url = airowp_map_embed_url( $address, $safe_lat, $safe_lng, $safe_zoom );
+
+			// In privacy mode the URL is parked until the visitor asks for it,
+			// so no request reaches Google on page load.
+			$src_attribute = $privacy_mode
+				? 'data-airo-wp-src="' . esc_url( $embed_url ) . '"'
+				: 'src="' . esc_url( $embed_url ) . '"';
+
+			$inner = '<iframe class="airo-wp-map__iframe" ' . $src_attribute
+				. ' title="' . esc_attr( $aria_label ) . '"'
+				. ' loading="lazy" referrerpolicy="no-referrer-when-downgrade"'
+				. ' allowfullscreen></iframe>';
+
+			if ( $privacy_mode ) {
+				$inner .= airowp_map_privacy_overlay( $privacy_note );
+			}
+
+			echo '<div ' . $wrapper_attributes . $data_attr_html . '>' . $inner . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			return;
+		}
+
 		if ( $privacy_mode ) {
-			// Fallback mirrors the block.json default so render.php stays self-consistent
-			// even if it is ever invoked with attributes that weren't merged with defaults.
-			$notice = '' !== $privacy_note
-				? $privacy_note
-				: __( 'This map will load content from external services. Click to load and view the map.', 'airo-wp' );
-
-			$inner  = '<div class="airo-wp-map__privacy-overlay"><div class="airo-wp-map__privacy-content">';
-			$inner .= '<svg class="airo-wp-map__privacy-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
-			$inner .= '<p class="airo-wp-map__privacy-text">' . esc_html( $notice ) . '</p>';
-			$inner .= '<button class="airo-wp-map__load-button" type="button" aria-label="' . esc_attr__( 'Load map. This will connect to external map services.', 'airo-wp' ) . '">' . esc_html__( 'Load Map', 'airo-wp' ) . '</button>';
-			$inner .= '</div></div>';
+			$inner = airowp_map_privacy_overlay( $privacy_note );
 		} else {
-			$aria_label = '' !== $address
-				/* translators: %s: The address being shown on the map */
-				? sprintf( __( 'Map showing %s', 'airo-wp' ), $address )
-				: __( 'Interactive map', 'airo-wp' );
-
 			$inner = '<div class="airo-wp-map__container" role="region" aria-label="' . esc_attr( $aria_label ) . '"></div>';
 		}
 

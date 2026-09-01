@@ -101,10 +101,7 @@ export default function CategoryList({
 								icon={cat.featured ? starFilled : starEmpty}
 								label={
 									cat.featured
-										? __(
-												'Unmark as featured',
-												'airo-wp'
-											)
+										? __('Unmark as featured', 'airo-wp')
 										: __('Mark as featured', 'airo-wp')
 								}
 								onClick={() => toggleFeatured(index)}

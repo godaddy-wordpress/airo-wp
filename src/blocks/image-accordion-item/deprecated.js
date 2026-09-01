@@ -49,8 +49,7 @@ const v1 = {
 		const overlayOpacity =
 			context?.['airo-wp/imageAccordion/overlayOpacity'] || 40;
 		const overlayOpacityExpanded =
-			context?.['airo-wp/imageAccordion/overlayOpacityExpanded'] ||
-			20;
+			context?.['airo-wp/imageAccordion/overlayOpacityExpanded'] || 20;
 
 		const itemClasses = classnames('airo-wp-image-accordion-item', {
 			'airo-wp-image-accordion-item--has-overlay': enableOverlay,
@@ -58,7 +57,8 @@ const v1 = {
 
 		const overlayStyles = enableOverlay
 			? {
-					'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+					'--airo-wp-overlay-color':
+						convertColorToCSSVar(overlayColor),
 					'--airo-wp-overlay-opacity': String(overlayOpacity / 100),
 					'--airo-wp-overlay-opacity-expanded': String(
 						overlayOpacityExpanded / 100
@@ -71,7 +71,8 @@ const v1 = {
 			style: {
 				...overlayStyles,
 				'--airo-wp-vertical-alignment': verticalAlignment || 'center',
-				'--airo-wp-horizontal-alignment': horizontalAlignment || 'center',
+				'--airo-wp-horizontal-alignment':
+					horizontalAlignment || 'center',
 			},
 			'data-unique-id': uniqueId,
 			role: 'button',

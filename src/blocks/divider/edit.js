@@ -266,7 +266,10 @@ export default function DividerEdit({ attributes, setAttributes, clientId }) {
 			     BLOCK CONTENT
 			    ======================================== */}
 			<div {...blockProps}>
-				<div className="airo-wp-divider__container" style={containerStyle}>
+				<div
+					className="airo-wp-divider__container"
+					style={containerStyle}
+				>
 					{dividerStyle === 'icon' ? (
 						<div className="airo-wp-divider__icon-wrapper">
 							<span
@@ -282,7 +285,10 @@ export default function DividerEdit({ attributes, setAttributes, clientId }) {
 							/>
 						</div>
 					) : (
-						<div className="airo-wp-divider__line" style={lineStyle} />
+						<div
+							className="airo-wp-divider__line"
+							style={lineStyle}
+						/>
 					)}
 				</div>
 			</div>

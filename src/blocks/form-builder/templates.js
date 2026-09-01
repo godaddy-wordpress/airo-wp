@@ -102,10 +102,7 @@ export const formBuilderTemplates = [
 	{
 		name: 'event-registration',
 		title: __('Event Registration', 'airo-wp'),
-		description: __(
-			'Name, email, phone, and number of guests',
-			'airo-wp'
-		),
+		description: __('Name, email, phone, and number of guests', 'airo-wp'),
 		icon: 'calendar-alt',
 		attributes: {
 			submitButtonText: __('Register', 'airo-wp'),
@@ -163,10 +160,7 @@ export const formBuilderTemplates = [
 		icon: 'businessman',
 		attributes: {
 			submitButtonText: __('Get in Touch', 'airo-wp'),
-			successMessage: __(
-				"Thanks — we'll reach out shortly.",
-				'airo-wp'
-			),
+			successMessage: __("Thanks — we'll reach out shortly.", 'airo-wp'),
 			enableEmail: true,
 			emailSubject: __('New lead submission', 'airo-wp'),
 			emailReplyTo: 'email',

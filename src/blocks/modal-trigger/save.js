@@ -48,7 +48,10 @@ export default function save({ attributes }) {
 	// styles (those are skip-serialized in block.json and re-applied to the
 	// button below).
 	const blockProps = useBlockProps.save({
-		className: clsx('airo-wp-justify', getJustificationClass(justification)),
+		className: clsx(
+			'airo-wp-justify',
+			getJustificationClass(justification)
+		),
 	});
 
 	const border = getBorderClassesAndStyles(attributes);

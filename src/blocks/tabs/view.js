@@ -383,7 +383,9 @@
 
 			if (newIndex !== currentIndex) {
 				this.setActiveTab(newIndex);
-				this.nav.querySelectorAll('.airo-wp-tabs__tab')[newIndex].focus();
+				this.nav
+					.querySelectorAll('.airo-wp-tabs__tab')
+					[newIndex].focus();
 			}
 		}
 
@@ -436,7 +438,9 @@
 
 			// Add accordion headers to each panel
 			this.panels.forEach((panel, index) => {
-				let header = panel.querySelector('.airo-wp-tab__accordion-header');
+				let header = panel.querySelector(
+					'.airo-wp-tab__accordion-header'
+				);
 
 				if (!header) {
 					header = document.createElement('button');
@@ -473,7 +477,9 @@
 			this.element.classList.remove('airo-wp-tabs--accordion');
 
 			// Check if dropdown already exists
-			let dropdown = this.element.querySelector('.airo-wp-tabs__dropdown');
+			let dropdown = this.element.querySelector(
+				'.airo-wp-tabs__dropdown'
+			);
 
 			if (!dropdown) {
 				// Create dropdown select element
@@ -526,7 +532,9 @@
 			}
 
 			// Remove dropdown if exists
-			const dropdown = this.element.querySelector('.airo-wp-tabs__dropdown');
+			const dropdown = this.element.querySelector(
+				'.airo-wp-tabs__dropdown'
+			);
 			if (dropdown) {
 				dropdown.remove();
 			}

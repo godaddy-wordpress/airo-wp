@@ -59,10 +59,7 @@ export const ListSettingsPanel = ({
 						{ label: __('Grid', 'airo-wp'), value: 'grid' },
 					]}
 					onChange={(value) => setAttributes({ layout: value })}
-					help={__(
-						'Choose how list items are arranged',
-						'airo-wp'
-					)}
+					help={__('Choose how list items are arranged', 'airo-wp')}
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 				/>
@@ -94,14 +91,8 @@ export const ListSettingsPanel = ({
 						}
 						help={
 							layout === 'vertical'
-								? __(
-										'Align list items horizontally',
-										'airo-wp'
-									)
-								: __(
-										'Distribute items horizontally',
-										'airo-wp'
-									)
+								? __('Align list items horizontally', 'airo-wp')
+								: __('Distribute items horizontally', 'airo-wp')
 						}
 						__next40pxDefaultSize
 						__nextHasNoMarginBottom
@@ -122,10 +113,7 @@ export const ListSettingsPanel = ({
 						onChange={(value) => setAttributes({ columns: value })}
 						min={1}
 						max={4}
-						help={__(
-							'Number of columns in grid layout',
-							'airo-wp'
-						)}
+						help={__('Number of columns in grid layout', 'airo-wp')}
 						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 					/>
@@ -245,10 +233,7 @@ export const ListSettingsPanel = ({
 									),
 									iconDefaults?.size
 								)
-							: __(
-									'Default icon size for all items',
-									'airo-wp'
-								)
+							: __('Default icon size for all items', 'airo-wp')
 					}
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom

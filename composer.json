@@ -1,5 +1,5 @@
 {
-    "name": "gdcorp-wordpress/airo-wp",
+    "name": "godaddy-wordpress/airo-wp",
     "description": "Airo WordPress plugin",
     "type": "wordpress-plugin",
     "license": "proprietary",

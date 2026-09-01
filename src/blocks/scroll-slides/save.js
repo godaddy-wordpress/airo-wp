@@ -45,7 +45,8 @@ export default function Save({ attributes }) {
 				'--airo-wp-nav-color': convertColorToCSSVar(navColor),
 			}),
 			...(navActiveColor && {
-				'--airo-wp-nav-active-color': convertColorToCSSVar(navActiveColor),
+				'--airo-wp-nav-active-color':
+					convertColorToCSSVar(navActiveColor),
 			}),
 		},
 	});

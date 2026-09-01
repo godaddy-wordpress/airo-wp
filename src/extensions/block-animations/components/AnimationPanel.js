@@ -1,0 +1,399 @@
+/**
+ * Block Animations - Settings Panel
+ *
+ * Panel for the per-block animation tri-state (Inherit / Custom / Off),
+ * the Custom controls, and the inherited-theme-default indicator.
+ *
+ * @package
+ * @since 1.0.0
+ */
+
+import { __, sprintf } from '@wordpress/i18n';
+import {
+	PanelBody,
+	ToggleControl,
+	SelectControl,
+	RangeControl,
+	Notice,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalToggleGroupControl as ToggleGroupControl,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalToggleGroupControlOption as ToggleGroupControlOption,
+} from '@wordpress/components';
+import {
+	ANIMATION_TYPES,
+	ANIMATION_TRIGGERS,
+	ANIMATION_DURATIONS,
+	ANIMATION_EASINGS,
+} from '../constants';
+import { resolveBlockAnimationDefault } from '../resolve-default';
+
+/**
+ * Human label for an entrance/exit value.
+ *
+ * @param {string} value Animation value.
+ * @return {string} Label or the raw value.
+ */
+function animationLabel(value) {
+	const all = [...ANIMATION_TYPES.entrance, ...ANIMATION_TYPES.exit];
+	const found = all.find((opt) => opt.value === value);
+	return found ? found.label : value;
+}
+
+/**
+ * Animation Settings Panel.
+ *
+ * @param {Object}   props               Component props.
+ * @param {string}   props.name          Block name.
+ * @param {Object}   props.attributes    Block attributes.
+ * @param {Function} props.setAttributes Attribute setter.
+ * @return {JSX.Element} Panel.
+ */
+export default function AnimationPanel({ name, attributes, setAttributes }) {
+	const {
+		dsgoAnimationEnabled,
+		dsgoAnimationOptOut,
+		dsgoEntranceAnimation,
+		dsgoExitAnimation,
+		dsgoAnimationTrigger,
+		dsgoAnimationDuration,
+		dsgoAnimationDelay,
+		dsgoAnimationEasing,
+		dsgoAnimationOffset,
+		dsgoAnimationOnce,
+		dsgoStaggerEnabled,
+		dsgoStaggerStep,
+		dsgoScrollLinked,
+		dsgoSvgDraw,
+	} = attributes;
+
+	// Derive tri-state from the two attributes.
+	let mode = 'inherit';
+	if (dsgoAnimationEnabled) {
+		mode = 'custom';
+	} else if (dsgoAnimationOptOut) {
+		mode = 'off';
+	}
+
+	const themeDefault = resolveBlockAnimationDefault(name);
+
+	const onModeChange = (value) => {
+		if (value === 'custom') {
+			setAttributes({
+				dsgoAnimationEnabled: true,
+				dsgoAnimationOptOut: false,
+			});
+		} else if (value === 'off') {
+			setAttributes({
+				dsgoAnimationEnabled: false,
+				dsgoAnimationOptOut: true,
+			});
+		} else {
+			setAttributes({
+				dsgoAnimationEnabled: false,
+				dsgoAnimationOptOut: false,
+			});
+		}
+	};
+
+	return (
+		<PanelBody
+			title={__('Animations', 'airo-wp')}
+			initialOpen={false}
+			icon="video-alt3"
+		>
+			<ToggleGroupControl
+				label={__('Animation', 'airo-wp')}
+				value={mode}
+				isBlock
+				onChange={onModeChange}
+				__nextHasNoMarginBottom
+				__next40pxDefaultSize
+			>
+				<ToggleGroupControlOption
+					value="inherit"
+					label={__('Theme', 'airo-wp')}
+				/>
+				<ToggleGroupControlOption
+					value="custom"
+					label={__('Custom', 'airo-wp')}
+				/>
+				<ToggleGroupControlOption
+					value="off"
+					label={__('Off', 'airo-wp')}
+				/>
+			</ToggleGroupControl>
+
+			{mode === 'inherit' && themeDefault && (
+				<Notice status="info" isDismissible={false}>
+					{sprintf(
+						/* translators: 1: animation name, 2: trigger, 3: duration in ms. */
+						__(
+							'Inheriting theme animation: %1$s · %2$s · %3$dms',
+							'airo-wp'
+						),
+						[themeDefault.entrance, themeDefault.exit]
+							.filter(Boolean)
+							.map(animationLabel)
+							.join(' / '),
+						themeDefault.trigger,
+						themeDefault.duration
+					)}
+				</Notice>
+			)}
+
+			{mode === 'inherit' && !themeDefault && (
+				<Notice status="info" isDismissible={false}>
+					{__('No theme animation for this block type.', 'airo-wp')}
+				</Notice>
+			)}
+
+			{mode === 'custom' && (
+				<>
+					<SelectControl
+						label={__('Entrance Animation', 'airo-wp')}
+						value={dsgoEntranceAnimation}
+						options={[
+							{ label: __('None', 'airo-wp'), value: '' },
+							...ANIMATION_TYPES.entrance,
+						]}
+						onChange={(value) =>
+							// Scrubbing has nothing to drive without an
+							// entrance animation, and its own toggle is
+							// disabled in that state - clearing it here is
+							// what keeps the block from getting stranded
+							// with scrubbing on and no way to turn it off.
+							setAttributes({
+								dsgoEntranceAnimation: value,
+								...(value ? {} : { dsgoScrollLinked: false }),
+							})
+						}
+						help={__('Animation when block appears', 'airo-wp')}
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+					/>
+
+					{/* Scrubbing drives the entrance from the scroll timeline
+					    and frontend.js never wires an exit trigger for those
+					    elements, so an exit animation could not fire. Hidden
+					    rather than left accepting a dead setting - the same
+					    treatment stagger gets below. */}
+					{!dsgoScrollLinked && (
+						<SelectControl
+							label={__('Exit Animation (Optional)', 'airo-wp')}
+							value={dsgoExitAnimation}
+							options={[
+								{ label: __('None', 'airo-wp'), value: '' },
+								...ANIMATION_TYPES.exit,
+							]}
+							onChange={(value) => {
+								if (
+									value &&
+									dsgoAnimationTrigger === 'scroll'
+								) {
+									setAttributes({
+										dsgoExitAnimation: value,
+										dsgoAnimationOnce: false,
+									});
+								} else {
+									setAttributes({ dsgoExitAnimation: value });
+								}
+							}}
+							help={__(
+								'Animation when block disappears',
+								'airo-wp'
+							)}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					)}
+
+					<SelectControl
+						label={__('Animation Trigger', 'airo-wp')}
+						value={dsgoAnimationTrigger}
+						options={ANIMATION_TRIGGERS}
+						onChange={(value) =>
+							// Scrubbing reads the scroll timeline, so it only
+							// means anything on the scroll trigger. Clearing
+							// it here keeps the attribute honest instead of
+							// leaving a setting that silently does nothing.
+							setAttributes({
+								dsgoAnimationTrigger: value,
+								...(value === 'scroll'
+									? {}
+									: { dsgoScrollLinked: false }),
+							})
+						}
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+					/>
+
+					<SelectControl
+						label={__('Duration', 'airo-wp')}
+						value={dsgoAnimationDuration}
+						options={ANIMATION_DURATIONS}
+						onChange={(value) =>
+							setAttributes({
+								dsgoAnimationDuration: parseInt(value, 10),
+							})
+						}
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+					/>
+
+					<RangeControl
+						label={__('Delay (ms)', 'airo-wp')}
+						value={dsgoAnimationDelay}
+						onChange={(value) =>
+							setAttributes({ dsgoAnimationDelay: value })
+						}
+						min={0}
+						max={3000}
+						step={100}
+						help={__('Delay before animation starts', 'airo-wp')}
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+					/>
+
+					<SelectControl
+						label={__('Easing', 'airo-wp')}
+						value={dsgoAnimationEasing}
+						options={ANIMATION_EASINGS}
+						onChange={(value) =>
+							setAttributes({ dsgoAnimationEasing: value })
+						}
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+					/>
+
+					{dsgoAnimationTrigger === 'scroll' && (
+						<>
+							<RangeControl
+								label={__('Viewport Offset (px)', 'airo-wp')}
+								value={dsgoAnimationOffset}
+								onChange={(value) =>
+									setAttributes({
+										dsgoAnimationOffset: value,
+									})
+								}
+								min={0}
+								max={500}
+								step={10}
+								help={__(
+									'Distance from viewport to trigger animation',
+									'airo-wp'
+								)}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+							/>
+
+							{dsgoExitAnimation && (
+								<Notice status="info" isDismissible={false}>
+									{__(
+										'Exit animations require repeating behavior. "Animate Once" is disabled.',
+										'airo-wp'
+									)}
+								</Notice>
+							)}
+
+							<ToggleControl
+								label={__('Animate Once', 'airo-wp')}
+								checked={dsgoAnimationOnce}
+								onChange={(value) =>
+									setAttributes({ dsgoAnimationOnce: value })
+								}
+								disabled={!!dsgoExitAnimation}
+								help={
+									dsgoExitAnimation
+										? __(
+												'Disabled when exit animation is set',
+												'airo-wp'
+											)
+										: __(
+												'Only animate the first time block enters viewport',
+												'airo-wp'
+											)
+								}
+								__nextHasNoMarginBottom
+							/>
+						</>
+					)}
+
+					{/* Scrubbing replaces the scroll trigger's own
+					    class toggling with a scroll timeline, so it is
+					    meaningless on the load/hover/click triggers and is
+					    hidden there rather than offered as a dead setting. */}
+					{dsgoAnimationTrigger === 'scroll' && (
+						<ToggleControl
+							label={__('Scrub With Scroll', 'airo-wp')}
+							checked={!!dsgoScrollLinked}
+							onChange={(value) =>
+								setAttributes({ dsgoScrollLinked: value })
+							}
+							disabled={!dsgoEntranceAnimation}
+							help={__(
+								'The entrance animation follows scroll position instead of playing once. Requires a recent browser; older browsers show the block with no animation.',
+								'airo-wp'
+							)}
+							__nextHasNoMarginBottom
+						/>
+					)}
+
+					{!dsgoScrollLinked && (
+						<ToggleControl
+							label={__('Stagger Children', 'airo-wp')}
+							checked={!!dsgoStaggerEnabled}
+							onChange={(value) =>
+								setAttributes({ dsgoStaggerEnabled: value })
+							}
+							help={__(
+								'Animate this block\u2019s direct children in sequence instead of the block itself.',
+								'airo-wp'
+							)}
+							__nextHasNoMarginBottom
+						/>
+					)}
+
+					{dsgoStaggerEnabled && !dsgoScrollLinked && (
+						<RangeControl
+							label={__('Stagger Step (ms)', 'airo-wp')}
+							value={dsgoStaggerStep}
+							onChange={(value) =>
+								setAttributes({ dsgoStaggerStep: value })
+							}
+							min={0}
+							max={500}
+							step={10}
+							help={__(
+								'Delay added between each child',
+								'airo-wp'
+							)}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					)}
+
+					{!dsgoEntranceAnimation && !dsgoExitAnimation && (
+						<Notice status="warning" isDismissible={false}>
+							{__(
+								'Please select at least one animation type.',
+								'airo-wp'
+							)}
+						</Notice>
+					)}
+				</>
+			)}
+
+			<ToggleControl
+				label={__('Draw SVG Strokes', 'airo-wp')}
+				checked={!!dsgoSvgDraw}
+				onChange={(value) => setAttributes({ dsgoSvgDraw: value })}
+				help={__(
+					'Draw the outlines of any SVG inside this block when it enters the viewport. Only shapes with a stroke are visible while drawing.',
+					'airo-wp'
+				)}
+				__nextHasNoMarginBottom
+			/>
+		</PanelBody>
+	);
+}

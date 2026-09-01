@@ -382,7 +382,8 @@ const v1 = {
 				effectiveSlidesPerViewMobile
 			),
 			...(arrowColor && {
-				'--airo-wp-slider-arrow-color': convertPresetToCSSVar(arrowColor),
+				'--airo-wp-slider-arrow-color':
+					convertPresetToCSSVar(arrowColor),
 			}),
 			...(arrowBackgroundColor && {
 				'--airo-wp-slider-arrow-bg-color':

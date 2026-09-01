@@ -14,6 +14,16 @@
 	],
 	"textdomain": "airo-wp",
 	"icon": "tag",
+	"selectors": {
+		"root": ".wp-block-airo-wp-pill",
+		"color": ".wp-block-airo-wp-pill .airo-wp-pill__content",
+		"border": ".wp-block-airo-wp-pill .airo-wp-pill__content",
+		"typography": ".wp-block-airo-wp-pill .airo-wp-pill__content",
+		"spacing": {
+			"root": ".wp-block-airo-wp-pill",
+			"padding": ".wp-block-airo-wp-pill .airo-wp-pill__content"
+		}
+	},
 	"attributes": {
 		"content": {
 			"type": "string",

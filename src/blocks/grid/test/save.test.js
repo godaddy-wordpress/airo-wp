@@ -98,3 +98,27 @@ describe('grid save - hover variation activation classes', () => {
 		expect(html).toContain('--airo-wp-hover-text-color');
 	});
 });
+
+describe('grid save - align rows (match row heights)', () => {
+	test('no match-rows class by default', () => {
+		const html = serialize(createBlock(metadata.name));
+		expect(html).not.toContain('airo-wp-grid--match-rows');
+	});
+
+	test('matchRowHeights emits the match-rows class', () => {
+		const html = serialize(
+			createBlock(metadata.name, { matchRowHeights: true })
+		);
+		expect(html).toContain('airo-wp-grid--match-rows');
+	});
+
+	test('the runtime-only activation class is not serialized', () => {
+		// `--airo-wp-row-count` / `--rows-matched` are applied by view.js at
+		// runtime, never persisted in save output.
+		const html = serialize(
+			createBlock(metadata.name, { matchRowHeights: true })
+		);
+		expect(html).not.toContain('airo-wp-grid__inner--rows-matched');
+		expect(html).not.toContain('--airo-wp-row-count');
+	});
+});

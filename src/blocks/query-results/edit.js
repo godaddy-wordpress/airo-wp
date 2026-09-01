@@ -80,7 +80,8 @@ export default function QueryResultsEdit({
 			'--airo-wp-query-columns-tablet':
 				attributes.columnsTablet || attributes.columns || 1,
 			'--airo-wp-query-columns-mobile': attributes.columnsMobile || 1,
-			'--airo-wp-query-first-col-span': attributes.firstItemColumnSpan || 1,
+			'--airo-wp-query-first-col-span':
+				attributes.firstItemColumnSpan || 1,
 			'--airo-wp-query-first-row-span': attributes.firstItemRowSpan || 1,
 		},
 	});

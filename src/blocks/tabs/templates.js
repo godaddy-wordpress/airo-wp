@@ -70,10 +70,7 @@ const tabsTemplates = [
 	{
 		name: 'vertical',
 		title: __('Vertical', 'airo-wp'),
-		description: __(
-			'Side-aligned tabs for longer-form content',
-			'airo-wp'
-		),
+		description: __('Side-aligned tabs for longer-form content', 'airo-wp'),
 		icon: 'align-pull-left',
 		attributes: {
 			orientation: 'vertical',
@@ -97,20 +94,14 @@ const tabsTemplates = [
 			),
 			tabPanel(
 				__('FAQ', 'airo-wp'),
-				__(
-					'Answer the questions readers ask most often.',
-					'airo-wp'
-				)
+				__('Answer the questions readers ask most often.', 'airo-wp')
 			),
 		],
 	},
 	{
 		name: 'pill',
 		title: __('Pill', 'airo-wp'),
-		description: __(
-			'Rounded pill-style tabs with subtle hover',
-			'airo-wp'
-		),
+		description: __('Rounded pill-style tabs with subtle hover', 'airo-wp'),
 		icon: 'marker',
 		attributes: {
 			orientation: 'horizontal',

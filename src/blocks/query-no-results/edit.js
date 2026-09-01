@@ -5,10 +5,7 @@ const TEMPLATE = [
 	[
 		'core/paragraph',
 		{
-			placeholder: __(
-				'Nothing found. Try another search.',
-				'airo-wp'
-			),
+			placeholder: __('Nothing found. Try another search.', 'airo-wp'),
 		},
 	],
 ];

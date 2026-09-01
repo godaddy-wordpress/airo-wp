@@ -404,7 +404,10 @@ export default function TimelineItemEdit({
 
 			<div {...blockProps}>
 				{/* Marker */}
-				<div className="airo-wp-timeline-item__marker" aria-hidden="true">
+				<div
+					className="airo-wp-timeline-item__marker"
+					aria-hidden="true"
+				>
 					{imageUrl ? (
 						<img
 							src={imageUrl}

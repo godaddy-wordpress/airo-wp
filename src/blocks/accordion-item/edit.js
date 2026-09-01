@@ -51,8 +51,7 @@ export default function AccordionItemEdit({
 
 	// Get context from parent accordion
 	const iconStyle = context['airo-wp/accordion/iconStyle'] || 'chevron';
-	const iconPosition =
-		context['airo-wp/accordion/iconPosition'] || 'right';
+	const iconPosition = context['airo-wp/accordion/iconPosition'] || 'right';
 	const allowMultipleOpen =
 		context['airo-wp/accordion/allowMultipleOpen'] || false;
 
@@ -213,12 +212,15 @@ export default function AccordionItemEdit({
 				<div className="airo-wp-accordion-item__header">
 					<button
 						type="button"
-						className={classnames('airo-wp-accordion-item__trigger', {
-							'airo-wp-accordion-item__trigger--icon-left':
-								iconPosition === 'left',
-							'airo-wp-accordion-item__trigger--icon-right':
-								iconPosition === 'right',
-						})}
+						className={classnames(
+							'airo-wp-accordion-item__trigger',
+							{
+								'airo-wp-accordion-item__trigger--icon-left':
+									iconPosition === 'left',
+								'airo-wp-accordion-item__trigger--icon-right':
+									iconPosition === 'right',
+							}
+						)}
 						aria-expanded={isOpen}
 						onClick={handleToggle}
 					>
@@ -230,10 +232,7 @@ export default function AccordionItemEdit({
 							onChange={(value) =>
 								setAttributes({ title: value })
 							}
-							placeholder={__(
-								'Accordion Item Title',
-								'airo-wp'
-							)}
+							placeholder={__('Accordion Item Title', 'airo-wp')}
 							allowedFormats={['core/bold', 'core/italic']}
 						/>
 						{iconPosition === 'right' && renderIcon()}

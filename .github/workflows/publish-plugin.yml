@@ -1,14 +1,411 @@
 name: Publish Plugin
 
+# Ships a tagged release to the plugin's WordPress.org SVN repository. Dispatch it
+# manually against a v<version> tag — the tags created by release-artifact.yml on
+# merge to main. Nothing here runs automatically.
+#
+# This workflow is authored in the private repo at .github/public/workflows/ and
+# mirrored here by release-mirror.yml. It is not dispatchable from the private
+# repo: GitHub only recognises workflows under .github/workflows/.
+#
+# Scope: shared scaffolding only — guards, payload staging and dry-run
+# reporting. It performs NO SVN write. The stable lane (trunk + tag) and the
+# pre-release lane (tag only) land separately, as does asset sync.
+
 on:
   workflow_dispatch:
-  push:
-    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+    inputs:
+      version:
+        description: 'Version to publish — defaults to package.json at the tag, and must match it. x.y.z, or a pre-release x.y.z-beta1 / x.y.z-rc1'
+        required: false
+        type: string
+      dry_run:
+        description: 'Report what would be published and make no SVN change'
+        required: false
+        default: true
+        type: boolean
+      sync_assets:
+        description: 'Also sync .wordpress-org/ to SVN assets/ (not implemented yet)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: publish-plugin
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Must match the approved WordPress.org plugin slug.
+  SLUG: airo-wp
+  SVN_ROOT: https://plugins.svn.wordpress.org
 
 jobs:
+  # sync_assets means "artwork only, no code release", so the two jobs are
+  # mutually exclusive by construction.
   publish:
     name: Publish to WordPress.org
-    runs-on: ubuntu-latest
+    if: inputs.sync_assets != true
+    runs-on: ubuntu-24.04
+    outputs:
+      channel: ${{ steps.version.outputs.channel }}
+      version: ${{ steps.version.outputs.version }}
 
     steps:
-      - uses: actions/checkout@v4
+      # Publishing is only ever done from a version tag, never a branch. A branch
+      # moves: dispatching from release/* could publish commits pushed after CI went
+      # green. A tag cannot, so what is published is exactly what was tested, and a
+      # re-run republishes byte-identical content. Tags are created by
+      # release-artifact.yml on merge to main.
+      #
+      # Fail before doing any work, rather than after building an artifact nobody
+      # will use.
+      - name: Guard - dispatch ref must be a version tag
+        run: |
+          if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
+            echo "::error::Refusing to publish from '${GITHUB_REF}'. Dispatch this workflow with a v<version> tag as the ref (for example --ref v0.3.4)."
+            exit 1
+          fi
+          echo "Ref: ${GITHUB_REF}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve and validate version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          PKG_VERSION=$(node -p "require('./package.json').version")
+
+          if [ -n "${INPUT_VERSION}" ]; then
+            VERSION="${INPUT_VERSION}"
+          else
+            VERSION="${PKG_VERSION}"
+          fi
+
+          # Accept a stable x.y.z or a pre-release x.y.z-<suffix> (beta1, rc1).
+          if ! printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::Version '${VERSION}' is not x.y.z or x.y.z-<pre-release>."
+            exit 1
+          fi
+
+          # An explicit input that disagrees with package.json means the branch and
+          # the request are out of step; publishing either one would be a guess.
+          if [ "${VERSION}" != "${PKG_VERSION}" ]; then
+            echo "::error::Requested version '${VERSION}' does not match package.json ('${PKG_VERSION}')."
+            exit 1
+          fi
+
+          # The dispatch ref is a tag (enforced above), so its name is another
+          # independent claim about which version this is. If it disagrees with
+          # package.json, the tag was cut at the wrong commit — publishing either
+          # answer would be a guess, and wp.org tags are effectively permanent.
+          if [ "v${VERSION}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag '${GITHUB_REF_NAME}' does not match version '${VERSION}' from package.json. Expected tag 'v${VERSION}'."
+            exit 1
+          fi
+
+          if printf '%s' "${VERSION}" | grep -q -- '-'; then
+            CHANNEL=pre-release
+          else
+            CHANNEL=stable
+          fi
+
+          echo "version=${VERSION}"   >> "$GITHUB_OUTPUT"
+          echo "channel=${CHANNEL}"   >> "$GITHUB_OUTPUT"
+          echo "Publishing ${VERSION} (${CHANNEL})"
+
+      # SVN existence checks over HTTP, so this job needs no svn client and has
+      # no means of writing to WordPress.org.
+      - name: Guard - slug provisioned and tag not already published
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          PLUGIN_URL="${SVN_ROOT}/${SLUG}/"
+          TAG_URL="${SVN_ROOT}/${SLUG}/tags/${VERSION}/"
+
+          plugin_status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "${PLUGIN_URL}")
+          if [ "${plugin_status}" != "200" ]; then
+            echo "::error::${PLUGIN_URL} returned ${plugin_status}. The '${SLUG}' slug does not look provisioned on WordPress.org."
+            exit 1
+          fi
+
+          tag_status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "${TAG_URL}")
+          if [ "${tag_status}" = "200" ]; then
+            echo "::error::${TAG_URL} already exists. WordPress.org tags are effectively permanent - bump the version instead of republishing."
+            exit 1
+          fi
+          if [ "${tag_status}" != "404" ]; then
+            echo "::error::Unexpected status ${tag_status} for ${TAG_URL}. Refusing to continue on an ambiguous answer."
+            exit 1
+          fi
+
+          echo "Slug provisioned; tags/${VERSION} is free."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      # The zip is the canonical artifact: built from package.json "files", and
+      # the same one the pre-release workflow runs Plugin Check and the e2e
+      # matrix against.
+      - name: Build distributable zip
+        run: npm run build:zip
+
+      - name: Stage SVN payload
+        id: payload
+        run: bash .github/scripts/stage-svn-payload.sh builds/airo-wp.zip builds/svn-payload
+
+      # deploy.sh evaluates its dry-run input as a shell command (`if $INPUT_DRY_RUN`),
+      # so it must receive exactly `true` or `false`. Normalise here: anything that
+      # is not an unambiguous `false` becomes `true`, i.e. the safe direction. This
+      # is what keeps the destructive path fail-closed now that the deploy step
+      # runs on dry runs too.
+      - name: Normalise dry-run flag
+        id: flags
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ "${DRY_RUN}" = "false" ]; then
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            echo "Dry run: false - this run WILL commit to WordPress.org."
+          else
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "Dry run: true - nothing will be committed."
+          fi
+
+      # A stable release must declare itself stable. The deploy rsyncs the payload
+      # over trunk, so it is the PAYLOAD's readme that ends up as trunk/readme.txt
+      # and therefore decides what WordPress.org serves — checking the remote
+      # trunk's current value would inspect state we are about to overwrite.
+      #
+      # Stable only: a pre-release deliberately leaves Stable tag pointing at the
+      # previous stable release, so this must not run on that channel.
+      - name: Guard - stable release must declare itself stable
+        if: steps.version.outputs.channel == 'stable'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PAYLOAD: ${{ steps.payload.outputs.payload }}
+        run: |
+          set -euo pipefail
+
+          readme="${PAYLOAD}/readme.txt"
+
+          if [ ! -f "${readme}" ]; then
+            echo "::error::${readme} is missing from the staged payload."
+            exit 1
+          fi
+
+          stable_tag=$(sed -n 's/^Stable tag:[[:space:]]*\([^[:space:]]*\).*/\1/p' "${readme}" | head -1)
+
+          if [ -z "${stable_tag}" ]; then
+            echo "::error::No 'Stable tag' header found in the payload's readme.txt."
+            exit 1
+          fi
+
+          if [ "${stable_tag}" != "${VERSION}" ]; then
+            echo "::error::Payload readme.txt declares 'Stable tag: ${stable_tag}' but this run publishes ${VERSION}. WordPress.org serves whatever Stable tag names, so this would publish ${VERSION} and then keep serving ${stable_tag}."
+            exit 1
+          fi
+
+          echo "Payload declares Stable tag: ${stable_tag}"
+
+      - name: Report what would be published
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CHANNEL: ${{ steps.version.outputs.channel }}
+          PAYLOAD: ${{ steps.payload.outputs.payload }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          SYNC_ASSETS: ${{ inputs.sync_assets }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo "### Publish plan"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Version | \`${VERSION}\` |"
+            echo "| Channel | ${CHANNEL} |"
+            echo "| Slug | \`${SLUG}\` |"
+            echo "| SVN tag | \`${SVN_ROOT}/${SLUG}/tags/${VERSION}\` |"
+            if [ "${CHANNEL}" = "stable" ]; then
+              echo "| SVN trunk | \`${SVN_ROOT}/${SLUG}/trunk\` (would be updated) |"
+            else
+              echo "| SVN trunk | not touched (pre-release) |"
+            fi
+            echo "| Dry run | ${DRY_RUN} |"
+            echo "| Sync assets | after a successful stable deploy |"
+            echo
+            echo "<details><summary>Payload manifest</summary>"
+            echo
+            echo '```'
+            ( cd "${PAYLOAD}" && find . -type f | sed 's|^\./||' | sort )
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Informational only. An empty trunk (404) is the expected state before
+          # the first release, so this must not gate anything.
+          trunk_readme=$(curl -s --max-time 30 "${SVN_ROOT}/${SLUG}/trunk/readme.txt" || true)
+          current=$(printf '%s' "${trunk_readme}" | sed -n 's/^Stable tag:[[:space:]]*\([^[:space:]]*\).*/\1/p' | head -1)
+          echo "Current trunk Stable tag: ${current:-none (trunk is empty)}"
+
+          echo "Target tag: ${SVN_ROOT}/${SLUG}/tags/${VERSION}"
+          echo "Payload:    ${PAYLOAD}"
+          echo "Manifest written to the job summary."
+
+      # On a dry run this archive is the thing worth inspecting: it is exactly
+      # what would be committed to WordPress.org.
+      - name: Upload distributable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: airo-wp-${{ steps.version.outputs.version }}
+          path: builds/airo-wp.zip
+          retention-days: 7
+
+      # Stable lane: rsync the payload into trunk and copy trunk to tags/X.Y.Z.
+      #
+      # Runs on dry runs too, deliberately: with dry-run the action still performs
+      # the SVN checkout and rsync and prints `svn status`, so a dry run shows the
+      # exact remote diff. Only the single `svn commit` is skipped, so nothing is
+      # written. The flag is normalised above rather than passed through raw.
+      #
+      # ASSETS_DIR is pointed at a path that does not exist on purpose. It defaults
+      # to `.wordpress-org`, which this repo now has, so leaving it unset would make
+      # every stable deploy publish plugin-directory artwork as a side effect —
+      # bypassing the sync_assets input entirely. Asset syncing is owned by its own
+      # lane; deploy.sh logs "No assets directory found" and leaves SVN assets/
+      # untouched.
+      - name: Publish stable release to WordPress.org
+        if: steps.version.outputs.channel == 'stable'
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        with:
+          dry-run: ${{ steps.flags.outputs.dry_run }}
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: ${{ env.SLUG }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD_DIR: ${{ steps.payload.outputs.payload }}
+          ASSETS_DIR: .no-assets-managed-by-asset-lane
+
+      # Subversion is NOT preinstalled on GitHub-hosted runners (it is absent from
+      # the ubuntu-24.04 image manifest). The stable lane gets it for free because
+      # 10up's deploy.sh installs it; this lane shells out to svn directly, so it
+      # has to provision it itself.
+      - name: Install Subversion
+        if: steps.version.outputs.channel != 'stable'
+        run: |
+          set -euo pipefail
+          if ! command -v svn >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y --no-install-recommends subversion
+          fi
+          svn --version --quiet
+
+      # Pre-release lane: import straight into tags/<version>, never touching
+      # trunk. The script asserts trunk is byte-identical afterwards and honours
+      # the normalised dry-run flag itself, since `svn import` has no dry-run mode.
+      - name: Publish pre-release tag to WordPress.org
+        if: steps.version.outputs.channel != 'stable'
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          PAYLOAD: ${{ steps.payload.outputs.payload }}
+          VERSION: ${{ steps.version.outputs.version }}
+          DRY_RUN: ${{ steps.flags.outputs.dry_run }}
+        run: |
+          bash .github/scripts/svn-import-tag.sh \
+            "${PAYLOAD}" "${SVN_ROOT}" "${SLUG}" "${VERSION}" "${DRY_RUN}"
+
+  # Runs either standalone (sync_assets, no code release) or after a successful
+  # stable deploy. Never for a pre-release: SVN assets/ is version-independent and
+  # goes live immediately, so a beta must not change what the plugin page shows
+  # while the released version is still the previous one.
+  #
+  # `needs` plus `always()` is what allows both entry points: on a standalone run
+  # the publish job is skipped, and this still proceeds.
+  sync-assets:
+    name: Sync plugin-directory assets
+    needs: publish
+    if: |
+      always() && (
+        inputs.sync_assets == true ||
+        (needs.publish.result == 'success' && needs.publish.outputs.channel == 'stable')
+      )
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Guard - dispatch ref must be a version tag
+        run: |
+          if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
+            echo "::error::Refusing to sync assets from '${GITHUB_REF}'. Dispatch this workflow with a v<version> tag as the ref."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Job-scoped: a standalone run skips the publish job, so its normalised flag
+      # is not available here. Same fail-closed rule.
+      - name: Normalise dry-run flag
+        id: flags
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ "${DRY_RUN}" = "false" ]; then
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Refuse to publish placeholder artwork
+        env:
+          DRY_RUN: ${{ steps.flags.outputs.dry_run }}
+        run: |
+          set -euo pipefail
+          marker=.github/ASSETS_ARE_PLACEHOLDERS
+
+          if [ ! -f "${marker}" ]; then
+            echo "No placeholder marker present; artwork is treated as real."
+            exit 0
+          fi
+
+          if [ "${DRY_RUN}" = "false" ]; then
+            echo "::error::${marker} exists, so .wordpress-org/ still holds placeholder images. Publishing them would put them on the live plugin page immediately. Replace the artwork and delete that file first."
+            exit 1
+          fi
+
+          echo "::warning::Placeholder artwork detected (${marker}); continuing because this is a dry run."
+
+      - name: Install Subversion
+        run: |
+          set -euo pipefail
+          if ! command -v svn >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y --no-install-recommends subversion
+          fi
+          svn --version --quiet
+
+      - name: Sync assets to WordPress.org
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          DRY_RUN: ${{ steps.flags.outputs.dry_run }}
+        run: |
+          bash .github/scripts/svn-sync-assets.sh \
+            .wordpress-org "${SVN_ROOT}" "${SLUG}" "${DRY_RUN}"

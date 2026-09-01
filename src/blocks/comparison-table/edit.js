@@ -381,10 +381,7 @@ export default function ComparisonTableEdit({
 							clearable: true,
 						},
 						{
-							label: __(
-								'Featured Column Highlight',
-								'airo-wp'
-							),
+							label: __('Featured Column Highlight', 'airo-wp'),
 							colorValue: decodeColorValue(
 								featuredColumnColor,
 								colorGradientSettings
@@ -453,10 +450,7 @@ export default function ComparisonTableEdit({
 							value={responsiveMode}
 							options={[
 								{
-									label: __(
-										'Horizontal Scroll',
-										'airo-wp'
-									),
+									label: __('Horizontal Scroll', 'airo-wp'),
 									value: 'scroll',
 								},
 								{
@@ -576,10 +570,7 @@ export default function ComparisonTableEdit({
 								{showCtaButtons && (
 									<>
 										<TextControl
-											label={__(
-												'CTA Link',
-												'airo-wp'
-											)}
+											label={__('CTA Link', 'airo-wp')}
 											value={col.link}
 											onChange={(value) =>
 												updateColumn(colIndex, {
@@ -591,10 +582,7 @@ export default function ComparisonTableEdit({
 											__nextHasNoMarginBottom
 										/>
 										<TextControl
-											label={__(
-												'CTA Text',
-												'airo-wp'
-											)}
+											label={__('CTA Text', 'airo-wp')}
 											value={col.linkText}
 											onChange={(value) =>
 												updateColumn(colIndex, {

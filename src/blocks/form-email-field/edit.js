@@ -52,8 +52,7 @@ export default function FormEmailFieldEdit({
 	// Get context values from parent form
 	const fieldLabelColor = context['airo-wp/form/fieldLabelColor'];
 	const fieldBorderColor = context['airo-wp/form/fieldBorderColor'];
-	const fieldBackgroundColor =
-		context['airo-wp/form/fieldBackgroundColor'];
+	const fieldBackgroundColor = context['airo-wp/form/fieldBackgroundColor'];
 
 	const fieldClasses = classnames(
 		'airo-wp-form-field',

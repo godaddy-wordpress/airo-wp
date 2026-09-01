@@ -88,10 +88,7 @@ export const CounterSettingsPanel = ({
 					value={prefix}
 					onChange={(value) => setAttributes({ prefix: value })}
 					placeholder="$"
-					help={__(
-						'Text before number (e.g., "$", "€")',
-						'airo-wp'
-					)}
+					help={__('Text before number (e.g., "$", "€")', 'airo-wp')}
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 				/>

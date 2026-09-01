@@ -90,7 +90,9 @@ function updateCountdownDisplay(timer, timeData) {
 		const numberElement = unit.querySelector(
 			'.airo-wp-countdown-timer__number'
 		);
-		const labelElement = unit.querySelector('.airo-wp-countdown-timer__label');
+		const labelElement = unit.querySelector(
+			'.airo-wp-countdown-timer__label'
+		);
 
 		if (numberElement && timeData[unitType] !== undefined) {
 			numberElement.textContent = formatTimeUnit(timeData[unitType]);
@@ -112,7 +114,6 @@ function updateCountdownDisplay(timer, timeData) {
  */
 function handleCompletion(timer) {
 	const completionAction = timer.dataset.completionAction;
-	const completionMessage = timer.dataset.completionMessage;
 
 	if (completionAction === 'hide') {
 		// Hide the entire timer
@@ -131,8 +132,9 @@ function handleCompletion(timer) {
 		}
 
 		if (messageContainer) {
+			// The message text is already server-rendered inside this element
+			// (sourced into the `completionMessage` attribute); just reveal it.
 			messageContainer.style.display = 'block';
-			messageContainer.textContent = completionMessage;
 		}
 	}
 }

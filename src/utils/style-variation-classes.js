@@ -48,9 +48,9 @@ const HOVER_VARIATION_FAMILIES = [
  *
  * @param {string} [className]    The block's `className` attribute value.
  * @param {string} blockClassName The block's own class prefix (e.g.
- *                                 `airo-wp-stack`, `airo-wp-flex`, `airo-wp-grid`) —
- *                                 activation classes are emitted as
- *                                 `${blockClassName}--${suffix}`.
+ *                                `airo-wp-stack`, `airo-wp-flex`, `airo-wp-grid`) —
+ *                                activation classes are emitted as
+ *                                `${blockClassName}--${suffix}`.
  * @return {string[]} Activation classes to add (possibly empty).
  */
 export function hoverVariationClasses(className, blockClassName) {
