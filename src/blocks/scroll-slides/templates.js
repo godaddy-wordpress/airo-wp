@@ -32,10 +32,7 @@ function blankSlide() {
 					[
 						'core/paragraph',
 						{
-							placeholder: __(
-								'Slide description…',
-								'airo-wp'
-							),
+							placeholder: __('Slide description…', 'airo-wp'),
 						},
 					],
 				],

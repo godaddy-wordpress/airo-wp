@@ -11,7 +11,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
 
 ZIP="$REPO_ROOT/builds/airo-wp-test.zip"
 if [ ! -f "$ZIP" ]; then
-	echo "$ZIP missing — run via scripts/tests/e2e.sh (or make test-e2e), which builds it" >&2
+	echo "$ZIP missing — build the plugin zip before running the e2e suite" >&2
 	exit 1
 fi
 

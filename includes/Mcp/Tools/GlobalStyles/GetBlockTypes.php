@@ -109,10 +109,11 @@ class GetBlockTypes extends BaseTool {
 	 * @return array
 	 */
 	private function get_input_schema(): array {
+		// Zero-argument tool. Omit `properties`/`required` rather than passing
+		// empty PHP arrays: json_encode() renders those as `[]`, but MCP requires
+		// inputSchema.properties to be an object, and clients reject the array.
 		return array(
-			'type'       => 'object',
-			'properties' => array(),
-			'required'   => array(),
+			'type' => 'object',
 		);
 	}
 

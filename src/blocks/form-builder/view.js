@@ -75,7 +75,9 @@ function initFormBuilder() {
 		formContainer.dataset.dsgoInitialized = 'true';
 
 		const formElement = formContainer.querySelector('.airo-wp-form');
-		const submitButton = formElement?.querySelector('.airo-wp-form__submit');
+		const submitButton = formElement?.querySelector(
+			'.airo-wp-form__submit'
+		);
 		const messageContainer = formElement?.querySelector(
 			'.airo-wp-form__message'
 		);
@@ -276,10 +278,7 @@ function initFormBuilder() {
 				showMessage(
 					messageContainer,
 					errorMessage ||
-						__(
-							'An error occurred. Please try again.',
-							'airo-wp'
-						),
+						__('An error occurred. Please try again.', 'airo-wp'),
 					'error'
 				);
 				shown = true;
@@ -440,8 +439,7 @@ function initFormBuilder() {
 				// so we use admin-ajax as primary when available, with REST
 				// as fallback. sessionStorage remembers if REST failed before
 				// to avoid wasting the rate limit window on a doomed request.
-				const useAjax =
-					airowpForm.ajaxUrl && airowpForm.ajaxNonce;
+				const useAjax = airowpForm.ajaxUrl && airowpForm.ajaxNonce;
 				const restBlocked =
 					useAjax && isTransportBlocked('airowp_rest_blocked');
 				const ajaxBlocked =
@@ -455,7 +453,7 @@ function initFormBuilder() {
 
 				if (!restBlocked) {
 					// Try REST API first
-					const restResponse = await fetch(airowpForm.restUrl, {
+					let restResponse = await fetch(airowpForm.restUrl, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
@@ -463,6 +461,44 @@ function initFormBuilder() {
 						},
 						body: requestBody,
 					});
+
+					// A full-page cache can serve markup that outlives the
+					// nonce baked into it — nonces last ~24h, and cache TTLs
+					// routinely exceed that. handle_form_submission() only
+					// verifies a nonce that is *present*, so a stale one is
+					// rejected where an absent one is accepted. Retry once
+					// without it rather than stranding the visitor; the
+					// endpoint is public by design (anonymous visitors never
+					// have a nonce), so this concedes nothing an attacker
+					// couldn't already do by submitting anonymously.
+					if (restResponse.status === 403) {
+						let staleNonce = false;
+						try {
+							const errorData = await restResponse.clone().json();
+							// `rest_cookie_invalid_nonce` is the one that fires
+							// in practice: core's rest_cookie_check_errors()
+							// rejects a bad X-WP-Nonce during authentication,
+							// before handle_form_submission() is ever reached.
+							// The plugin's own `invalid_nonce` is kept for the
+							// case where core lets the request through.
+							staleNonce =
+								errorData.code ===
+									'rest_cookie_invalid_nonce' ||
+								errorData.code === 'invalid_nonce';
+						} catch {
+							// Body isn't valid JSON — not our nonce error.
+						}
+
+						if (staleNonce) {
+							restResponse = await fetch(airowpForm.restUrl, {
+								method: 'POST',
+								headers: {
+									'Content-Type': 'application/json',
+								},
+								body: requestBody,
+							});
+						}
+					}
 
 					if (restResponse.ok) {
 						result = await restResponse.json();
@@ -608,7 +644,9 @@ function initFormBuilder() {
 				// Skip button reset if navigating away (redirect)
 				if (!redirecting) {
 					submitButton.disabled = false;
-					submitButton.classList.remove('airo-wp-form__submit--loading');
+					submitButton.classList.remove(
+						'airo-wp-form__submit--loading'
+					);
 					submitButton.textContent = originalText;
 					submitButton.removeAttribute('aria-busy');
 				}

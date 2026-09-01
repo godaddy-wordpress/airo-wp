@@ -50,10 +50,7 @@ export const IconSettingsPanel = ({
 		: null;
 
 	return (
-		<PanelBody
-			title={__('Icon Settings', 'airo-wp')}
-			initialOpen={true}
-		>
+		<PanelBody title={__('Icon Settings', 'airo-wp')} initialOpen={true}>
 			<Button
 				variant="secondary"
 				onClick={() => setIsIconPickerOpen(!isIconPickerOpen)}

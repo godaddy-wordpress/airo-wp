@@ -19,12 +19,13 @@ import {
 	stampFeedPositions as dsgoStampFeedPositions,
 	announceResultCount as dsgoAnnounceResultCount,
 	collectParams as dsgoCollectParamsShared,
+	itemContainerSelector as dsgoItemContainerSelector,
+	extractRenderedItems as dsgoExtractRenderedItems,
+	notifyContentUpdated as dsgoNotifyContentUpdated,
+	notifyItemsAppended as dsgoNotifyItemsAppended,
+	markHandledEvent as dsgoMarkHandledEvent,
+	isHandledEvent as dsgoIsHandledEvent,
 } from './view-helpers.js';
-
-// Events already processed by the IAPI store (first render). Used by the
-// delegated fallback listener so we never double-fire. The WeakSet lets the
-// browser GC events when they're done.
-const dsgoHandledEvents = new WeakSet();
 
 // Query IDs with an in-flight delegated refresh. The delegated handlers build
 // a fresh ctx object from the DOM each call, so the ctx.busy guard inside
@@ -58,7 +59,7 @@ store('airo-wp/query', {
 		 */
 		*setFilter(event) {
 			event.preventDefault?.();
-			dsgoHandledEvents.add(event);
+			dsgoMarkHandledEvent(event);
 			const { ref } = getElement();
 			// ref may be the form (submit event) or the input/select (change event).
 			const form =
@@ -96,7 +97,7 @@ store('airo-wp/query', {
 		 */
 		*toggleFilter(event) {
 			if (event) {
-				dsgoHandledEvents.add(event);
+				dsgoMarkHandledEvent(event);
 			}
 			const { ref } = getElement();
 			const paramName = ref.getAttribute('name')?.replace(/\[\]$/, '');
@@ -138,7 +139,7 @@ store('airo-wp/query', {
 		 */
 		*removeActiveFilter(event) {
 			event.preventDefault?.();
-			dsgoHandledEvents.add(event);
+			dsgoMarkHandledEvent(event);
 			const { ref } = getElement();
 			const href = ref.getAttribute('href');
 			if (!href) {
@@ -162,7 +163,7 @@ store('airo-wp/query', {
 		 */
 		*resetAll(event) {
 			event.preventDefault?.();
-			dsgoHandledEvents.add(event);
+			dsgoMarkHandledEvent(event);
 			const { ref } = getElement();
 			const href = ref.getAttribute('href');
 			const ctx = getContext();
@@ -206,21 +207,11 @@ store('airo-wp/query', {
 // swapped DOM becomes a silent no-op.
 //
 // Fix: attach document-level delegated listeners once at module load. When
-// IAPI is alive for an element, its store action fires first and marks the
-// event via dsgoHandledEvents — the delegated handler bails. When IAPI is
+// IAPI is alive for an element, its store action fires first and claims the
+// event via markHandledEvent() — the delegated handler bails. When IAPI is
 // dead (post-swap DOM), only the delegated handler runs and drives the same
-// URL-manipulation + dsgoQueryRefreshPlain() path.
-
-/**
- * Mark a native event as already handled by the Interactivity API store.
- *
- * @param {Event} event Native event object.
- */
-function dsgoMarkHandledEvent(event) {
-	if (event && typeof event === 'object') {
-		dsgoHandledEvents.add(event);
-	}
-}
+// URL-manipulation + dsgoQueryRefreshPlain() path. See view-helpers.js for
+// why the claim cannot be a plain identity check on the event object.
 
 /**
  * Serialise delegated-path network work per queryId.
@@ -266,25 +257,20 @@ function dsgoGetContextFromDom(el) {
 }
 
 function dsgoGetQueryContainer(queryId, el) {
-	// The grid <ul> / <ol> / <div> is the actual item container — it carries
-	// `data-airo-wp-query-results-role="container"` + the matching query id.
+	// The item container carries `data-airo-wp-query-results-role="container"` +
+	// the matching query id — the grid <ul>/<ol>/<div> for query-results, the
+	// track for a slider host, the panels wrapper for scroll-slides.
 	// The outer .airo-wp-query-region wrapper ALSO carries data-airo-wp-query-id
 	// (so view.js can target the whole region for full swaps), so targeting
 	// [data-airo-wp-query-id] alone would match the region and cause load-more
 	// to append new items after the pagination button instead of into the
-	// grid. Scope by role to always land inside the grid.
+	// item container. Scope by role to always land inside it.
 	const doc = el?.ownerDocument || document;
+	const selector = dsgoItemContainerSelector(queryId);
 	// Prefer scoping via the enclosing region so nested queries on the same
 	// page can't collide even when another query shares the same queryId.
 	const region = el?.closest(`[data-airo-wp-query-region="${queryId}"]`);
-	return (
-		region?.querySelector(
-			`[data-airo-wp-query-results-role="container"][data-airo-wp-query-id="${queryId}"]`
-		) ||
-		doc.querySelector(
-			`[data-airo-wp-query-results-role="container"][data-airo-wp-query-id="${queryId}"]`
-		)
-	);
+	return region?.querySelector(selector) || doc.querySelector(selector);
 }
 
 function dsgoGetRestConfig(ctx) {
@@ -306,7 +292,8 @@ async function dsgoLoadMorePlain(ctx, button) {
 
 	const idleLabel =
 		button.getAttribute('data-airo-wp-label-idle') || button.textContent;
-	const loadingLabel = button.getAttribute('data-airo-wp-label-loading') || '';
+	const loadingLabel =
+		button.getAttribute('data-airo-wp-label-loading') || '';
 	if (loadingLabel) {
 		button.textContent = loadingLabel;
 		button.setAttribute('aria-busy', 'true');
@@ -368,13 +355,17 @@ async function dsgoLoadMorePlain(ctx, button) {
 			data.html || '',
 			'text/html'
 		);
-		const newItems = doc.querySelectorAll('.airo-wp-query__item');
+		const newItems = dsgoExtractRenderedItems(doc, ctx.queryId);
 
 		if (newItems.length) {
 			const firstNew = newItems[0];
 			newItems.forEach((el) => container.appendChild(el));
 
 			dsgoStampFeedPositions(container);
+			// Carousel hosts derive clone counts, dot counts and track
+			// dimensions from the item count they saw at init, so appending
+			// silently would leave the new slides unreachable.
+			dsgoNotifyItemsAppended(container, ctx.queryId, newItems.length);
 			if (Number.isFinite(data.totalItems)) {
 				dsgoAnnounceResultCount(ctx.queryId, data.totalItems);
 			}
@@ -523,7 +514,7 @@ function dsgoInitInfiniteObservers(root = document) {
  * @param {Event} event Native change event.
  */
 function dsgoDelegatedChange(event) {
-	if (dsgoHandledEvents.has(event)) {
+	if (dsgoIsHandledEvent(event)) {
 		return;
 	}
 	const target = event.target;
@@ -532,6 +523,14 @@ function dsgoDelegatedChange(event) {
 	}
 	const filterRoot = target.closest('.airo-wp-query-filter');
 	if (!filterRoot) {
+		return;
+	}
+	// A search filter submits, and blurring its input to click Submit fires
+	// `change` first — so acting on both turns one interaction into two
+	// identical REST round-trips. The submit path owns these controls in
+	// either state: live, IAPI's setFilter runs it; de-hydrated,
+	// dsgoDelegatedSubmit does.
+	if (target.closest('form[data-wp-on--submit]')) {
 		return;
 	}
 	const rawName =
@@ -596,7 +595,7 @@ function dsgoDelegatedChange(event) {
  * @param {Event} event Native submit event.
  */
 function dsgoDelegatedSubmit(event) {
-	if (dsgoHandledEvents.has(event)) {
+	if (dsgoIsHandledEvent(event)) {
 		return;
 	}
 	const target = event.target;
@@ -637,14 +636,16 @@ function dsgoDelegatedSubmit(event) {
  * @param {Event} event Native click event.
  */
 function dsgoDelegatedClick(event) {
-	if (dsgoHandledEvents.has(event)) {
+	if (dsgoIsHandledEvent(event)) {
 		return;
 	}
 	const target = event.target;
 	if (!(target instanceof HTMLElement)) {
 		return;
 	}
-	const loadMoreButton = target.closest('.airo-wp-query-pagination__loadmore');
+	const loadMoreButton = target.closest(
+		'.airo-wp-query-pagination__loadmore'
+	);
 	if (loadMoreButton) {
 		const ctx = dsgoGetContextFromDom(loadMoreButton);
 		if (!ctx) {
@@ -815,6 +816,10 @@ function* dsgoQueryRefresh(ctx, url) {
 			// block-render output in airowp_query_render_region().
 			region.innerHTML = newRegion.innerHTML;
 			dsgoInitInfiniteObservers(region);
+			// The swap replaced every element inside the region, including any
+			// block with a frontend runtime (a slider host, counters, maps).
+			// Without this they stay inert until the next full page load.
+			dsgoNotifyContentUpdated(region, 'query-refresh');
 		}
 
 		// Sync the browser URL without a page reload.
@@ -941,6 +946,10 @@ async function dsgoQueryRefreshPlain(ctx, url) {
 			// block-render output in airowp_query_render_region().
 			region.innerHTML = newRegion.innerHTML;
 			dsgoInitInfiniteObservers(region);
+			// The swap replaced every element inside the region, including any
+			// block with a frontend runtime (a slider host, counters, maps).
+			// Without this they stay inert until the next full page load.
+			dsgoNotifyContentUpdated(region, 'query-refresh');
 		}
 
 		window.history.replaceState({}, '', url.toString());

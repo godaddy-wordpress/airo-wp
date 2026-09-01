@@ -1,0 +1,21 @@
+/**
+ * Grid Mobile Order Extension - Frontend Styles
+ *
+ * Applies CSS order property at mobile breakpoint for grid children
+ * that have a custom mobile order set via the --airo-wp-mobile-order custom property.
+ *
+ * @package airo-wp
+ */
+
+// Mobile breakpoint (≤ 767px) - matches grid block's mobile breakpoint
+@media (max-width: 767px) {
+	// Default all grid children to order 1 so items set to 0 appear first
+	.airo-wp-grid__inner > * {
+		order: 1;
+	}
+
+	// Override with custom order from the --airo-wp-mobile-order CSS custom property
+	.airo-wp-grid__inner > [style*="--airo-wp-mobile-order"] {
+		order: var(--airo-wp-mobile-order);
+	}
+}

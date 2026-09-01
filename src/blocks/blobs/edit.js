@@ -492,10 +492,7 @@ export default function BlobsEdit({ attributes, setAttributes, clientId }) {
 							onChange={(value) =>
 								setAttributes({ animationEasing: value })
 							}
-							help={__(
-								'Animation timing function',
-								'airo-wp'
-							)}
+							help={__('Animation timing function', 'airo-wp')}
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>

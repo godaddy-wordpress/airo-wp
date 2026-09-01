@@ -72,8 +72,8 @@ const OLD_SVG_MARKUP = `<!-- wp:airo-wp/section {"shapeDividerTop":"wave","shape
 // background color (no explicit shapeDividerBottomColor set), matching
 // V4ShapeDivider's inheritance behavior used by deprecations v4/v5/v6.
 // Built from v4's own save() so the fixture is byte-exact.
-// deprecated.js exports deprecations newest-first: [v8, v7, v6, v5, v4, v3, v2, v1].
-const [, , , , v4Deprecation] = deprecated;
+// deprecated.js exports deprecations newest-first: [v10, v9, v8, v7, v6, v5, v4, v3, v2, v1].
+const [, , , , , , v4Deprecation] = deprecated;
 const OLD_SVG_MARKUP_BOTTOM_INHERITED = buildOldMarkup(
 	{
 		shapeDividerBottom: 'tilt',
@@ -123,8 +123,8 @@ describe('section deprecations - shape divider SVG to class-based migration', ()
 	// deprecation and shows "unexpected or invalid content". The other tests use
 	// wave/tilt, which were NOT redesigned, so they can't catch this.
 	test('deprecations reproduce frozen legacy geometry for redesigned shapes (drops)', () => {
-		// deprecated.js exports newest-first: [v8, v7, v6, v5, v4, v3, v2, v1].
-		const [, , , , v4Dep, v3Dep] = deprecated;
+		// deprecated.js exports newest-first: [v9, v8, v7, v6, v5, v4, v3, v2, v1].
+		const [, , , , , , v4Dep, v3Dep] = deprecated;
 
 		[v3Dep, v4Dep].forEach((deprecation) => {
 			const markup = buildOldMarkup(
@@ -140,8 +140,8 @@ describe('section deprecations - shape divider SVG to class-based migration', ()
 });
 
 describe('section deprecations - style-kit overlay variation migration (v7)', () => {
-	// deprecated.js exports newest-first: [v8, v7, v6, v5, v4, v3, v2, v1].
-	const [, v7Deprecation] = deprecated;
+	// deprecated.js exports newest-first: [v9, v8, v7, v6, v5, v4, v3, v2, v1].
+	const [, , , v7Deprecation] = deprecated;
 
 	// Reproduce content saved BEFORE this change by taking what the block
 	// ACTUALLY serializes today (carrying block.json defaults such as the
@@ -242,15 +242,30 @@ describe('section deprecations - style-kit overlay variation migration (v7)', ()
 		).toBe(false);
 	});
 
-	test('migrate is a passthrough', () => {
+	test('migrate adds no clearance when the section has no divider', () => {
 		const attrs = { className: 'is-style-overlay-dark', overlayColor: '' };
-		expect(v7Deprecation.migrate(attrs)).toBe(attrs);
+		const migrated = v7Deprecation.migrate(attrs);
+		expect(migrated).toEqual(attrs);
+		expect(migrated.shapeDividerTopSpacing).toBeUndefined();
+		expect(migrated.shapeDividerBottomSpacing).toBeUndefined();
+	});
+
+	test('migrate carries height-derived clearance for a v7-signature divider (cascade fix)', () => {
+		// A block that matches v7's own signature never reaches v9.migrate(), so
+		// the height→spacing carry-over must run here too or the clearance is
+		// silently dropped. See migrateShapeDividerSpacing in deprecated.js.
+		const migrated = v7Deprecation.migrate({
+			className: 'is-style-overlay-dark',
+			shapeDividerTop: 'wave',
+			shapeDividerTopHeight: 80,
+		});
+		expect(migrated.shapeDividerTopSpacing).toBe('80px');
 	});
 });
 
 describe('section deprecations - style-kit hover variation migration (v8)', () => {
-	// deprecated.js exports newest-first: [v8, v7, v6, v5, v4, v3, v2, v1].
-	const [v8Deprecation] = deprecated;
+	// deprecated.js exports newest-first: [v9, v8, v7, v6, v5, v4, v3, v2, v1].
+	const [, , v8Deprecation] = deprecated;
 
 	// Reproduce content saved BEFORE hover-variation classes existed by taking
 	// the block's REAL current serialization and stripping the hover-text
@@ -281,7 +296,9 @@ describe('section deprecations - style-kit hover variation migration (v8)', () =
 		expect(block.isValid).toBe(true);
 		expect(block.attributes.className).toBe('is-style-hover-text-light');
 		// The migrated block re-serializes with the activation class restored.
-		expect(getBlockContent(block)).toContain('airo-wp-stack--has-hover-text');
+		expect(getBlockContent(block)).toContain(
+			'airo-wp-stack--has-hover-text'
+		);
 	});
 
 	test('isEligible detects a hover-text variation lacking its activation class', () => {
@@ -345,11 +362,350 @@ describe('section deprecations - style-kit hover variation migration (v8)', () =
 		).toBe(false);
 	});
 
-	test('migrate is a passthrough', () => {
+	test('migrate adds no clearance when the section has no divider', () => {
 		const attrs = {
 			className: 'is-style-hover-text-light',
 			hoverTextColor: '',
 		};
-		expect(v8Deprecation.migrate(attrs)).toBe(attrs);
+		const migrated = v8Deprecation.migrate(attrs);
+		expect(migrated).toEqual(attrs);
+		expect(migrated.shapeDividerTopSpacing).toBeUndefined();
+		expect(migrated.shapeDividerBottomSpacing).toBeUndefined();
+	});
+
+	test('migrate carries height-derived clearance for a v8-signature divider (cascade fix)', () => {
+		// This is the exact gap the original PR missed: a divider section that
+		// also carries a hover variation matches v8, not v9, so v9.migrate()
+		// never runs. Without the carry-over here the section keeps its shape
+		// divider but loses its clearance on the next save.
+		const migrated = v8Deprecation.migrate({
+			className: 'is-style-hover-text-light',
+			shapeDividerBottom: 'wave',
+			shapeDividerBottomHeight: 120,
+		});
+		expect(migrated.shapeDividerBottomSpacing).toBe('120px');
+	});
+
+	test('a real v8-signature divider section (hover variation + divider) migrates silently AND keeps its clearance end-to-end', () => {
+		// End-to-end guard for the cascade gap: build byte-faithful v8-era
+		// markup (a bottom divider with height-derived px clearance, a hover
+		// variation, and NO activation class), then run it through the real
+		// parse()/deprecation pipeline. It must route to v8 (not v9), migrate
+		// silently, and come out the other side with BOTH the restored hover
+		// activation class and its clearance preserved as an explicit spacing.
+		const markup = buildOldMarkup(
+			{
+				className: 'is-style-hover-text-light',
+				shapeDividerBottom: 'wave',
+				shapeDividerBottomHeight: 120,
+				backgroundColor: 'contrast',
+			},
+			v8Deprecation
+		);
+
+		const [block] = parse(markup);
+
+		// A silent migration logs an info (WordPress's "Block successfully
+		// updated"), which @wordpress/jest-console requires be asserted. Its
+		// presence — with no accompanying warning/error — is what "silent"
+		// (no "Attempt Recovery") means here.
+		expect(console).toHaveInformed();
+
+		expect(block.name).toBe('airo-wp/section');
+		expect(block.isValid).toBe(true);
+		// The carry-over ran through v8, not v9.
+		expect(block.attributes.shapeDividerBottomSpacing).toBe('120px');
+		// Re-serialized markup keeps the clearance and restores the hover class.
+		const content = getBlockContent(block);
+		expect(content).toContain('padding-bottom:120px');
+		expect(content).toContain('airo-wp-stack--has-hover-text');
+	});
+});
+
+describe('section deprecations - height-derived px clearance migration (v9)', () => {
+	// deprecated.js exports newest-first: [v9, v8, v7, v6, v5, v4, v3, v2, v1].
+	const [, v9Deprecation] = deprecated;
+
+	// v9's own save() reproduces the pre-change output: the inner container's
+	// shape-divider clearance is derived from the divider height and emitted as
+	// a px value. The current save() instead serializes the new
+	// shapeDivider{Top,Bottom}Spacing attributes and emits nothing when unset,
+	// so this markup is invalid against current save() and reaches v9 by
+	// save-matching.
+	test('old top-divider section migrates its height-derived px clearance into shapeDividerTopSpacing', () => {
+		const markup = buildOldMarkup(
+			{ shapeDividerTop: 'wave', shapeDividerTopHeight: 80 },
+			v9Deprecation
+		);
+		// Guards the fixture: the old height-derived padding must be present.
+		expect(markup).toContain('padding-top:80px');
+
+		const [block] = parse(markup);
+
+		// Silent migration logs an informational "Block successfully updated".
+		expect(console).toHaveInformed();
+
+		expect(block.name).toBe('airo-wp/section');
+		expect(block.isValid).toBe(true);
+		expect(block.attributes.shapeDividerTop).toBe('wave');
+		// migrate() carries the height-derived px into the new spacing attribute
+		// as a raw CSS length.
+		expect(block.attributes.shapeDividerTopSpacing).toBe('80px');
+		// The current save() converts the raw length through unchanged, so the
+		// exact clearance survives the round trip byte-for-byte.
+		expect(getBlockContent(block)).toContain('padding-top:80px');
+	});
+
+	test('old bottom-divider section migrates its clearance into shapeDividerBottomSpacing', () => {
+		const markup = buildOldMarkup(
+			{ shapeDividerBottom: 'tilt', shapeDividerBottomHeight: 120 },
+			v9Deprecation
+		);
+		expect(markup).toContain('padding-bottom:120px');
+
+		const [block] = parse(markup);
+
+		expect(console).toHaveInformed();
+		expect(block.isValid).toBe(true);
+		expect(block.attributes.shapeDividerBottomSpacing).toBe('120px');
+		expect(getBlockContent(block)).toContain('padding-bottom:120px');
+	});
+
+	// Regression guard for the nullable height/width change. v7/v8/v9 all render
+	// a FROZEN copy of the class-based divider, not the live component: their
+	// attribute schemas still default height/width to 100, and at that value the
+	// historical component emitted NO size custom property. If those versions
+	// ever rendered the live component again, this markup — a v9 divider left at
+	// the old default height — would stop byte-matching and every such section
+	// would surface "unexpected or invalid content".
+	test('a v9 divider left at the old default height still migrates silently', () => {
+		const markup = buildOldMarkup(
+			{ shapeDividerTop: 'wave' },
+			v9Deprecation
+		);
+		// Guards the fixture: default height meant a flat 100px clearance and no
+		// inline size var at all.
+		expect(markup).toContain('padding-top:100px');
+		expect(markup).not.toContain('--airo-wp-shape-height');
+
+		const [block] = parse(markup);
+
+		expect(console).toHaveInformed();
+		expect(block.isValid).toBe(true);
+	});
+
+	test('an untouched legacy height/width collapses to inherit, with no pinned clearance', () => {
+		// The deprecation schemas still default height/width to 100, so a
+		// legacy block arrives at migrate() carrying an explicit 100 that the
+		// author never chose (WordPress omits default-valued attributes from
+		// the comment, so 100 is indistinguishable from untouched). Left alone,
+		// that explicit 100 would be re-serialized and permanently opt the
+		// section OUT of the theme.json size tokens this release adds.
+		const markup = buildOldMarkup(
+			{ shapeDividerTop: 'wave' },
+			v9Deprecation
+		);
+
+		const [block] = parse(markup);
+
+		// Silent migration logs an informational "Block successfully updated".
+		expect(console).toHaveInformed();
+
+		expect(block.attributes.shapeDividerTopHeight).toBeNull();
+		expect(block.attributes.shapeDividerTopWidth).toBeNull();
+		// Critically, NO pinned clearance either. A pinned 100px would freeze
+		// the padding while the divider itself followed the theme token, so a
+		// theme setting a 200px divider would push content under the shape.
+		// Unset routes both through the same token fallback.
+		expect(block.attributes.shapeDividerTopSpacing).toBeUndefined();
+		expect(getBlockContent(block)).not.toContain('padding-top:100px');
+		expect(getBlockContent(block)).not.toContain('--airo-wp-shape-height');
+	});
+
+	test.each([
+		['zero', 0],
+		['negative', -50],
+	])(
+		'a legacy %s height collapses to inherit instead of pinning an unusable clearance',
+		(_label, bad) => {
+			// The renderer refuses these as explicit sizes (isExplicitShapeSize
+			// requires > 0), so the divider paints at the theme token height. If
+			// migrate() disagreed and treated them as explicit, it would pin
+			// `padding-top:0px`/`-50px` against that token-height divider and put
+			// content under the shape — the exact desync the null branch exists to
+			// prevent. A legacy 0 is reachable: configure-shape-divider allows
+			// `minimum => 0` for height.
+			const migrated = v9Deprecation.migrate({
+				shapeDividerTop: 'wave',
+				shapeDividerTopHeight: bad,
+			});
+			expect(migrated.shapeDividerTopHeight).toBeNull();
+			expect(migrated.shapeDividerTopSpacing).toBeUndefined();
+		}
+	);
+
+	test('an explicit legacy height keeps its exact pinned clearance', () => {
+		// The other side of the split: a real author choice is preserved
+		// verbatim, so its rendering cannot shift under a theme token.
+		const migrated = v9Deprecation.migrate({
+			shapeDividerTop: 'wave',
+			shapeDividerTopHeight: 80,
+			shapeDividerTopWidth: 100,
+		});
+		expect(migrated.shapeDividerTopHeight).toBe(80);
+		expect(migrated.shapeDividerTopSpacing).toBe('80px');
+		// Width is independent of clearance, so an untouched width still
+		// collapses to inherit even when the height was explicit.
+		expect(migrated.shapeDividerTopWidth).toBeNull();
+	});
+
+	test('migrate leaves an already-set spacing attribute untouched', () => {
+		const migrated = v9Deprecation.migrate({
+			shapeDividerTop: 'wave',
+			shapeDividerTopHeight: 80,
+			shapeDividerTopSpacing: 'var:preset|spacing|50',
+		});
+		expect(migrated.shapeDividerTopSpacing).toBe('var:preset|spacing|50');
+	});
+
+	test('migrate is a no-op for sections without a divider', () => {
+		const migrated = v9Deprecation.migrate({ shapeDividerTop: '' });
+		expect(migrated.shapeDividerTopSpacing).toBeUndefined();
+		expect(migrated.shapeDividerBottomSpacing).toBeUndefined();
+	});
+});
+
+describe('section - nullable shape divider height/width (theme inheritance)', () => {
+	// shapeDivider{Top,Bottom}{Height,Width} used to default to 100 and emit no
+	// custom property at that value. They now default to null ("inherit the
+	// theme.json token"), which needs NO deprecation precisely because the
+	// serialized markup is unchanged: WordPress never wrote the attribute to the
+	// comment while it equalled the old default, and save() emitted no size var
+	// then either. These tests pin both halves of that claim.
+	const legacyDefaultSizeMarkup = `<!-- wp:airo-wp/section {"shapeDividerTop":"wave"} -->\n${getSaveContent(
+		{ ...metadata, save },
+		{ ...createBlock(metadata.name).attributes, shapeDividerTop: 'wave' },
+		[]
+	)}\n<!-- /wp:airo-wp/section -->`;
+
+	test('the fixture carries no inline size var, as pre-change content did', () => {
+		expect(legacyDefaultSizeMarkup).toContain('is-shape-wave');
+		expect(legacyDefaultSizeMarkup).not.toContain('--airo-wp-shape-height');
+		expect(legacyDefaultSizeMarkup).not.toContain('--airo-wp-shape-width');
+	});
+
+	test('content saved at the old default size stays valid and resolves to inherit', () => {
+		const [block] = parse(legacyDefaultSizeMarkup);
+
+		// No "Block successfully updated" info here: the block matches the
+		// current save() outright, so no deprecation runs at all.
+		expect(block.isValid).toBe(true);
+		expect(block.attributes.shapeDividerTopHeight).toBeNull();
+		expect(block.attributes.shapeDividerTopWidth).toBeNull();
+	});
+
+	test('an explicitly-sized legacy divider keeps its exact size', () => {
+		const markup = `<!-- wp:airo-wp/section {"shapeDividerTop":"wave","shapeDividerTopHeight":80,"shapeDividerTopWidth":140} -->\n${getSaveContent(
+			{ ...metadata, save },
+			{
+				...createBlock(metadata.name).attributes,
+				shapeDividerTop: 'wave',
+				shapeDividerTopHeight: 80,
+				shapeDividerTopWidth: 140,
+			},
+			[]
+		)}\n<!-- /wp:airo-wp/section -->`;
+
+		const [block] = parse(markup);
+
+		expect(block.isValid).toBe(true);
+		expect(block.attributes.shapeDividerTopHeight).toBe(80);
+		expect(block.attributes.shapeDividerTopWidth).toBe(140);
+		expect(getBlockContent(block)).toContain('--airo-wp-shape-height:80px');
+		expect(getBlockContent(block)).toContain('--airo-wp-shape-width:140%');
+	});
+});
+
+describe('section deprecations - unconstrained markup without the attribute (v10)', () => {
+	// Real-world content (page builders, generated markup, hand-edited post
+	// content) turns the width constraint off the way it LOOKS like it works —
+	// by putting `airo-wp-no-width-constraint` on the block's `className` — and then
+	// writes an inner container with no `style` at all, which is exactly what an
+	// unconstrained section renders as.
+	//
+	// The block, though, reads `constrainWidth`, not the class. That attribute
+	// defaults to `true`, so it is absent from the comment, so the current
+	// save() emits `max-width:…;margin-left:auto;margin-right:auto` on
+	// `.airo-wp-stack__inner` — one attribute the stored HTML does not have, and the
+	// section is invalid ("Attempt Recovery"). The same shape reaches us from the
+	// 92-minute window on 2025-11-10 (6cbf8183…1bbdbefa) when `constrainWidth`
+	// itself defaulted to `false`, and from any handoff that dropped the inline
+	// style.
+	//
+	// The stored markup is unambiguous about intent — no inner width style means
+	// no width constraint — so the deprecation reads it back into the attribute.
+	const unconstrainedAttrs = { className: 'airo-wp-no-width-constraint' };
+	const currentHTML = getSaveContent(
+		{ ...metadata, save },
+		{ ...createBlock(metadata.name, unconstrainedAttrs).attributes },
+		[]
+	);
+	// Strip the inner width style, leaving the class list untouched — the exact
+	// difference the editor reports between generated and stored content.
+	const storedHTML = currentHTML.replace(
+		/(<div class="airo-wp-stack__inner")[^>]*>/,
+		'$1>'
+	);
+	const UNCONSTRAINED_MARKUP = `<!-- wp:airo-wp/section ${JSON.stringify(
+		unconstrainedAttrs
+	)} -->\n${storedHTML}\n<!-- /wp:airo-wp/section -->`;
+
+	test('the fixture differs from current save() only by the inner width style', () => {
+		expect(currentHTML).toContain(
+			'<div class="airo-wp-stack__inner" style="max-width:'
+		);
+		expect(storedHTML).toContain('<div class="airo-wp-stack__inner">');
+		expect(storedHTML).not.toContain('max-width');
+	});
+
+	test('the section stays valid instead of asking for recovery', () => {
+		const [block] = parse(UNCONSTRAINED_MARKUP);
+
+		// A silent deprecation migration logs "Block successfully updated" —
+		// the desired outcome, and it must be consumed explicitly here (see the
+		// shape-divider describe above).
+		expect(console).toHaveInformed();
+
+		expect(block.name).toBe('airo-wp/section');
+		expect(block.isValid).toBe(true);
+	});
+
+	test('migration records the intent the markup expressed', () => {
+		const [block] = parse(UNCONSTRAINED_MARKUP);
+		expect(console).toHaveInformed();
+
+		expect(block.attributes.constrainWidth).toBe(false);
+	});
+
+	test('the migrated block re-serializes to the same unconstrained markup', () => {
+		const [block] = parse(UNCONSTRAINED_MARKUP);
+		expect(console).toHaveInformed();
+
+		expect(getBlockContent(block)).toContain(
+			'<div class="airo-wp-stack__inner">'
+		);
+		expect(getBlockContent(block)).not.toContain('max-width');
+	});
+
+	test('a constrained section is untouched by the new deprecation', () => {
+		const constrained = `<!-- wp:airo-wp/section -->\n${getSaveContent(
+			{ ...metadata, save },
+			createBlock(metadata.name).attributes,
+			[]
+		)}\n<!-- /wp:airo-wp/section -->`;
+		const [block] = parse(constrained);
+
+		expect(block.isValid).toBe(true);
+		expect(block.attributes.constrainWidth).toBe(true);
 	});
 });

@@ -8,10 +8,11 @@
  * and editor.scss so the two stay byte-identical without duplication.
  *
  * The per-shape `--airo-wp-shape--<slug>` custom properties, the slug list,
- * the per-slug mask assignment, and the `is-shape-inherit` resolver are
- * block-agnostic and live in the shared `_shape-mask-classes.scss` /
- * `_shape-masks.scss` partials (src/styles/shared/), @used below so this
- * block only owns the section-specific painting.
+ * the per-slug mask assignment, the `is-shape-inherit` resolver, and the
+ * height/width theme-token cascade are block-agnostic and live in the shared
+ * `_shape-mask-classes.scss` / `_shape-masks.scss` / `_shape-size.scss`
+ * partials (src/styles/shared/), @used below so this block only owns the
+ * section-specific painting.
  *
  * Z-index hierarchy:
  * - Shape dividers (default): z-index 1
@@ -22,6 +23,7 @@
  */
 
 @use '../../../styles/shared/shape-mask-classes';
+@use '../../../styles/shared/shape-size';
 
 // Sub-pixel edge bleed. The band is painted right up to the ::before box edge,
 // so at fractional browser zoom (90/110/125%) a hairline rounding gap can open
@@ -35,13 +37,15 @@
 // section's own background, so there is no seam to cover there.
 $airo-wp-shape-bleed: 1px;
 
+// `--airo-wp-shape-{height,width}-resolved` come from the shared size cascade
+// (@used above): inline attribute var → theme.json token → plugin default.
 :where(.airo-wp-shape-divider) {
 	position: absolute;
 	// Centre shapes wider than 100% (width attr range 100–300%); resolves to
 	// 0 at the default 100% and offsets symmetrically as width grows.
-	left: calc((100% - var(--airo-wp-shape-width, 100%)) / 2);
-	width: var(--airo-wp-shape-width, 100%);
-	height: var(--airo-wp-shape-height, 100px);
+	left: calc((100% - var(--airo-wp-shape-width-resolved)) / 2);
+	width: var(--airo-wp-shape-width-resolved);
+	height: var(--airo-wp-shape-height-resolved);
 	pointer-events: none;
 	z-index: 1;
 
@@ -104,13 +108,23 @@ $airo-wp-shape-bleed: 1px;
 	z-index: 2;
 }
 
-// Fan: a TONAL ray divider, not a see-through knockout. Its mask carries its
-// own opacity layers, so we replace the two-layer XOR/exclude mask (which would
-// invert those layers into muddy translucency) with a single-layer mask. The
-// band colour is then painted over the section at the mask's graduated alpha —
-// producing layered rays that fade out from the centre, with the section's own
-// background showing between them.
-:where(.airo-wp-shape-divider.is-shape-fan)::before {
+// TONAL dividers (fan, triangle-layered, triangle-layered-extra,
+// curvy-triangle-layered, symmetric-waves-layered, side-triangle-layered,
+// side-triangle-layered-extra): band-colour overlays, not see-through knockouts.
+// Their masks carry their own opacity layers, so we replace the two-layer
+// XOR/exclude mask (which would invert those layers into muddy translucency)
+// with a single-layer mask. The band colour is painted over the section at the
+// mask's graduated alpha — the drawn layers read as tonal band colour and the
+// undrawn areas show the section's own background through them.
+:where(
+	.airo-wp-shape-divider.is-shape-fan,
+	.airo-wp-shape-divider.is-shape-triangle-layered,
+	.airo-wp-shape-divider.is-shape-triangle-layered-extra,
+	.airo-wp-shape-divider.is-shape-curvy-triangle-layered,
+	.airo-wp-shape-divider.is-shape-symmetric-waves-layered,
+	.airo-wp-shape-divider.is-shape-side-triangle-layered,
+	.airo-wp-shape-divider.is-shape-side-triangle-layered-extra
+)::before {
 	-webkit-mask-image: var(--airo-wp-shape-mask);
 	-webkit-mask-composite: source-over;
 	mask-image: var(--airo-wp-shape-mask);
@@ -129,6 +143,46 @@ $airo-wp-shape-bleed: 1px;
 		position: relative;
 		z-index: 2;
 	}
+}
+
+// Default content clearance. save() emits inner padding ONLY when the author
+// sets an explicit "Content Clearance" spacing (a preset token or raw length),
+// so a brand-new divider — or one inserted by the Abilities API or a pattern
+// that hasn't opted into a spacing preset — would otherwise reserve NO room and
+// let content sit under the shape. These :where() rules reserve space keyed to
+// the actual divider siblings, so only the present position(s) get padding.
+// The reserved amount MATCHES the divider height: save() exposes it on the
+// wrapper as `--airo-wp-shape-clearance-{top,bottom}` for any explicitly-set
+// height, so a 300px divider clears 300px, not a flat 100px. When no explicit
+// height is set the divider inherits the theme.json height token, so the
+// clearance falls through to that SAME token — keeping the two in step — and
+// only then to the `100px` plugin default. Zero specificity means any explicit
+// inline padding from save() always wins. Legacy content stays exact: its deprecation
+// migrate() carries the old height into an explicit spacing value, which
+// serializes as inline padding and overrides this fallback.
+// Reset the clearance variables on every section wrapper. Custom properties
+// inherit through the ENTIRE descendant subtree, not just to the element that
+// declared them, so without this a Section nested inside another Section would
+// inherit the ancestor's `--airo-wp-shape-clearance-*` and reserve the wrong
+// amount (a nested default-height divider would pick up the outer's 300px
+// instead of its own 100px default). save() sets the real per-instance value
+// inline on the wrapper that needs it — an inline style always beats this
+// stylesheet declaration, so that wrapper keeps its real value while every
+// other wrapper resets to `initial` and falls back to the `, 100px` default
+// below.
+.airo-wp-stack {
+	--airo-wp-shape-clearance-top: initial;
+	--airo-wp-shape-clearance-bottom: initial;
+}
+
+:where(.airo-wp-shape-divider--top + .airo-wp-stack__inner) {
+	padding-top: var(--airo-wp-shape-clearance-top,
+		var(--wp--custom--airo-wp--shape-divider--height, 100px));
+}
+
+:where(.airo-wp-stack__inner:has(+ .airo-wp-shape-divider--bottom)) {
+	padding-bottom: var(--airo-wp-shape-clearance-bottom,
+		var(--wp--custom--airo-wp--shape-divider--height, 100px));
 }
 
 // Respect user preference for reduced motion.

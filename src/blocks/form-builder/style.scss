@@ -112,9 +112,17 @@
 			width: auto;
 		}
 
-		// Loading state
+		// Loading state.
+		// Hide the label with text-indent, NOT `color: transparent`: the
+		// Global-Styles button rules (Button_Global_Styles, 0,3,0) and the style
+		// variations (0,4,0) out-specify a plain `color` override, so it would
+		// fail to hide the text — and forcing it would also blank the spinner
+		// below, which paints with `currentColor`. text-indent pushes the label
+		// out of view while keeping currentColor real for the spinner, and needs
+		// no specificity war because nothing else sets it.
 		&.airo-wp-form__submit--loading {
-			color: transparent;
+			text-indent: -9999px;
+			white-space: nowrap;
 			pointer-events: none;
 
 			&::after {
@@ -208,13 +216,13 @@
 	.airo-wp-form__submit--inline {
 		flex: 0 0 auto;
 		width: auto;
-		// Align button bottom with input bottom — compensates for the
-		// form field's internal label-to-input gap (0.5rem)
-		margin-bottom: 0.5rem;
+		// No bottom margin: the container's align-items: flex-end already puts
+		// the button's bottom on the input's bottom (the input is the field's
+		// last child; row spacing is flex gap, not field margin). The old
+		// 0.5rem "label gap compensation" lifted the button out of alignment.
 
 		// Mobile: stack below the field with spacing
 		@media (max-width: 768px) {
-			margin-bottom: 0;
 			margin-top: 0.5rem;
 		}
 	}
@@ -267,12 +275,81 @@
 }
 
 // ============================================================================
+// SUBMIT BUTTON STYLE VARIATIONS (submitButtonVariation attribute)
+// ============================================================================
+// Self-contained "ghost" fallback — transparent fill + current-color border,
+// text following the surrounding color — so a secondary/outline submit button
+// reads on ANY background without a Style Kit, matching how the kit itself
+// defines `secondary`/`outline`. Themes/kits give `.airo-wp-form__submit` a filled
+// primary look via a `:root … .airo-wp-form__submit.wp-element-button` rule (0,3,0),
+// so these are compounded to 0,4,0 (`:root` + three element classes) to win —
+// the same approach as the icon-button `outline` style. Kits and section/group
+// style variations can repaint the same classes. MUST match save.js.
+// The variation lives in the `is-style-*` namespace, not `airo-wp-form__submit--*`,
+// so it never collides with the layout/state/animation modifiers that share the
+// BEM namespace (see save.js).
+:root .airo-wp-form__submit.is-style-secondary.wp-element-button,
+:root .airo-wp-form__submit.is-style-outline.wp-element-button {
+	background-color: transparent;
+	color: inherit;
+	border-style: solid;
+	border-color: currentcolor;
+}
+
+:root .airo-wp-form__submit.is-style-secondary.wp-element-button {
+	border-width: 1px;
+}
+
+// Keep the ghost look on :hover against the base Global-Styles hover rule
+// (`:root .airo-wp-form__submit.wp-element-button:hover`, 0,4,0), which would
+// otherwise fill these solid on hover when a theme/Style Kit sets a button hover
+// colour. `:hover` here is 0,5,0 so the ghost stays transparent.
+// NOTE: this intentionally does NOT override a per-instance custom hover
+// background — the "instant hover-bg" rule below uses
+// `background-color: var(--airo-wp-button-hover-bg) !important`, which still wins.
+// That mirrors the base custom-colour precedence (a hand-picked colour beats the
+// ghost variation, as the Button Style control's help text notes). A kit that
+// wants a hover fill for these variations defines it under
+// `core/button.variations.{name}:hover`, which Button_Global_Styles projects.
+:root .airo-wp-form__submit.is-style-secondary.wp-element-button:hover,
+:root .airo-wp-form__submit.is-style-outline.wp-element-button:hover {
+	background-color: transparent;
+	border-color: currentcolor;
+}
+
+:root .airo-wp-form__submit.is-style-outline.wp-element-button {
+	border-width: 2px;
+}
+
+// ============================================================================
 // HOVER COLORS
 // ============================================================================
 // Custom hover colors via CSS variables (same pattern as icon-button)
 
-// No animation — instant background transition
-.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"]:not([class*="airo-wp-form__submit--"]):hover {
+// No animation — instant background transition.
+// Excludes the hover-animation modifiers explicitly (kept in sync with
+// ALLOWED_HOVER_ANIMATIONS in class-plugin.php), plus the `--loading` and
+// `--no-hover` states. It must stay an explicit list rather than a substring
+// `:not( [class*="airo-wp-form__submit--"] )`, because `--inline` (a layout modifier
+// that still wants the instant hover) also lives in that namespace — a substring
+// guard would wrongly exclude an inline button. Style variations are unaffected
+// either way: they live in the separate `is-style-*` namespace. `--loading`
+// (spinner) and `--no-hover` (explicit opt-out honoured by
+// apply_default_form_button_hover()) stay excluded so neither flashes the colour.
+.airo-wp-form__submit[style*="--airo-wp-button-hover-bg"]:hover:not(
+	.airo-wp-form__submit--fill-diagonal,
+	.airo-wp-form__submit--zoom-in,
+	.airo-wp-form__submit--lift,
+	.airo-wp-form__submit--shrink,
+	.airo-wp-form__submit--border-pulse,
+	.airo-wp-form__submit--border-glow,
+	.airo-wp-form__submit--slide-left,
+	.airo-wp-form__submit--slide-right,
+	.airo-wp-form__submit--slide-down,
+	.airo-wp-form__submit--slide-up,
+	.airo-wp-form__submit--loading,
+	.airo-wp-form__submit--no-hover
+) {
 	background-color: var(--airo-wp-button-hover-bg) !important;
 	opacity: 1;
 	transition: background-color 0.3s ease;

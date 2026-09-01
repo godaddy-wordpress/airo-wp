@@ -49,7 +49,8 @@ export default function Save({ attributes }) {
 				),
 			}),
 			...(activeTabColor && {
-				'--airo-wp-tab-color-active': convertColorToCSSVar(activeTabColor),
+				'--airo-wp-tab-color-active':
+					convertColorToCSSVar(activeTabColor),
 			}),
 			...(activeTabBackgroundColor && {
 				'--airo-wp-tab-bg-active': convertColorToCSSVar(
@@ -57,10 +58,12 @@ export default function Save({ attributes }) {
 				),
 			}),
 			...(tabBorderColor && {
-				'--airo-wp-tab-border-color': convertColorToCSSVar(tabBorderColor),
+				'--airo-wp-tab-border-color':
+					convertColorToCSSVar(tabBorderColor),
 			}),
 			...(tabHoverColor && {
-				'--airo-wp-tab-color-hover': convertColorToCSSVar(tabHoverColor),
+				'--airo-wp-tab-color-hover':
+					convertColorToCSSVar(tabHoverColor),
 			}),
 			...(tabHoverBackgroundColor && {
 				'--airo-wp-tab-bg-hover': convertColorToCSSVar(

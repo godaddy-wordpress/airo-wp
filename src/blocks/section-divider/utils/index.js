@@ -9,6 +9,7 @@
  * @since 2.7.0
  */
 import { convertColorToCSSVar } from '../../../utils/convert-preset-to-css-var';
+import { isExplicitShapeSize } from '../../../utils/shape-size';
 
 export {
 	getShapeDividerOptions,
@@ -31,14 +32,27 @@ export function getDividerStyle(attributes) {
 	const style = {};
 
 	if (fillColor) {
-		style['--airo-wp-section-divider-fill'] = convertColorToCSSVar(fillColor);
+		style['--airo-wp-section-divider-fill'] =
+			convertColorToCSSVar(fillColor);
 	}
 
-	if (typeof height === 'number') {
+	// Height and width are nullable: unset means "inherit the theme.json token"
+	// (settings.custom.airowp.shapeDivider.{height,width}, resolved by the
+	// shared `_shape-size.scss` cascade), so the var is emitted only for an
+	// explicit author value — including one equal to the plugin default, which
+	// is how an author pins a divider against a theme token saying otherwise.
+	//
+	// `isExplicitShapeSize` rather than a bare `typeof === 'number'`: that is
+	// also true of 0, negatives and NaN, which would serialize a meaningless
+	// `--airo-wp-shape-height:NaNpx`. Shared with the Section block so both agree
+	// on what counts as authored. Unlike that block this does NOT clamp — this
+	// divider is its own box, so an out-of-range hand-authored size is harmless
+	// and rewriting it would invalidate stored content for no benefit.
+	if (isExplicitShapeSize(height)) {
 		style['--airo-wp-shape-height'] = `${height}px`;
 	}
 
-	if (width !== 100) {
+	if (isExplicitShapeSize(width)) {
 		style['--airo-wp-shape-width'] = `${width}%`;
 	}
 

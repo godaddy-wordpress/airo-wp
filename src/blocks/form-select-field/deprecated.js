@@ -75,7 +75,8 @@ const vStatic = {
 		// Any stored static select field carries this wrapper class; the
 		// dynamic block saves no inner HTML, so it never matches.
 		return (
-			Boolean(innerHTML) && innerHTML.includes('airo-wp-form-field--select')
+			Boolean(innerHTML) &&
+			innerHTML.includes('airo-wp-form-field--select')
 		);
 	},
 
@@ -147,7 +148,10 @@ const vStatic = {
 				</select>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}
@@ -286,7 +290,10 @@ const v2 = {
 				</select>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}
@@ -426,7 +433,10 @@ const v1 = {
 				</select>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

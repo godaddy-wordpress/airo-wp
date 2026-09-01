@@ -165,10 +165,7 @@ export default function ProductCategoriesGridEdit({
 							isShownByDefault
 						>
 							<ToggleControl
-								label={__(
-									'Show Empty Categories',
-									'airo-wp'
-								)}
+								label={__('Show Empty Categories', 'airo-wp')}
 								checked={showEmpty}
 								onChange={(value) =>
 									setAttributes({ showEmpty: value })

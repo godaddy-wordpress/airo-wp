@@ -390,10 +390,14 @@ class DSGTableOfContents {
 		this.element
 			.querySelectorAll('.airo-wp-table-of-contents__link')
 			.forEach((link) => {
-				link.classList.remove('airo-wp-table-of-contents__link--active');
+				link.classList.remove(
+					'airo-wp-table-of-contents__link--active'
+				);
 				const li = link.closest('li');
 				if (li) {
-					li.classList.remove('airo-wp-table-of-contents__item--active');
+					li.classList.remove(
+						'airo-wp-table-of-contents__item--active'
+					);
 				}
 			});
 

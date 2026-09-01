@@ -92,7 +92,8 @@ export default function RowSave({ attributes }) {
 					convertColorToCSSVar(hoverBackgroundColor),
 			}),
 			...(hoverTextColor && {
-				'--airo-wp-hover-text-color': convertColorToCSSVar(hoverTextColor),
+				'--airo-wp-hover-text-color':
+					convertColorToCSSVar(hoverTextColor),
 			}),
 			...(hoverIconBackgroundColor && {
 				'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(

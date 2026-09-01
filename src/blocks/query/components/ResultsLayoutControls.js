@@ -85,10 +85,7 @@ export default function ResultsLayoutControls({
 			>
 				<RangeControl
 					label={__('Columns (tablet)', 'airo-wp')}
-					help={__(
-						'0 inherits the desktop column count.',
-						'airo-wp'
-					)}
+					help={__('0 inherits the desktop column count.', 'airo-wp')}
 					value={a.columnsTablet || 0}
 					min={0}
 					max={6}

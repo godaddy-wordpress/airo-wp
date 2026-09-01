@@ -41,7 +41,10 @@ describe('hoverVariationClasses', () => {
 
 	test('maps hover-button variation to the given block prefix', () => {
 		expect(
-			hoverVariationClasses('is-style-hover-button-accent', 'airo-wp-stack')
+			hoverVariationClasses(
+				'is-style-hover-button-accent',
+				'airo-wp-stack'
+			)
 		).toEqual(['airo-wp-stack--has-hover-button']);
 	});
 
@@ -51,12 +54,15 @@ describe('hoverVariationClasses', () => {
 				'is-style-hover-text-light is-style-hover-icon-blue',
 				'airo-wp-flex'
 			)
-		).toEqual(['airo-wp-flex--has-hover-text', 'airo-wp-flex--has-hover-icon']);
+		).toEqual([
+			'airo-wp-flex--has-hover-text',
+			'airo-wp-flex--has-hover-icon',
+		]);
 	});
 
 	test('ignores unrelated classNames', () => {
-		expect(hoverVariationClasses('is-style-rounded', 'airo-wp-flex')).toEqual(
-			[]
-		);
+		expect(
+			hoverVariationClasses('is-style-rounded', 'airo-wp-flex')
+		).toEqual([]);
 	});
 });

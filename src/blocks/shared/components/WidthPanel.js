@@ -40,10 +40,7 @@ export function WidthPanel({
 				onChange={(value) => setAttributes({ constrainWidth: value })}
 				help={
 					constrainWidth
-						? __(
-								'Content is constrained to max width',
-								'airo-wp'
-							)
+						? __('Content is constrained to max width', 'airo-wp')
 						: __('Content uses full container width', 'airo-wp')
 				}
 				__nextHasNoMarginBottom

@@ -57,9 +57,7 @@ export default function FlipCardEdit({ attributes, setAttributes, clientId }) {
 			).length;
 			// Empty array hides the inserter entirely — flip card is at capacity.
 			const allowed =
-				legacyCount + faceCount >= 2
-					? []
-					: ['airo-wp/flip-card-face'];
+				legacyCount + faceCount >= 2 ? [] : ['airo-wp/flip-card-face'];
 			return {
 				allowedBlocks: allowed,
 				hasInnerBlocks: children.length > 0,
@@ -176,10 +174,7 @@ export default function FlipCardEdit({ attributes, setAttributes, clientId }) {
 							value={flipEffect}
 							options={[
 								{
-									label: __(
-										'Flip (3D Rotation)',
-										'airo-wp'
-									),
+									label: __('Flip (3D Rotation)', 'airo-wp'),
 									value: 'flip',
 								},
 								{
@@ -270,10 +265,7 @@ export default function FlipCardEdit({ attributes, setAttributes, clientId }) {
 							min={0.1}
 							max={3}
 							step={0.1}
-							help={__(
-								'Speed of the flip animation',
-								'airo-wp'
-							)}
+							help={__('Speed of the flip animation', 'airo-wp')}
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>

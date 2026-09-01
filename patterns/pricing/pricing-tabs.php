@@ -80,7 +80,7 @@ return array(
 <!-- /wp:airo-wp/icon-list-item --></div></div>
 <!-- /wp:airo-wp/icon-list -->
 
-<!-- wp:airo-wp/icon-button {"text":"Get Started","iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
+<!-- wp:airo-wp/icon-button {"iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-base-color has-contrast-background-color has-text-color has-background has-link-color" type="button"><span class="airo-wp-icon-button__text">Get Started</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section -->
@@ -142,7 +142,7 @@ return array(
 <!-- /wp:airo-wp/icon-list-item --></div></div>
 <!-- /wp:airo-wp/icon-list -->
 
-<!-- wp:airo-wp/icon-button {"text":"Get Started","iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
+<!-- wp:airo-wp/icon-button {"iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-base-color has-contrast-background-color has-text-color has-background has-link-color" type="button"><span class="airo-wp-icon-button__text">Get Started</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section -->
@@ -202,7 +202,7 @@ return array(
 <!-- /wp:airo-wp/icon-list-item --></div></div>
 <!-- /wp:airo-wp/icon-list -->
 
-<!-- wp:airo-wp/icon-button {"text":"Contact Sales","iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
+<!-- wp:airo-wp/icon-button {"iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-base-color has-contrast-background-color has-text-color has-background has-link-color" type="button"><span class="airo-wp-icon-button__text">Contact Sales</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section --></div></div>
@@ -262,7 +262,7 @@ return array(
 <!-- /wp:airo-wp/icon-list-item --></div></div>
 <!-- /wp:airo-wp/icon-list -->
 
-<!-- wp:airo-wp/icon-button {"text":"Get Started","iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
+<!-- wp:airo-wp/icon-button {"iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-base-color has-contrast-background-color has-text-color has-background has-link-color" type="button"><span class="airo-wp-icon-button__text">Get Started</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section -->
@@ -326,7 +326,7 @@ return array(
 <!-- /wp:airo-wp/icon-list-item --></div></div>
 <!-- /wp:airo-wp/icon-list -->
 
-<!-- wp:airo-wp/icon-button {"text":"Get Started","iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
+<!-- wp:airo-wp/icon-button {"iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-base-color has-contrast-background-color has-text-color has-background has-link-color" type="button"><span class="airo-wp-icon-button__text">Get Started</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section -->
@@ -388,7 +388,7 @@ return array(
 <!-- /wp:airo-wp/icon-list-item --></div></div>
 <!-- /wp:airo-wp/icon-list -->
 
-<!-- wp:airo-wp/icon-button {"text":"Contact Sales","iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
+<!-- wp:airo-wp/icon-button {"iconPosition":"none","iconGap":"8px","backgroundColor":"contrast","textColor":"base","style":{"elements":{"link":{"color":{"text":"var:preset|color|base"}}}}} -->
 <div class="wp-block-airo-wp-icon-button airo-wp-justify airo-wp-justify--left"><button class="airo-wp-icon-button wp-block-button wp-block-button__link wp-element-button has-base-color has-contrast-background-color has-text-color has-background has-link-color" type="button"><span class="airo-wp-icon-button__text">Contact Sales</span></button></div>
 <!-- /wp:airo-wp/icon-button --></div></div>
 <!-- /wp:airo-wp/section --></div></div>

@@ -201,4 +201,4 @@ Potential future features:
 
 ## Support
 
-For issues or feature requests, please visit the [GitHub repository](https://github.com/jnealey-godaddy/designsetgo).
+For issues or feature requests, please visit the [GitHub repository](https://github.com/godaddy-wordpress/airo-wp).

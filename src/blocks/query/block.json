@@ -35,7 +35,8 @@
   "providesContext": {
     "airo-wp/queryId": "queryId",
     "airo-wp/querySource": "source",
-    "airo-wp/queryPostType": "postType"
+    "airo-wp/queryPostType": "postType",
+    "airo-wp/queryTaxQuery": "taxQuery"
   },
   "attributes": {
     "queryId": { "type": "string", "default": "" },
@@ -43,6 +44,10 @@
     "relationshipField": { "type": "string", "default": "" },
     "relationshipFallback": { "type": "string", "default": "empty", "enum": ["empty", "all", "parent"] },
     "postType": { "type": "string", "default": "post" },
+    "wooCatalogVisibility": { "type": "boolean", "default": true },
+    "wooFeatured": { "type": "boolean", "default": false },
+    "wooOnSale": { "type": "boolean", "default": false },
+    "wooStockStatus": { "type": "array", "default": [] },
     "perPage": { "type": "number", "default": 6 },
     "offset": { "type": "number", "default": 0 },
     "orderBy": { "type": "string", "default": "date" },

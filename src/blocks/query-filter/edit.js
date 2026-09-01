@@ -285,10 +285,7 @@ export default function QueryFilterEdit({
 
 					{showCountsControl && (
 						<DsgoInspectorPanel.Item
-							label={__(
-								'Show counts next to options',
-								'airo-wp'
-							)}
+							label={__('Show counts next to options', 'airo-wp')}
 							hasValue={() => showCounts !== true}
 							onDeselect={() =>
 								setAttributes({ showCounts: true })

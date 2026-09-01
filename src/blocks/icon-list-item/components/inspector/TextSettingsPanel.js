@@ -24,10 +24,7 @@ export const TextSettingsPanel = ({
 	setAttributes,
 }) => {
 	return (
-		<PanelBody
-			title={__('Text Settings', 'airo-wp')}
-			initialOpen={false}
-		>
+		<PanelBody title={__('Text Settings', 'airo-wp')} initialOpen={false}>
 			<SelectControl
 				label={__('Title Tag', 'airo-wp')}
 				value={titleTag}

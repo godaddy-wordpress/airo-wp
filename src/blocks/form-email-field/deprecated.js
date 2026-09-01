@@ -48,7 +48,8 @@ const vStatic = {
 		// Any stored static email field carries this wrapper class; the dynamic
 		// block saves no inner HTML, so it never matches.
 		return (
-			Boolean(innerHTML) && innerHTML.includes('airo-wp-form-field--email')
+			Boolean(innerHTML) &&
+			innerHTML.includes('airo-wp-form-field--email')
 		);
 	},
 
@@ -113,7 +114,10 @@ const vStatic = {
 				/>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}
@@ -234,7 +238,10 @@ const v1 = {
 				/>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

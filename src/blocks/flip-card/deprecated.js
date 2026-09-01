@@ -57,7 +57,9 @@ const v1 = {
 	},
 	isEligible(attributes, innerBlocks, extra) {
 		const html = getDeprecatedBlockHTML(extra);
-		return html.includes('airo-wp-flip-card') && html.includes('width:100%');
+		return (
+			html.includes('airo-wp-flip-card') && html.includes('width:100%')
+		);
 	},
 	migrate(attributes) {
 		// Markup-only change.

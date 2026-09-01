@@ -76,7 +76,11 @@
 		}
 	},
 	"selectors": {
-		"root": ".wp-block-airo-wp-icon-button .airo-wp-icon-button"
+		"root": ".wp-block-airo-wp-icon-button .airo-wp-icon-button",
+		"spacing": {
+			"root": ".wp-block-airo-wp-icon-button .airo-wp-icon-button",
+			"margin": ".wp-block-airo-wp-icon-button"
+		}
 	},
 	"attributes": {
 		"justification": {
@@ -90,6 +94,8 @@
 		},
 		"text": {
 			"type": "string",
+			"source": "html",
+			"selector": ".airo-wp-icon-button__text",
 			"default": ""
 		},
 		"url": {

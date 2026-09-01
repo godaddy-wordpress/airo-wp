@@ -36,8 +36,9 @@ export default defineConfig( {
 		trace: 'retain-on-failure',
 		screenshot: 'only-on-failure',
 		video: 'on',
-		// Chromium refuses its sandbox as root. The e2e Docker image sets
-		// AIRO_WP_CHROMIUM_NO_SANDBOX=1; host runs and CI's non-root runner stay sandboxed.
+		// Chromium refuses its sandbox as root. Container runs that execute as root
+		// set AIRO_WP_CHROMIUM_NO_SANDBOX=1; host runs and CI's non-root runner
+		// stay sandboxed.
 		launchOptions: process.env.AIRO_WP_CHROMIUM_NO_SANDBOX
 			? { args: [ '--no-sandbox' ] }
 			: {},

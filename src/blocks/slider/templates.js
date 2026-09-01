@@ -99,10 +99,7 @@ const sliderTemplates = [
 	{
 		name: 'testimonial',
 		title: __('Testimonial', 'airo-wp'),
-		description: __(
-			'Three quote-style slides for social proof',
-			'airo-wp'
-		),
+		description: __('Three quote-style slides for social proof', 'airo-wp'),
 		icon: 'format-quote',
 		attributes: {
 			slidesPerView: 1,

@@ -1,0 +1,25 @@
+/**
+ * SVG Patterns Extension - Frontend Styles
+ *
+ * @package airo-wp
+ */
+
+.has-airo-wp-svg-pattern {
+	position: relative;
+	isolation: isolate;
+
+	// Pattern overlay via pseudo-element — sits behind content at z-index -1,
+	// consistent with expanding-background extension approach
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+		border-radius: inherit;
+		background-image: var(--airo-wp-svg-pattern-image, none);
+		background-size: var(--airo-wp-svg-pattern-size, auto);
+		background-repeat: repeat;
+		background-attachment: var(--airo-wp-svg-pattern-attachment, scroll);
+	}
+}

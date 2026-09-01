@@ -3,6 +3,34 @@
  */
 
 .airo-wp-advanced-heading {
+	// `screen-reader-text` ships in core's common.css, but a theme that
+	// dequeues wp-block-library would turn the rotating-word summary into
+	// visible duplicate copy. Scoped copy, same as the chart block.
+	/* stylelint-disable-next-line selector-class-pattern */
+	.screen-reader-text {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border-width: 0;
+	}
+
+
+	.airo-wp-advanced-heading__link {
+		color: inherit;
+		display: block;
+		text-decoration: inherit;
+	}
+
+	.airo-wp-advanced-heading__link:focus-visible {
+		outline: 2px solid currentcolor;
+		outline-offset: 0.15em;
+	}
+
 	// Reset margin on the heading element itself — spacing
 	// is handled by WordPress Block Supports on the wrapper
 	.airo-wp-advanced-heading__inner {
@@ -14,6 +42,72 @@
 	// together as one heading; editor block-gap control can override
 	.airo-wp-heading-segment + .airo-wp-heading-segment {
 		margin-inline-start: var(--airo-wp-segment-gap, 0);
+	}
+
+	.airo-wp-advanced-heading__inner--rotating .airo-wp-heading-segment__animated.is-active {
+		display: inline-block;
+		// Negative inset expands the clip rect past the border box, so the
+		// clip-path effects stop cutting ascenders and descenders.
+		--airo-wp-headline-bleed: -0.3em;
+		animation-duration: var(--airo-wp-animated-headline-duration, 2500ms);
+		animation-delay: var(--airo-wp-animated-headline-delay, 0ms);
+		animation-iteration-count: infinite;
+		animation-timing-function: ease;
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-loop='false'] .airo-wp-heading-segment__animated {
+		animation-iteration-count: 1;
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-effect='typing'] .airo-wp-heading-segment__animated.is-active {
+		animation-name: airo-wp-animated-headline-typing;
+		// jump-none paints both ends of the range. steps(n, end) reaches the
+		// final value only at exactly t=1, and an infinite animation restarts
+		// at that instant -- so the last 1/n of the word was never drawn.
+		// The step count is the word's character count, set by view.js, so a
+		// step reveals a character rather than a fraction of the width.
+		animation-timing-function: steps(var(--airo-wp-typing-steps, 12), jump-none);
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-effect='clip'] .airo-wp-heading-segment__animated.is-active {
+		animation-name: airo-wp-animated-headline-clip;
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-effect='flip'] .airo-wp-heading-segment__animated.is-active {
+		animation-name: airo-wp-animated-headline-flip;
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-effect='swirl'] .airo-wp-heading-segment__animated.is-active {
+		animation-name: airo-wp-animated-headline-swirl;
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-effect='blinds'] .airo-wp-heading-segment__animated.is-active {
+		animation-name: airo-wp-animated-headline-blinds;
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-effect='drop-in'] .airo-wp-heading-segment__animated.is-active {
+		animation-name: airo-wp-animated-headline-drop-in;
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-effect='wave'] .airo-wp-heading-segment__animated.is-active {
+		animation-name: airo-wp-animated-headline-wave;
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-effect='slide'] .airo-wp-heading-segment__animated.is-active {
+		animation-name: airo-wp-animated-headline-slide;
+	}
+
+	.airo-wp-advanced-heading__inner--rotating[data-airo-wp-animated-headline-effect='slide-down'] .airo-wp-heading-segment__animated.is-active {
+		animation-name: airo-wp-animated-headline-slide-down;
+	}
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-advanced-heading .airo-wp-advanced-heading__inner--rotating .airo-wp-heading-segment__animated.is-active {
+		animation: none;
+		transition: none;
 	}
 }
 
@@ -28,4 +122,77 @@
 
 .airo-wp-advanced-heading.has-text-align-right .airo-wp-advanced-heading__inner {
 	text-align: right;
+}
+
+// clip-path: inset() clips to the border box, which for an inline-block is
+// the line box -- shorter than the glyphs actually paint. Without a vertical
+// bleed the effects below shave descenders and accents off every word.
+@keyframes airo-wp-animated-headline-typing {
+
+	from { clip-path: inset(var(--airo-wp-headline-bleed) 100% var(--airo-wp-headline-bleed) 0); }
+
+	to { clip-path: inset(var(--airo-wp-headline-bleed) 0 var(--airo-wp-headline-bleed) 0); }
+}
+
+@keyframes airo-wp-animated-headline-clip {
+
+	from { clip-path: inset(var(--airo-wp-headline-bleed) 50% var(--airo-wp-headline-bleed) 50%); }
+
+	to { clip-path: inset(var(--airo-wp-headline-bleed) 0 var(--airo-wp-headline-bleed) 0); }
+}
+
+@keyframes airo-wp-animated-headline-flip {
+
+	from { opacity: 0; transform: rotateX(-90deg); }
+
+	to { opacity: 1; transform: rotateX(0); }
+}
+
+@keyframes airo-wp-animated-headline-swirl {
+
+	from { opacity: 0; transform: rotate(-12deg) scale(0.8); }
+
+	to { opacity: 1; transform: rotate(0) scale(1); }
+}
+
+@keyframes airo-wp-animated-headline-blinds {
+
+	from { clip-path: inset(var(--airo-wp-headline-bleed) 0 100% 0); }
+
+	to { clip-path: inset(var(--airo-wp-headline-bleed) 0 var(--airo-wp-headline-bleed) 0); }
+}
+
+@keyframes airo-wp-animated-headline-drop-in {
+
+	from { opacity: 0; transform: translateY(-0.5em); }
+
+	to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes airo-wp-animated-headline-wave {
+
+	from { opacity: 0; transform: translateY(0.25em) rotate(3deg); }
+
+	to { opacity: 1; transform: translateY(0) rotate(0); }
+}
+
+@keyframes airo-wp-animated-headline-slide {
+
+	from { opacity: 0; transform: translateX(-0.5em); }
+
+	to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes airo-wp-animated-headline-slide-down {
+
+	from { opacity: 0; transform: translateY(-0.5em); }
+
+	to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-advanced-heading .airo-wp-advanced-heading__inner--rotating .airo-wp-heading-segment__animated {
+		animation: none;
+	}
 }

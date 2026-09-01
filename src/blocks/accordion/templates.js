@@ -59,10 +59,7 @@ const accordionTemplates = [
 			[
 				'airo-wp/accordion-item',
 				{
-					title: __(
-						'How do I cancel my subscription?',
-						'airo-wp'
-					),
+					title: __('How do I cancel my subscription?', 'airo-wp'),
 				},
 				[
 					[
@@ -156,10 +153,7 @@ const accordionTemplates = [
 	{
 		name: 'icon-list',
 		title: __('Icon List', 'airo-wp'),
-		description: __(
-			'Compact list with icons and short blurbs',
-			'airo-wp'
-		),
+		description: __('Compact list with icons and short blurbs', 'airo-wp'),
 		icon: 'list-view',
 		attributes: {
 			iconStyle: 'caret',

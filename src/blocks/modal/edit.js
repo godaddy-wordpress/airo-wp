@@ -32,6 +32,7 @@ import {
 	decodeColorValue,
 } from '../../utils/encode-color-value';
 import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+import { hasExplicitString } from '../../utils/has-explicit-value';
 
 export default function ModalEdit({ attributes, setAttributes, clientId }) {
 	const {
@@ -48,6 +49,7 @@ export default function ModalEdit({ attributes, setAttributes, clientId }) {
 		closeButtonLabel,
 		closeButtonIconColor,
 		closeButtonBgColor,
+		displayMode,
 	} = attributes;
 
 	useUniqueBlockId({
@@ -105,14 +107,16 @@ export default function ModalEdit({ attributes, setAttributes, clientId }) {
 		className: 'airo-wp-modal-editor-preview',
 	});
 
-	// Transfer block support styles from wrapper to content using shared utility
+	// Transfer block support styles from wrapper to content using shared utility.
+	// MUST MATCH save.js: panel mode writes no inline dimensions, because the
+	// panel is sized by panelSize on the dialog.
 	const { contentStyle, wrapperProps, contentClasses } =
-		transferStylesToContent(blockProps, {
-			width,
-			maxWidth,
-			height,
-			maxHeight,
-		});
+		transferStylesToContent(
+			blockProps,
+			'panel' === displayMode
+				? {}
+				: { width, maxWidth, height, maxHeight }
+		);
 
 	const innerBlocksProps = useInnerBlocksProps(
 		{
@@ -160,6 +164,9 @@ export default function ModalEdit({ attributes, setAttributes, clientId }) {
 							maxWidth: '90vw',
 							height: 'auto',
 							maxHeight: '90vh',
+							displayMode: 'dialog',
+							panelEdge: 'right',
+							panelSize: '24rem',
 							animationType: 'fade',
 							animationDuration: 300,
 							overlayOpacity: 80,
@@ -236,13 +243,16 @@ export default function ModalEdit({ attributes, setAttributes, clientId }) {
 							),
 							onColorChange: (color) =>
 								setAttributes({
+									// Clearing the color removes the attribute
+									// so the backdrop inherits the stylesheet
+									// default (theme token → black).
 									overlayColor:
 										encodeColorValue(
 											color,
 											colorGradientSettings
-										) || '#000000',
+										) || undefined,
 								}),
-							clearable: false,
+							clearable: true,
 							enableAlpha: true,
 						},
 						{
@@ -288,7 +298,11 @@ export default function ModalEdit({ attributes, setAttributes, clientId }) {
 				<div
 					className="airo-wp-modal-editor-preview__backdrop"
 					style={{
-						backgroundColor: convertColorToCSSVar(overlayColor),
+						// MUST MATCH save.js: color only when explicitly set,
+						// else the stylesheet default owns it.
+						...(hasExplicitString(overlayColor) && {
+							backgroundColor: convertColorToCSSVar(overlayColor),
+						}),
 						opacity: overlayOpacity / 100,
 					}}
 				/>

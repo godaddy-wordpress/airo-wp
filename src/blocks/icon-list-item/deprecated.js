@@ -106,12 +106,10 @@ const v4 = {
 		const iconColor = context['airo-wp/iconList/iconColor'] || '';
 		const iconBackgroundColor =
 			context['airo-wp/iconList/iconBackgroundColor'] || '';
-		const iconPosition =
-			context['airo-wp/iconList/iconPosition'] || 'left';
+		const iconPosition = context['airo-wp/iconList/iconPosition'] || 'left';
 		const iconVerticalAlignment =
 			context['airo-wp/iconList/iconVerticalAlignment'] || 'top';
-		const ctxIconStyle =
-			context['airo-wp/iconList/iconStyle'] || undefined;
+		const ctxIconStyle = context['airo-wp/iconList/iconStyle'] || undefined;
 		const ctxStrokeWidth = context['airo-wp/iconList/strokeWidth'];
 
 		const getTextAlign = () => {
@@ -233,7 +231,10 @@ const v3 = {
 		// content area accepts arbitrary nested blocks, and matching their inline
 		// styles could false-migrate a valid current item if some nested block
 		// ever emits align-items directly followed by gap.
-		const openingTag = getOwnOpeningTag(innerHTML, 'airo-wp-icon-list-item');
+		const openingTag = getOwnOpeningTag(
+			innerHTML,
+			'airo-wp-icon-list-item'
+		);
 		if (!openingTag) {
 			return false;
 		}
@@ -254,12 +255,10 @@ const v3 = {
 		const iconColor = context['airo-wp/iconList/iconColor'] || '';
 		const iconBackgroundColor =
 			context['airo-wp/iconList/iconBackgroundColor'] || '';
-		const iconPosition =
-			context['airo-wp/iconList/iconPosition'] || 'left';
+		const iconPosition = context['airo-wp/iconList/iconPosition'] || 'left';
 		const iconVerticalAlignment =
 			context['airo-wp/iconList/iconVerticalAlignment'] || 'top';
-		const ctxIconStyle =
-			context['airo-wp/iconList/iconStyle'] || undefined;
+		const ctxIconStyle = context['airo-wp/iconList/iconStyle'] || undefined;
 		const ctxStrokeWidth = context['airo-wp/iconList/strokeWidth'];
 
 		const getTextAlign = () => {
@@ -441,8 +440,7 @@ const v2 = {
 		const iconColor = context['airo-wp/iconList/iconColor'] || '';
 		const iconBackgroundColor =
 			context['airo-wp/iconList/iconBackgroundColor'] || '';
-		const iconPosition =
-			context['airo-wp/iconList/iconPosition'] || 'left';
+		const iconPosition = context['airo-wp/iconList/iconPosition'] || 'left';
 		const iconVerticalAlignment =
 			context['airo-wp/iconList/iconVerticalAlignment'] || 'top';
 
@@ -586,8 +584,7 @@ const v1 = {
 		const iconColor = context['airo-wp/iconList/iconColor'] || '';
 		const iconBackgroundColor =
 			context['airo-wp/iconList/iconBackgroundColor'] || '';
-		const iconPosition =
-			context['airo-wp/iconList/iconPosition'] || 'left';
+		const iconPosition = context['airo-wp/iconList/iconPosition'] || 'left';
 
 		// Calculate text alignment based on icon position
 		const getTextAlign = () => {

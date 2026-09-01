@@ -31,10 +31,7 @@ export const LinkSettingsPanel = ({
 	setAttributes,
 }) => {
 	return (
-		<PanelBody
-			title={__('Link Settings', 'airo-wp')}
-			initialOpen={false}
-		>
+		<PanelBody title={__('Link Settings', 'airo-wp')} initialOpen={false}>
 			<TextControl
 				label={__('URL', 'airo-wp')}
 				value={linkUrl}

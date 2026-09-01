@@ -1,0 +1,216 @@
+name: Release Artifact
+
+# Builds the distributable zip on every merge to main and attaches it to a GitHub
+# Release tagged v<version>.
+#
+# Why this exists: the repository ships no vendor/ and no dist/. Both are generated
+# at build time. So GitHub's own source zipball is NOT an installable plugin —
+# airo-wp.php returns early with no autoloader and no blocks register. Anyone who
+# "downloads the code" gets a dead plugin. This workflow produces the one artifact
+# that is actually installable, and is what the Git Updater headers in airo-wp.php
+# point at (Release Asset: true).
+#
+# It does NOT publish to WordPress.org. That is publish-plugin.yml, dispatched
+# manually against the tag this workflow creates.
+#
+# Note for anyone extending this: the tag created below is pushed with GITHUB_TOKEN,
+# and GitHub does not start workflow runs for events raised by GITHUB_TOKEN. So this
+# tag fires NO `push: tags:` trigger anywhere. That is fine — publishing is
+# deliberately manual — but do not add a tag trigger to publish-plugin.yml and
+# expect it to work. It would never run, and the failure would be silence.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-artifact
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release artifact
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+
+          VERSION=$(node -p "require('./package.json').version")
+
+          # Accept a stable x.y.z or a pre-release x.y.z-<suffix> (beta1, rc1).
+          if ! printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::Version '${VERSION}' in package.json is not x.y.z or x.y.z-<pre-release>."
+            exit 1
+          fi
+
+          # A hyphen means a pre-release. Flagging the GitHub Release keeps it out of
+          # Git Updater's "latest", which is the same containment readme.txt's
+          # Stable tag gives us on WordPress.org.
+          if printf '%s' "${VERSION}" | grep -q -- '-'; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+
+          echo "version=${VERSION}"       >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "Version ${VERSION} (prerelease=${PRERELEASE})"
+
+      # Not an error: main can be pushed for reasons that do not bump the version
+      # (a docs commit, a revert, a re-run of this workflow). Only a NEW version is
+      # a new release, so an existing tag means there is nothing to do.
+      - name: Check whether this version is already released
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if gh api "repos/${GITHUB_REPOSITORY}/git/refs/tags/v${VERSION}" --silent 2>/dev/null; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Tag v${VERSION} already exists — nothing to release."
+            echo "Tag \`v${VERSION}\` already exists; no new release." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "Tag v${VERSION} is free — will build and release."
+          fi
+
+      # Creating a tag and a Release needs contents: write, which is declared above
+      # but only actually granted if the repository allows it (Settings -> Actions ->
+      # General -> Workflow permissions). Surface a likely problem now rather than
+      # after several minutes of building.
+      #
+      # Deliberately a warning, not a failure: this reads the authenticated actor's
+      # push permission, and if that ever reports false for a token that can in fact
+      # write, a hard gate here would block every release for no reason. The
+      # authoritative check is the release step itself, which fails loudly.
+      - name: Warn early if the token looks unable to write
+        if: steps.gate.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          can_push=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.permissions.push // false' 2>/dev/null || echo unknown)
+          if [ "${can_push}" = "true" ]; then
+            echo "Token reports write access."
+          else
+            echo "::warning::Token write access reported as '${can_push}'. If the release step fails with a 403, set Settings -> Actions -> General -> Workflow permissions to 'Read and write permissions'."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.release == 'true'
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+        if: steps.gate.outputs.release == 'true'
+
+      # Runs wp-scripts build (populates dist/) then build-zip.mjs, which runs
+      # composer install --no-dev to generate vendor/ and the Strauss-prefixed
+      # dependencies/, and zips per the package.json "files" allowlist.
+      - name: Build distributable zip
+        if: steps.gate.outputs.release == 'true'
+        run: npm run build:zip
+
+      # The whole point of the release asset is that it is installable, so assert
+      # that before publishing rather than discovering it from a bug report. A zip
+      # missing either of these installs as a dead plugin: no autoloader means
+      # airo-wp.php returns early, no dist/blocks/ means nothing registers.
+      - name: Verify the artifact is installable
+        if: steps.gate.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          ZIP="builds/airo-wp-${VERSION}.zip"
+
+          if [ ! -f "${ZIP}" ]; then
+            echo "::error::${ZIP} was not produced by npm run build:zip."
+            exit 1
+          fi
+
+          manifest=$(unzip -Z1 "${ZIP}")
+
+          if ! printf '%s\n' "${manifest}" | grep -qx 'airo-wp/vendor/autoload.php'; then
+            echo "::error::${ZIP} has no vendor/autoload.php. The plugin would load nothing."
+            exit 1
+          fi
+
+          block_count=$(printf '%s\n' "${manifest}" | grep -c '^airo-wp/dist/blocks/.*/block\.json$' || true)
+          if [ "${block_count}" -eq 0 ]; then
+            echo "::error::${ZIP} contains no dist/blocks/*/block.json. No blocks would register."
+            exit 1
+          fi
+
+          # .wordpress-org/ is plugin-directory artwork and belongs in SVN assets/,
+          # never inside the plugin users install.
+          if printf '%s\n' "${manifest}" | grep -q '\.wordpress-org'; then
+            echo "::error::${ZIP} contains .wordpress-org/, which must never ship inside the plugin."
+            exit 1
+          fi
+
+          echo "Artifact OK: autoloader present, ${block_count} block.json files."
+
+      - name: Create tag and GitHub Release
+        if: steps.gate.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+
+          ZIP="builds/airo-wp-${VERSION}.zip"
+
+          # gh release create makes the tag at the current commit, so there is no
+          # separate tagging step to keep in sync with it.
+          FLAGS=(--title "v${VERSION}" --generate-notes)
+          if [ "${PRERELEASE}" = "true" ]; then
+            FLAGS+=(--prerelease)
+          fi
+
+          # The authoritative permission check: this is the write itself. A 403 here
+          # almost always means the repository's workflow permissions are read-only,
+          # so say that instead of leaving a bare API error in the log.
+          if ! gh release create "v${VERSION}" "${ZIP}" \
+            --target "${GITHUB_SHA}" \
+            "${FLAGS[@]}"
+          then
+            echo "::error::Could not create release v${VERSION}. If this was a 403, GITHUB_TOKEN lacks contents: write - set Settings -> Actions -> General -> Workflow permissions to 'Read and write permissions'. No tag or release was created, so re-running after fixing it is safe."
+            exit 1
+          fi
+
+          echo "Created release v${VERSION} at ${GITHUB_SHA}"
+
+          {
+            echo "### Release artifact"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Version | \`${VERSION}\` |"
+            echo "| Tag | \`v${VERSION}\` |"
+            echo "| Pre-release | ${PRERELEASE} |"
+            echo "| Asset | \`$(basename "${ZIP}")\` ($(du -k "${ZIP}" | awk '{print $1}') KiB) |"
+            echo
+            echo "Publish to WordPress.org by dispatching \`publish-plugin.yml\` against \`v${VERSION}\`:"
+            echo
+            echo '```bash'
+            echo "gh workflow run publish-plugin.yml --ref v${VERSION} -f dry_run=true"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

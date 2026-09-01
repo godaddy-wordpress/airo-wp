@@ -25,6 +25,7 @@ import {
 	FocalPointPicker,
 	Placeholder,
 	Spinner,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export in @wordpress/components
 	__experimentalHStack as HStack,
 } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
@@ -348,10 +349,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 										>
 											{fallbackId
 												? __('Replace', 'airo-wp')
-												: __(
-														'Select image',
-														'airo-wp'
-													)}
+												: __('Select image', 'airo-wp')}
 										</Button>
 										{fallbackId && (
 											<Button

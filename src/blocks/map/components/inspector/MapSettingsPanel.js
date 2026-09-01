@@ -25,6 +25,27 @@ import { geocodeAddress } from '../../utils/geocoding';
 const DEFAULT_PRIVACY_NOTICE =
 	'This map will load content from external services. Click to load and view the map.';
 
+/**
+ * Help text describing what each provider costs the author.
+ *
+ * @param {string} provider - Current dsgoProvider value.
+ * @return {string} Help text.
+ */
+function providerHelp(provider) {
+	if (provider === 'googlemaps') {
+		return __('Requires a Google Maps API key.', 'airo-wp');
+	}
+
+	if (provider === 'googlemaps-embed') {
+		return __(
+			'No API key needed. Google renders the map in an embedded frame, so the marker icon, marker color, and map style settings do not apply.',
+			'airo-wp'
+		);
+	}
+
+	return __('Privacy-friendly and free to use.', 'airo-wp');
+}
+
 export default function MapSettingsPanel({ attributes, setAttributes }) {
 	const {
 		dsgoProvider,
@@ -40,14 +61,16 @@ export default function MapSettingsPanel({ attributes, setAttributes }) {
 		dsgoPrivacyNotice,
 	} = attributes;
 
+	// Google owns the rendering in embed mode, so the marker and style controls
+	// would be dead UI — hide them rather than let them silently do nothing.
+	const isEmbedProvider = dsgoProvider === 'googlemaps-embed';
+
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchError, setSearchError] = useState('');
 
 	const handleAddressSearch = useCallback(async () => {
 		if (!dsgoAddress || dsgoAddress.trim() === '') {
-			setSearchError(
-				__('Please enter an address to search.', 'airo-wp')
-			);
+			setSearchError(__('Please enter an address to search.', 'airo-wp'));
 			return;
 		}
 
@@ -115,19 +138,13 @@ export default function MapSettingsPanel({ attributes, setAttributes }) {
 							),
 							value: 'googlemaps',
 						},
+						{
+							label: __('Google Maps (No API key)', 'airo-wp'),
+							value: 'googlemaps-embed',
+						},
 					]}
 					onChange={(value) => setAttributes({ dsgoProvider: value })}
-					help={
-						dsgoProvider === 'openstreetmap'
-							? __(
-									'Privacy-friendly and free to use.',
-									'airo-wp'
-								)
-							: __(
-									'Requires a Google Maps API key.',
-									'airo-wp'
-								)
-					}
+					help={providerHelp(dsgoProvider)}
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 				/>
@@ -187,10 +204,7 @@ export default function MapSettingsPanel({ attributes, setAttributes }) {
 						setSearchError('');
 					}}
 					onKeyPress={handleAddressKeyPress}
-					placeholder={__(
-						'Enter an address or location',
-						'airo-wp'
-					)}
+					placeholder={__('Enter an address or location', 'airo-wp')}
 					help={__(
 						'Search for a location to automatically set coordinates.',
 						'airo-wp'
@@ -293,35 +307,34 @@ export default function MapSettingsPanel({ attributes, setAttributes }) {
 					min={1}
 					max={20}
 					step={1}
-					help={__(
-						'1 = world view, 20 = street level.',
-						'airo-wp'
-					)}
+					help={__('1 = world view, 20 = street level.', 'airo-wp')}
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 				/>
 			</DsgoInspectorPanel.Item>
 
-			<DsgoInspectorPanel.Item
-				label={__('Marker Icon', 'airo-wp')}
-				hasValue={() => dsgoMarkerIcon !== '📍'}
-				onDeselect={() => setAttributes({ dsgoMarkerIcon: '📍' })}
-				isShownByDefault
-			>
-				<TextControl
+			{!isEmbedProvider && (
+				<DsgoInspectorPanel.Item
 					label={__('Marker Icon', 'airo-wp')}
-					value={dsgoMarkerIcon}
-					onChange={(value) =>
-						setAttributes({ dsgoMarkerIcon: value || '📍' })
-					}
-					help={__(
-						'Enter an emoji or icon character.',
-						'airo-wp'
-					)}
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-				/>
-			</DsgoInspectorPanel.Item>
+					hasValue={() => dsgoMarkerIcon !== '📍'}
+					onDeselect={() => setAttributes({ dsgoMarkerIcon: '📍' })}
+					isShownByDefault
+				>
+					<TextControl
+						label={__('Marker Icon', 'airo-wp')}
+						value={dsgoMarkerIcon}
+						onChange={(value) =>
+							setAttributes({ dsgoMarkerIcon: value || '📍' })
+						}
+						help={__(
+							'Enter an emoji or icon character.',
+							'airo-wp'
+						)}
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+					/>
+				</DsgoInspectorPanel.Item>
+			)}
 
 			<DsgoInspectorPanel.Item
 				label={__('Aspect Ratio', 'airo-wp')}
@@ -384,10 +397,7 @@ export default function MapSettingsPanel({ attributes, setAttributes }) {
 							{ value: '%', label: '%' },
 							{ value: 'vh', label: 'vh' },
 						]}
-						help={__(
-							'Set a custom height for the map.',
-							'airo-wp'
-						)}
+						help={__('Set a custom height for the map.', 'airo-wp')}
 						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 					/>

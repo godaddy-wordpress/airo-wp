@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.3.4
+
+- Added Git Updater support: `GitHub Plugin URI`, `Primary Branch` and `Release Asset` plugin headers, so the plugin can update itself from this repository's GitHub Releases
+- Every release now attaches a built, installable zip to its GitHub Release — the repository source alone is not installable, because `vendor/` and `dist/` are generated at build time
+- WordPress.org publishing is now dispatched against a version tag rather than a release branch, so a published release is always exactly what CI tested
+
+## 0.3.3
+
+- Maintenance release: documentation corrections and release-tooling fixes only, no user-facing changes
+
+## 0.3.2
+
+- Fixed a fatal error that stopped form fields rendering: the procedural render helpers they call were missing from the synced block source
+- Fixed the MCP tools list being rejected by strict clients: two tools advertised an invalid input schema, which left every tool unavailable
+
+## 0.3.1
+
+- Maintenance release: release-pipeline and test-lane fixes only, no user-facing changes
+
+## 0.3.0
+
+- Added block editor extensions (animations, hover effects, sticky headers, dynamic tags, and more) to the bundled block source
+- Confirmed compatibility with WordPress 7.1
+- Added plugin-directory icon and banner artwork
+
 ## 0.2.5
 
 - Hardened permission checks on four MCP tools

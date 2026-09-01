@@ -26,6 +26,8 @@
 		},
 		"submitButtonText": {
 			"type": "string",
+			"source": "text",
+			"selector": ".airo-wp-form__submit",
 			"default": "Submit"
 		},
 		"submitButtonAlignment": {
@@ -43,6 +45,15 @@
 			"enum": [
 				"below",
 				"inline"
+			]
+		},
+		"submitButtonVariation": {
+			"type": "string",
+			"default": "default",
+			"enum": [
+				"default",
+				"secondary",
+				"outline"
 			]
 		},
 		"ajaxSubmit": {
