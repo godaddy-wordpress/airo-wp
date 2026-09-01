@@ -4,7 +4,7 @@ Tags: airo, godaddy, mcp, ai, block-patterns
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.3.4
+Stable tag: 0.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,6 +70,10 @@ PHP 7.4 is the minimum. PHP 8.3 is the recommended version for local development
 Runtime Composer packages are namespace-prefixed with Strauss into `dependencies/` so they do not clash with other plugins' autoloaders.
 
 == Changelog ==
+
+= 0.3.5 =
+* Reduced the download by 41% — uncompiled block sources are no longer shipped inside the plugin
+* The asset build is now a hard precondition of packaging, so a stale build fails the release instead of shipping a plugin that registers nothing
 
 = 0.3.4 =
 * Added Git Updater support so the plugin can update itself from this repository's GitHub Releases

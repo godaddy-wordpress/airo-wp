@@ -22,7 +22,7 @@
 |---|---|
 | **Plugin name** | Airo WP AI Builder |
 | **Text domain** | `airo-wp` |
-| **Version** | 0.3.4 |
+| **Version** | 0.3.5 |
 | **Requires WordPress** | 6.9+ |
 | **Requires PHP** | 7.4+ |
 | **License** | [GPLv2 or later](https://www.gnu.org/licenses/gpl-2.0.html) |
