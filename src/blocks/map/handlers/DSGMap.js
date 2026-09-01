@@ -85,6 +85,14 @@ export default class DSGMap {
 	 */
 	async loadMap() {
 		try {
+			// The keyless Google provider is a server-rendered iframe. In privacy
+			// mode render.php parks the URL in data-airo-wp-src so nothing reaches
+			// Google until now; there is no JS map library to initialize.
+			if (this.config.provider === 'googlemaps-embed') {
+				this.revealEmbed();
+				return;
+			}
+
 			if (
 				this.config.lat === 0 &&
 				this.config.lng === 0 &&
@@ -135,6 +143,29 @@ export default class DSGMap {
 	}
 
 	/**
+	 * Reveal a parked iframe embed and hide the privacy overlay.
+	 */
+	revealEmbed() {
+		const iframe = this.element.querySelector('.airo-wp-map__iframe');
+		if (iframe && iframe.dataset.dsgoSrc) {
+			iframe.src = iframe.dataset.dsgoSrc;
+			delete iframe.dataset.dsgoSrc;
+		}
+
+		const overlay = this.element.querySelector(
+			'.airo-wp-map__privacy-overlay'
+		);
+		if (overlay) {
+			overlay.style.display = 'none';
+		}
+
+		// Move focus into the map the visitor just asked for.
+		if (iframe && this.config.privacyMode) {
+			iframe.focus();
+		}
+	}
+
+	/**
 	 * Show error message.
 	 *
 	 * @param {string} message - Error message to display.
@@ -170,7 +201,9 @@ export default class DSGMap {
 	destroy() {
 		// Remove privacy mode event listener
 		if (this.config.privacyMode) {
-			const button = this.element.querySelector('.airo-wp-map__load-button');
+			const button = this.element.querySelector(
+				'.airo-wp-map__load-button'
+			);
 			if (button) {
 				button.removeEventListener('click', this.loadMapBound);
 			}

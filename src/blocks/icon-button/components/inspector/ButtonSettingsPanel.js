@@ -153,10 +153,7 @@ export const ButtonSettingsPanel = ({
 						{ label: __('None', 'airo-wp'), value: 'none' },
 					]}
 					onChange={(value) => setAttributes({ iconPosition: value })}
-					help={__(
-						'Position of icon relative to text',
-						'airo-wp'
-					)}
+					help={__('Position of icon relative to text', 'airo-wp')}
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 				/>
@@ -193,10 +190,7 @@ export const ButtonSettingsPanel = ({
 							!iconStyle &&
 							sprintf(
 								/* translators: %s: inherited icon style (Filled or Outlined). */
-								__(
-									'Inheriting theme default (%s).',
-									'airo-wp'
-								),
+								__('Inheriting theme default (%s).', 'airo-wp'),
 								iconDefaults.style === 'outlined'
 									? __('Outlined', 'airo-wp')
 									: __('Filled', 'airo-wp')

@@ -1,6 +1,6 @@
 # Shared native-PHP WordPress provisioning for both e2e suites. POSIX sh,
 # meant to be SOURCED. Requires /opt/wp-core and /opt/sqlite-database-integration
-# (from scripts/setup/e2e.sh). Contract: provision_wp() creates a fresh
+# (staged into the image by the e2e environment setup). Contract: provision_wp() creates a fresh
 # ephemeral install and sets WP_DIR. Admin credentials: admin/password —
 # the @wordpress/e2e-test-utils-playwright RequestUtils defaults.
 

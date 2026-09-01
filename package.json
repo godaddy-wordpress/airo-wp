@@ -1,6 +1,6 @@
 {
   "name": "airo-wp",
-  "version": "0.2.5",
+  "version": "0.3.3",
   "private": true,
   "files": [
     "airo-wp.php",
@@ -20,26 +20,34 @@
     "build": "wp-scripts build",
     "build:zip": "npm run build && node tests/e2e/setup/build-zip.mjs",
     "start": "wp-scripts start",
-    "test:unit": "node tests/scripts/wp-env-exec.mjs test",
-    "lint": "node tests/scripts/wp-env-exec.mjs lint",
-    "format": "wp-env run tests-cli --env-cwd=wp-content/plugins/airo-wp -- composer format || true",
+    "lint": "npm run lint:php && npm run lint:js && npm run lint:style",
+    "lint:php": "node tests/scripts/wp-env-exec.mjs composer lint",
+    "lint:js": "wp-scripts lint-js src/",
+    "lint:style": "wp-scripts lint-style 'src/**/*.scss'",
+    "format": "npm run format:js && npm run format:css && npm run format:php",
+    "format:php": "node tests/scripts/wp-env-exec.mjs composer format",
+    "format:js": "wp-scripts lint-js --fix src/ || true",
+    "format:css": "wp-scripts lint-style --fix 'src/**/*.scss' || true",
+    "test:unit:php": "node tests/scripts/wp-env-exec.mjs composer test",
     "test:e2e": "node tests/scripts/e2e.mjs",
     "test:e2e:debug": "node tests/scripts/e2e.mjs --debug",
     "plugin-check": "node tests/scripts/plugin-check.mjs",
+    "task:pre-release": "node tests/scripts/pre-release.mjs",
     "wp-env:start": "wp-env start",
     "wp-env:stop": "wp-env stop"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
-    "adm-zip": "^0.5.18",
     "@wordpress/e2e-test-utils-playwright": "^1.50.0",
     "@wordpress/env": "^10.0.0",
     "@wordpress/icons": "^10.0.0",
-    "@wordpress/scripts": "^30.0.0",
+    "@wordpress/scripts": "^31.8.0",
+    "adm-zip": "^0.5.18",
     "classnames": "^2.3.2",
     "countup.js": "^2.9.0",
     "glob": "^11.0.0",
     "leaflet": "^1.9.4",
+    "prettier": "^3.9.5",
     "typescript": "^5.4.0"
   }
 }

@@ -192,7 +192,8 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 				),
 			}),
 			...(activeTabColor && {
-				'--airo-wp-tab-color-active': convertColorToCSSVar(activeTabColor),
+				'--airo-wp-tab-color-active':
+					convertColorToCSSVar(activeTabColor),
 			}),
 			...(activeTabBackgroundColor && {
 				'--airo-wp-tab-bg-active': convertColorToCSSVar(
@@ -200,10 +201,12 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 				),
 			}),
 			...(tabBorderColor && {
-				'--airo-wp-tab-border-color': convertColorToCSSVar(tabBorderColor),
+				'--airo-wp-tab-border-color':
+					convertColorToCSSVar(tabBorderColor),
 			}),
 			...(tabHoverColor && {
-				'--airo-wp-tab-color-hover': convertColorToCSSVar(tabHoverColor),
+				'--airo-wp-tab-color-hover':
+					convertColorToCSSVar(tabHoverColor),
 			}),
 			...(tabHoverBackgroundColor && {
 				'--airo-wp-tab-bg-hover': convertColorToCSSVar(
@@ -630,10 +633,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 									value: 'dropdown',
 								},
 								{
-									label: __(
-										'Tabs (Scrollable)',
-										'airo-wp'
-									),
+									label: __('Tabs (Scrollable)', 'airo-wp'),
 									value: 'tabs',
 								},
 							]}
@@ -780,10 +780,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 												e.stopPropagation();
 											}
 										}}
-										aria-label={__(
-											'Tab title',
-											'airo-wp'
-										)}
+										aria-label={__('Tab title', 'airo-wp')}
 									/>
 
 									{icon && iconPosition === 'right' && (
@@ -819,10 +816,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 											/>
 										</Tooltip>
 										<Tooltip
-											text={__(
-												'Remove tab',
-												'airo-wp'
-											)}
+											text={__('Remove tab', 'airo-wp')}
 										>
 											<Button
 												size="small"

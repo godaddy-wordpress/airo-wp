@@ -10,4 +10,34 @@
 		// Inherit display from parent so text flows naturally
 		display: inline;
 	}
+
+	&.airo-wp-heading-segment--highlighted {
+		position: relative;
+		isolation: isolate;
+		--airo-wp-animated-headline-stroke: currentcolor;
+		--airo-wp-animated-headline-stroke-width: 4;
+
+		.airo-wp-heading-segment__animated {
+			position: relative;
+			z-index: 1;
+		}
+	}
+
+	.airo-wp-heading-segment__highlight {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		overflow: visible;
+
+		path {
+			fill: none;
+			stroke: var(--airo-wp-animated-headline-stroke);
+			stroke-width: var(--airo-wp-animated-headline-stroke-width);
+			stroke-linecap: round;
+			stroke-linejoin: round;
+		}
+	}
 }

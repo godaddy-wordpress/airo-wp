@@ -35,10 +35,7 @@ export const LinkSettingsPanel = ({
 	setAttributes,
 }) => {
 	return (
-		<PanelBody
-			title={__('Link Settings', 'airo-wp')}
-			initialOpen={false}
-		>
+		<PanelBody title={__('Link Settings', 'airo-wp')} initialOpen={false}>
 			<Button
 				icon={link}
 				variant={linkUrl ? 'primary' : 'secondary'}

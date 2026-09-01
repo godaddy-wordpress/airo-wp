@@ -83,7 +83,10 @@ const vLazy = {
 
 		return (
 			<div {...blockProps}>
-				<div className="airo-wp-divider__container" style={containerStyle}>
+				<div
+					className="airo-wp-divider__container"
+					style={containerStyle}
+				>
 					{dividerStyle === 'icon' ? (
 						<div className="airo-wp-divider__icon-wrapper">
 							<span
@@ -106,7 +109,10 @@ const vLazy = {
 							/>
 						</div>
 					) : (
-						<div className="airo-wp-divider__line" style={lineStyle} />
+						<div
+							className="airo-wp-divider__line"
+							style={lineStyle}
+						/>
 					)}
 				</div>
 			</div>
@@ -169,7 +175,10 @@ const v1 = {
 
 		return (
 			<div {...blockProps}>
-				<div className="airo-wp-divider__container" style={containerStyle}>
+				<div
+					className="airo-wp-divider__container"
+					style={containerStyle}
+				>
 					{dividerStyle === 'icon' ? (
 						<div className="airo-wp-divider__icon-wrapper">
 							<span
@@ -185,7 +194,10 @@ const v1 = {
 							/>
 						</div>
 					) : (
-						<div className="airo-wp-divider__line" style={lineStyle} />
+						<div
+							className="airo-wp-divider__line"
+							style={lineStyle}
+						/>
 					)}
 				</div>
 			</div>

@@ -43,7 +43,8 @@ const vStatic = {
 		// Any stored static hidden field carries this wrapper class; the
 		// dynamic block saves no inner HTML, so it never matches.
 		return (
-			Boolean(innerHTML) && innerHTML.includes('airo-wp-form-field--hidden')
+			Boolean(innerHTML) &&
+			innerHTML.includes('airo-wp-form-field--hidden')
 		);
 	},
 

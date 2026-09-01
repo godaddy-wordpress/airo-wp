@@ -50,10 +50,12 @@ export default function FormDateFieldEdit({
 	}, [fieldName, clientId, setAttributes]);
 
 	// Get context values from parent form
-	const fieldBackgroundColor =
-		context['airo-wp/form/fieldBackgroundColor'];
+	const fieldBackgroundColor = context['airo-wp/form/fieldBackgroundColor'];
 
-	const fieldClasses = classnames('airo-wp-form-field', 'airo-wp-form-field--date');
+	const fieldClasses = classnames(
+		'airo-wp-form-field',
+		'airo-wp-form-field--date'
+	);
 
 	const fieldStyles = {
 		'--airo-wp-form-field-bg': convertColorToCSSVar(fieldBackgroundColor),
@@ -294,7 +296,10 @@ export default function FormDateFieldEdit({
 				/>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

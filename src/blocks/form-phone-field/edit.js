@@ -56,8 +56,7 @@ export default function FormPhoneFieldEdit({
 	// Get context values from parent form
 	const fieldLabelColor = context['airo-wp/form/fieldLabelColor'];
 	const fieldBorderColor = context['airo-wp/form/fieldBorderColor'];
-	const fieldBackgroundColor =
-		context['airo-wp/form/fieldBackgroundColor'];
+	const fieldBackgroundColor = context['airo-wp/form/fieldBackgroundColor'];
 
 	const fieldClasses = classnames(
 		'airo-wp-form-field',
@@ -252,10 +251,7 @@ export default function FormPhoneFieldEdit({
 						isShownByDefault
 					>
 						<ToggleControl
-							label={__(
-								'Show Country Code Selector',
-								'airo-wp'
-							)}
+							label={__('Show Country Code Selector', 'airo-wp')}
 							checked={showCountryCode}
 							onChange={(value) =>
 								setAttributes({ showCountryCode: value })
@@ -278,10 +274,7 @@ export default function FormPhoneFieldEdit({
 							isShownByDefault
 						>
 							<SelectControl
-								label={__(
-									'Default Country Code',
-									'airo-wp'
-								)}
+								label={__('Default Country Code', 'airo-wp')}
 								value={countryCode}
 								options={COUNTRY_CODES}
 								onChange={(value) =>
@@ -300,10 +293,7 @@ export default function FormPhoneFieldEdit({
 						isShownByDefault
 					>
 						<ToggleControl
-							label={__(
-								'Auto-Format Phone Number',
-								'airo-wp'
-							)}
+							label={__('Auto-Format Phone Number', 'airo-wp')}
 							checked={autoFormat}
 							onChange={(value) =>
 								setAttributes({ autoFormat: value })
@@ -451,7 +441,10 @@ export default function FormPhoneFieldEdit({
 				</div>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

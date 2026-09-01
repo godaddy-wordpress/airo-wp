@@ -31,7 +31,9 @@ import { useSelect, useDispatch } from '@wordpress/data';
 import { useEffect } from '@wordpress/element';
 import { createBlock } from '@wordpress/blocks';
 import ShapeDividerControls from './components/ShapeDividerControls';
-import ShapeDivider from './components/ShapeDivider';
+import ShapeDivider, {
+	getRenderedShapeHeight,
+} from './components/ShapeDivider';
 import {
 	encodeColorValue,
 	decodeColorValue,
@@ -78,6 +80,7 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 		shapeDividerTopFlipX,
 		shapeDividerTopFlipY,
 		shapeDividerTopFront,
+		shapeDividerTopSpacing,
 		shapeDividerBottom,
 		shapeDividerBottomBackgroundColor,
 		shapeDividerBottomHeight,
@@ -85,6 +88,7 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 		shapeDividerBottomFlipX,
 		shapeDividerBottomFlipY,
 		shapeDividerBottomFront,
+		shapeDividerBottomSpacing,
 	} = attributes;
 
 	// Get section's effective background color for shape divider fill default.
@@ -190,9 +194,7 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 		(select) => {
 			const { getBlockParents, getBlockName } = select(blockEditorStore);
 			const parents = getBlockParents(clientId);
-			return parents.some(
-				(id) => getBlockName(id) === 'airo-wp/section'
-			);
+			return parents.some((id) => getBlockName(id) === 'airo-wp/section');
 		},
 		[clientId]
 	);
@@ -296,7 +298,8 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 					convertColorToCSSVar(hoverBackgroundColor),
 			}),
 			...(hoverTextColor && {
-				'--airo-wp-hover-text-color': convertColorToCSSVar(hoverTextColor),
+				'--airo-wp-hover-text-color':
+					convertColorToCSSVar(hoverTextColor),
 			}),
 			...(hoverIconBackgroundColor && {
 				'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
@@ -312,6 +315,22 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
 				'--airo-wp-overlay-opacity': '0.8',
 			}),
+			// Default content clearance matched to the divider's rendered height
+			// (must match save.js EXACTLY). See save.js for the full rationale.
+			...(shapeDividerTop &&
+				!shapeDividerTopSpacing &&
+				getRenderedShapeHeight(shapeDividerTopHeight) !== null && {
+					'--airo-wp-shape-clearance-top': `${getRenderedShapeHeight(
+						shapeDividerTopHeight
+					)}px`,
+				}),
+			...(shapeDividerBottom &&
+				!shapeDividerBottomSpacing &&
+				getRenderedShapeHeight(shapeDividerBottomHeight) !== null && {
+					'--airo-wp-shape-clearance-bottom': `${getRenderedShapeHeight(
+						shapeDividerBottomHeight
+					)}px`,
+				}),
 		},
 	});
 
@@ -324,12 +343,17 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 		innerStyle.marginRight = 'auto';
 	}
 
-	// Add padding to clear shape dividers (must match save.js EXACTLY)
-	if (shapeDividerTop) {
-		innerStyle.paddingTop = `${shapeDividerTopHeight || 100}px`;
+	// Inner content clearance for shape dividers. The value is a block-user
+	// defined WordPress spacing token (var:preset|spacing|NN) or a raw CSS
+	// length; serialize exactly what was set and emit nothing when unset.
+	// Must match save.js EXACTLY.
+	if (shapeDividerTop && shapeDividerTopSpacing) {
+		innerStyle.paddingTop = convertPresetToCSSVar(shapeDividerTopSpacing);
 	}
-	if (shapeDividerBottom) {
-		innerStyle.paddingBottom = `${shapeDividerBottomHeight || 100}px`;
+	if (shapeDividerBottom && shapeDividerBottomSpacing) {
+		innerStyle.paddingBottom = convertPresetToCSSVar(
+			shapeDividerBottomSpacing
+		);
 	}
 
 	// Merge inner blocks props

@@ -84,7 +84,10 @@ const sharedAttributes = {
  */
 function getSaveBlockProps(fieldWidth) {
 	return useBlockProps.save({
-		className: classnames('airo-wp-form-field', 'airo-wp-form-field--phone'),
+		className: classnames(
+			'airo-wp-form-field',
+			'airo-wp-form-field--phone'
+		),
 		style: {
 			flexBasis:
 				fieldWidth === '100'
@@ -147,7 +150,8 @@ const vStatic = {
 		// Any stored static phone field carries this wrapper class; the dynamic
 		// block saves no inner HTML, so it never matches.
 		return (
-			Boolean(innerHTML) && innerHTML.includes('airo-wp-form-field--phone')
+			Boolean(innerHTML) &&
+			innerHTML.includes('airo-wp-form-field--phone')
 		);
 	},
 
@@ -225,7 +229,10 @@ const vStatic = {
 				</div>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}
@@ -338,7 +345,10 @@ const v4 = {
 				</div>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}
@@ -455,7 +465,10 @@ const v3 = {
 				</div>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}
@@ -631,7 +644,10 @@ const v2 = {
 				</div>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}
@@ -748,7 +764,10 @@ const v1 = {
 				</div>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

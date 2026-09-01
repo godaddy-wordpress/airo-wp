@@ -62,7 +62,11 @@ describe('section save - shape dividers', () => {
 		).toContain('is-shape-inherit');
 	});
 
-	test('default divider omits height/width custom props (CSS defaults apply)', () => {
+	test('default divider omits height/width custom props (theme tokens apply)', () => {
+		// With no inline var the stylesheet cascade resolves the size from
+		// `--wp--custom--airo-wp--shape-divider--{height,width}` and only
+		// then from the 100px / 100% plugin defaults, so an untouched divider
+		// must serialize with NO size custom property at all.
 		const html = serialize(
 			createBlock(metadata.name, { shapeDividerTop: 'wave' })
 		);
@@ -71,7 +75,7 @@ describe('section save - shape dividers', () => {
 		expect(html).not.toContain('--airo-wp-shape-width');
 	});
 
-	test('non-default height is emitted', () => {
+	test('an explicit height is emitted', () => {
 		const html = serialize(
 			createBlock(metadata.name, {
 				shapeDividerTop: 'wave',
@@ -79,6 +83,22 @@ describe('section save - shape dividers', () => {
 			})
 		);
 		expect(html).toContain('--airo-wp-shape-height:80px');
+	});
+
+	test('an explicit height/width of the plugin default still serializes', () => {
+		// Height and width are nullable, so 100 is an author choice rather than
+		// "unset". Both must serialize — otherwise a theme.json
+		// settings.custom.airowp.shapeDivider.{height,width} token would
+		// silently override a divider the author deliberately pinned.
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerTop: 'wave',
+				shapeDividerTopHeight: 100,
+				shapeDividerTopWidth: 100,
+			})
+		);
+		expect(html).toContain('--airo-wp-shape-height:100px');
+		expect(html).toContain('--airo-wp-shape-width:100%');
 	});
 
 	test('shape region carries no fill var (transparent / see-through)', () => {
@@ -113,6 +133,154 @@ describe('section save - shape dividers', () => {
 			})
 		);
 		expect(bottomFlipped).not.toContain('is-flip-y');
+	});
+});
+
+describe('section save - shape divider content clearance', () => {
+	// The clearance is inner padding on `.airo-wp-stack__inner`. The section's OWN
+	// block padding lives on the OUTER wrapper (`.airo-wp-stack`), so assertions
+	// must be scoped to the inner element's style — a whole-HTML substring match
+	// would collide with the wrapper's default `spacing|50`/`30` padding. The
+	// clearance tests also use `spacing|70` (not the default `50`) so a match
+	// can only come from the clearance, never the wrapper default.
+	const innerStyle = (html) => {
+		const match = html.match(
+			/class="airo-wp-stack__inner"[^>]*style="([^"]*)"/
+		);
+		return match ? match[1] : '';
+	};
+
+	test('a spacing preset token serializes to inner padding CSS var (top)', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerTop: 'wave',
+				shapeDividerTopSpacing: 'var:preset|spacing|70',
+			})
+		);
+		expect(innerStyle(html)).toContain(
+			'padding-top:var(--wp--preset--spacing--70)'
+		);
+	});
+
+	test('a spacing preset token serializes to inner padding CSS var (bottom)', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerBottom: 'wave',
+				shapeDividerBottomSpacing: 'var:preset|spacing|70',
+			})
+		);
+		expect(innerStyle(html)).toContain(
+			'padding-bottom:var(--wp--preset--spacing--70)'
+		);
+	});
+
+	test('a raw CSS length (e.g. a migrated legacy value) passes through unchanged', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerTop: 'wave',
+				shapeDividerTopSpacing: '80px',
+			})
+		);
+		expect(innerStyle(html)).toContain('padding-top:80px');
+	});
+
+	test('a divider with NO clearance set emits no inner padding (CSS fallback owns the default)', () => {
+		const html = serialize(
+			createBlock(metadata.name, { shapeDividerTop: 'wave' })
+		);
+		expect(innerStyle(html)).not.toContain('padding');
+	});
+
+	test('an explicit height with no explicit clearance exposes a height-matched wrapper var', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerTop: 'wave',
+				shapeDividerTopHeight: 300,
+			})
+		);
+		// The stylesheet fallback reads this so the reserved padding matches the
+		// 300px divider instead of a flat 100px. No inline inner padding.
+		expect(html).toContain('--airo-wp-shape-clearance-top:300px');
+		expect(innerStyle(html)).not.toContain('padding');
+	});
+
+	test('a divider with an unset height emits no clearance var (both sides inherit the theme token)', () => {
+		// Unset height means the divider paints at the theme.json height token;
+		// the clearance stylesheet falls back to that SAME token, so pinning a
+		// px snapshot here would desync the padding from the shape.
+		const html = serialize(
+			createBlock(metadata.name, { shapeDividerTop: 'wave' })
+		);
+		expect(html).not.toContain('--airo-wp-shape-clearance-top');
+	});
+
+	test('an explicit height of 100 still emits the clearance var', () => {
+		// The divider pins itself to 100px against any theme token, so the
+		// clearance has to pin to 100px too rather than inherit the token.
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerTop: 'wave',
+				shapeDividerTopHeight: 100,
+			})
+		);
+		expect(html).toContain('--airo-wp-shape-clearance-top:100px');
+	});
+
+	test('the clearance var tracks the divider’s clamped render height, not a raw out-of-range value', () => {
+		// ShapeDivider clamps height to 10–500; a stored 1000 (only reachable via
+		// a direct REST/programmatic edit) renders at 500, so the reserved
+		// clearance must be 500px, not 1000px.
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerTop: 'wave',
+				shapeDividerTopHeight: 1000,
+			})
+		);
+		expect(html).toContain('--airo-wp-shape-clearance-top:500px');
+		expect(html).not.toContain('--airo-wp-shape-clearance-top:1000px');
+	});
+
+	test('a non-positive height (0) is treated as unset, so no size or clearance var is emitted', () => {
+		// 0 is only reachable via the Abilities API, whose range check allows
+		// it. It cannot mean "paint nothing", so it collapses to unset and the
+		// divider inherits the theme token like any untouched divider.
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerTop: 'wave',
+				shapeDividerTopHeight: 0,
+			})
+		);
+		expect(html).not.toContain('--airo-wp-shape-clearance-top');
+		expect(html).not.toContain('--airo-wp-shape-height');
+	});
+
+	test('an explicit clearance suppresses the wrapper var (inline inner padding wins)', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerTop: 'wave',
+				shapeDividerTopHeight: 300,
+				shapeDividerTopSpacing: 'var:preset|spacing|70',
+			})
+		);
+		expect(html).not.toContain('--airo-wp-shape-clearance-top');
+		expect(innerStyle(html)).toContain(
+			'padding-top:var(--wp--preset--spacing--70)'
+		);
+	});
+
+	test('clearance is not emitted for a position that has no divider', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				shapeDividerTop: 'wave',
+				shapeDividerTopSpacing: 'var:preset|spacing|70',
+				// bottom spacing set but no bottom divider — must be ignored
+				shapeDividerBottomSpacing: 'var:preset|spacing|70',
+			})
+		);
+		expect(innerStyle(html)).toContain(
+			'padding-top:var(--wp--preset--spacing--70)'
+		);
+		expect(innerStyle(html)).not.toContain('padding-bottom');
 	});
 });
 

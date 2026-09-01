@@ -18,6 +18,11 @@ export default function InfiniteScrollControls({
 	attributes,
 	setAttributes,
 	panelId,
+	// True when the enclosing query presents its results in a carousel, where
+	// the sentinel this block would emit cannot work — the front end renders a
+	// Load more button instead (see CarouselNotice). The two sentinel settings
+	// have nothing to act on in that case, so only the button label is offered.
+	sentinelDisabled = false,
 }) {
 	const {
 		paginationKind,
@@ -32,55 +37,63 @@ export default function InfiniteScrollControls({
 
 	return (
 		<>
-			<DsgoInspectorPanel.Item
-				label={__('Auto-pause after', 'airo-wp')}
-				hasValue={() => autoPauseAfter !== 3}
-				onDeselect={() => setAttributes({ autoPauseAfter: 3 })}
-				isShownByDefault
-				panelId={panelId}
-			>
-				<NumberControl
-					label={__('Auto-pause after (loads)', 'airo-wp')}
-					help={__(
-						'Number of automatic loads before showing the button.',
-						'airo-wp'
-					)}
-					value={autoPauseAfter}
-					min={1}
-					max={20}
-					onChange={(v) =>
-						setAttributes({ autoPauseAfter: parseInt(v, 10) || 3 })
-					}
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-				/>
-			</DsgoInspectorPanel.Item>
+			{!sentinelDisabled && (
+				<>
+					<DsgoInspectorPanel.Item
+						label={__('Auto-pause after', 'airo-wp')}
+						hasValue={() => autoPauseAfter !== 3}
+						onDeselect={() => setAttributes({ autoPauseAfter: 3 })}
+						isShownByDefault
+						panelId={panelId}
+					>
+						<NumberControl
+							label={__('Auto-pause after (loads)', 'airo-wp')}
+							help={__(
+								'Number of automatic loads before showing the button.',
+								'airo-wp'
+							)}
+							value={autoPauseAfter}
+							min={1}
+							max={20}
+							onChange={(v) =>
+								setAttributes({
+									autoPauseAfter: parseInt(v, 10) || 3,
+								})
+							}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
 
-			<DsgoInspectorPanel.Item
-				label={__('Sentinel offset', 'airo-wp')}
-				hasValue={() => sentinelOffsetPx !== 200}
-				onDeselect={() => setAttributes({ sentinelOffsetPx: 200 })}
-				isShownByDefault
-				panelId={panelId}
-			>
-				<NumberControl
-					label={__('Sentinel offset (px)', 'airo-wp')}
-					help={__(
-						'How many pixels before the bottom to trigger auto-load.',
-						'airo-wp'
-					)}
-					value={sentinelOffsetPx}
-					min={0}
-					max={1000}
-					onChange={(v) =>
-						setAttributes({
-							sentinelOffsetPx: parseInt(v, 10) || 200,
-						})
-					}
-					__next40pxDefaultSize
-					__nextHasNoMarginBottom
-				/>
-			</DsgoInspectorPanel.Item>
+					<DsgoInspectorPanel.Item
+						label={__('Sentinel offset', 'airo-wp')}
+						hasValue={() => sentinelOffsetPx !== 200}
+						onDeselect={() =>
+							setAttributes({ sentinelOffsetPx: 200 })
+						}
+						isShownByDefault
+						panelId={panelId}
+					>
+						<NumberControl
+							label={__('Sentinel offset (px)', 'airo-wp')}
+							help={__(
+								'How many pixels before the bottom to trigger auto-load.',
+								'airo-wp'
+							)}
+							value={sentinelOffsetPx}
+							min={0}
+							max={1000}
+							onChange={(v) =>
+								setAttributes({
+									sentinelOffsetPx: parseInt(v, 10) || 200,
+								})
+							}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					</DsgoInspectorPanel.Item>
+				</>
+			)}
 
 			<DsgoInspectorPanel.Item
 				label={__('Button label', 'airo-wp')}

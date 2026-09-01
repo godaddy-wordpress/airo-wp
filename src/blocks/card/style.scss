@@ -105,6 +105,16 @@
 	line-height: 1.6;
 }
 
+// The title / subtitle / body / badge elements are always rendered so their text
+// can be sourced from the DOM (surviving visibility toggles); these modifiers
+// hide the ones the author has turned off, instead of dropping them from markup.
+.airo-wp-card__title--hidden,
+.airo-wp-card__subtitle--hidden,
+.airo-wp-card__body--hidden,
+.airo-wp-card__badge--hidden {
+	display: none;
+}
+
 .airo-wp-card__cta {
 	margin-top: auto;
 	display: flex;

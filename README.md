@@ -1,7 +1,6 @@
 # Airo WP AI Builder
 
-[![PHPUnit](https://github.com/gdcorp-wordpress/airo-wp/actions/workflows/phpunit.yml/badge.svg)](https://github.com/gdcorp-wordpress/airo-wp/actions/workflows/phpunit.yml)
-[![PHPCS](https://github.com/gdcorp-wordpress/airo-wp/actions/workflows/phpcs.yml/badge.svg)](https://github.com/gdcorp-wordpress/airo-wp/actions/workflows/phpcs.yml)
+[![CI](https://github.com/godaddy-wordpress/airo-wp/actions/workflows/ci.yml/badge.svg)](https://github.com/godaddy-wordpress/airo-wp/actions/workflows/ci.yml)
 
 **Airo WP AI Builder** is a WordPress plugin that exposes your site to AI assistants via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). It also bundles a curated set of Gutenberg block patterns built on the Twenty Twenty-Five (tt5) theme, giving any connected AI a ready-made vocabulary for assembling pages.
 
@@ -23,12 +22,12 @@
 |---|---|
 | **Plugin name** | Airo WP AI Builder |
 | **Text domain** | `airo-wp` |
-| **Version** | 0.2.5 |
-| **Requires WordPress** | 6.8+ |
+| **Version** | 0.3.3 |
+| **Requires WordPress** | 6.9+ |
 | **Requires PHP** | 7.4+ |
 | **License** | [GPLv2 or later](https://www.gnu.org/licenses/gpl-2.0.html) |
 | **Author** | [GoDaddy](https://www.godaddy.com) |
-| **Repository** | [gdcorp-wordpress/airo-wp](https://github.com/gdcorp-wordpress/airo-wp) |
+| **Repository** | [godaddy-wordpress/airo-wp](https://github.com/godaddy-wordpress/airo-wp) |
 
 ## Installation
 
@@ -38,8 +37,6 @@
 ## Contributing
 
 See **[CONTRIBUTORS.md](CONTRIBUTORS.md)** for environment setup, architecture, coding standards, and pull request expectations.
-
-AI assistants should read **[AGENTS.md](AGENTS.md)** (`CLAUDE.md` symlinks to it) for repository-specific commands and architecture.
 
 ## License
 

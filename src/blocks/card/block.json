@@ -129,6 +129,8 @@
 		},
 		"badgeText": {
 			"type": "string",
+			"source": "text",
+			"selector": ".airo-wp-card__badge",
 			"default": ""
 		},
 		"badgeStyle": {
@@ -167,14 +169,20 @@
 		},
 		"title": {
 			"type": "string",
+			"source": "html",
+			"selector": ".airo-wp-card__title",
 			"default": ""
 		},
 		"subtitle": {
 			"type": "string",
+			"source": "html",
+			"selector": ".airo-wp-card__subtitle",
 			"default": ""
 		},
 		"bodyText": {
 			"type": "string",
+			"source": "html",
+			"selector": ".airo-wp-card__body",
 			"default": ""
 		},
 		"overlayOpacity": {

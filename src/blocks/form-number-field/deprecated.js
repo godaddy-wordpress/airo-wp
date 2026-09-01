@@ -53,7 +53,8 @@ const vStatic = {
 		// Any stored static number field carries this wrapper class; the dynamic
 		// block saves no inner HTML, so it never matches.
 		return (
-			Boolean(innerHTML) && innerHTML.includes('airo-wp-form-field--number')
+			Boolean(innerHTML) &&
+			innerHTML.includes('airo-wp-form-field--number')
 		);
 	},
 
@@ -125,7 +126,10 @@ const vStatic = {
 				/>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

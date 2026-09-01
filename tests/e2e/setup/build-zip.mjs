@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Assembles builds/airo-wp.zip and builds/airo-wp-{version}.zip from the repo root.
- * Uses wp-scripts plugin-zip (reads package.json "files") — same mechanism as the private lane.
+ * Uses wp-scripts plugin-zip, which reads the package.json "files" allowlist.
  * Called by: npm run build:zip (after npm run build populates dist/).
  */
 
@@ -96,6 +96,26 @@ console.log( 'build-zip.mjs: removing package.json from zip...' );
 	const AdmZip = req( 'adm-zip' );
 	const zip = new AdmZip( TEMP_ZIP );
 	zip.deleteFile( 'airo-wp/package.json' );
+
+	// .wordpress-org/ holds the WordPress.org plugin-directory art (banner, icon,
+	// screenshots). Those belong in SVN assets/, never inside the plugin users
+	// install. It is absent from package.json "files" so it is excluded already;
+	// this asserts that stays true if someone edits that allowlist later.
+	const stowaways = zip
+		.getEntries()
+		.map( ( entry ) => entry.entryName )
+		.filter( ( name ) => name.includes( '.wordpress-org' ) );
+
+	if ( stowaways.length > 0 ) {
+		console.error(
+			`build-zip.mjs: .wordpress-org/ must not ship inside the plugin zip:\n  ${ stowaways.join( '\n  ' ) }`
+		);
+		// Drop the half-built archive: TEMP_ZIP sits at the repo root and is not
+		// gitignored, so leaving it behind invites committing a stray zip.
+		rmSync( TEMP_ZIP, { force: true } );
+		process.exit( 1 );
+	}
+
 	zip.writeZip( TEMP_ZIP );
 }
 

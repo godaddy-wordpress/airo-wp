@@ -182,7 +182,8 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 				'--airo-wp-nav-color': convertColorToCSSVar(navColor),
 			}),
 			...(navActiveColor && {
-				'--airo-wp-nav-active-color': convertColorToCSSVar(navActiveColor),
+				'--airo-wp-nav-active-color':
+					convertColorToCSSVar(navActiveColor),
 			}),
 		},
 	});
@@ -302,7 +303,10 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 						aria-hidden="true"
 					/>
 				)}
-				<div className="airo-wp-scroll-slides__inner" style={innerStyle}>
+				<div
+					className="airo-wp-scroll-slides__inner"
+					style={innerStyle}
+				>
 					{/* Navigation — editable headings outside query mode; in
 					    query mode, one read-only heading per preview record
 					    (post title, user name, term name, etc.). */}
@@ -361,10 +365,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 												}
 												placeholder={sprintf(
 													/* translators: %d: slide number */
-													__(
-														'Slide %d',
-														'airo-wp'
-													),
+													__('Slide %d', 'airo-wp'),
 													index + 1
 												)}
 												onChange={(e) =>

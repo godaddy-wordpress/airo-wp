@@ -1,4 +1,5 @@
 import { __ } from '@wordpress/i18n';
+// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export in @wordpress/components
 import { Button, __experimentalVStack as VStack } from '@wordpress/components';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { parse, serialize } from '@wordpress/blocks';
@@ -49,10 +50,9 @@ export default function TemplateIO({ clientId, attributes }) {
 				type: 'snackbar',
 			});
 		} catch (err) {
-			createErrorNotice(
-				err?.message || __('Export failed.', 'airo-wp'),
-				{ type: 'snackbar' }
-			);
+			createErrorNotice(err?.message || __('Export failed.', 'airo-wp'), {
+				type: 'snackbar',
+			});
 		} finally {
 			setIsBusy(false);
 		}
@@ -81,10 +81,7 @@ export default function TemplateIO({ clientId, attributes }) {
 			const blocks = parse(response.blockMarkup);
 			if (!blocks.length) {
 				throw new Error(
-					__(
-						'Imported JSON did not yield a valid block.',
-						'airo-wp'
-					)
+					__('Imported JSON did not yield a valid block.', 'airo-wp')
 				);
 			}
 			replaceBlocks(clientId, blocks);
@@ -92,10 +89,9 @@ export default function TemplateIO({ clientId, attributes }) {
 				type: 'snackbar',
 			});
 		} catch (err) {
-			createErrorNotice(
-				err?.message || __('Import failed.', 'airo-wp'),
-				{ type: 'snackbar' }
-			);
+			createErrorNotice(err?.message || __('Import failed.', 'airo-wp'), {
+				type: 'snackbar',
+			});
 		} finally {
 			setIsBusy(false);
 		}

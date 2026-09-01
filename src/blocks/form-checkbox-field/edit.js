@@ -190,10 +190,7 @@ export default function FormCheckboxFieldEdit({
 							onChange={(newValue) =>
 								setAttributes({ label: newValue })
 							}
-							placeholder={__(
-								'Enter checkbox label…',
-								'airo-wp'
-							)}
+							placeholder={__('Enter checkbox label…', 'airo-wp')}
 							allowedFormats={[
 								'core/bold',
 								'core/italic',
@@ -213,7 +210,10 @@ export default function FormCheckboxFieldEdit({
 				</div>
 
 				{helpText && (
-					<p id={`${fieldId}-help`} className="airo-wp-form-field__help">
+					<p
+						id={`${fieldId}-help`}
+						className="airo-wp-form-field__help"
+					>
 						{helpText}
 					</p>
 				)}

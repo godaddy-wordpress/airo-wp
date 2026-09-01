@@ -63,12 +63,8 @@ export function formatCountdownDisplay(timeData, visibilitySettings) {
  */
 export function getUnitLabel(unitType, value) {
 	const labels = {
-		days:
-			value === 1 ? __('Day', 'airo-wp') : __('Days', 'airo-wp'),
-		hours:
-			value === 1
-				? __('Hour', 'airo-wp')
-				: __('Hours', 'airo-wp'),
+		days: value === 1 ? __('Day', 'airo-wp') : __('Days', 'airo-wp'),
+		hours: value === 1 ? __('Hour', 'airo-wp') : __('Hours', 'airo-wp'),
 		minutes: __('Min', 'airo-wp'),
 		seconds: __('Sec', 'airo-wp'),
 	};
