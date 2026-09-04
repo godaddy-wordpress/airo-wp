@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.6
+
+- AI clients can now authenticate with a WordPress Application Password sent in the `Authorization` header (HTTPS required)
+- Documented how to connect a client: the endpoint, creating a credential, and the capability each tool needs
+- Fixed the MCP endpoint returning 401 on GoDaddy sites that have not been published yet
+- Fixed a release fault where a successful publish could report failure and skip the plugin-directory artwork
+- Release publishing now verifies credentials before building and explains authentication failures
+
 ## 0.3.5
 
 - Reduced the download by 41%: uncompiled block sources are no longer shipped inside the plugin. Only the compiled output users actually run is included

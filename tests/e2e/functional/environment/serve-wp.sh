@@ -32,6 +32,17 @@ add_filter( 'option_home', static fn() => '$WP_SITE_URL', PHP_INT_MAX );
 add_filter( 'option_siteurl', static fn() => '$WP_SITE_URL', PHP_INT_MAX );
 PHP
 
+# Application Passwords are how the airowp Authorization scheme authenticates, but
+# core refuses to issue them unless is_ssl() or the environment type is 'local'
+# (wp_is_application_passwords_supported), and this server runs over plain HTTP --
+# so POST /wp/v2/users/me/application-passwords answers 501 without this. Using
+# core's own filter rather than faking SSL keeps the rest of the request honest.
+cat > "$WP_DIR/wp-content/mu-plugins/airo-wp-e2e-app-passwords.php" <<'PHP'
+<?php
+// Test environment only: allow Application Passwords over plain HTTP.
+add_filter( 'wp_is_application_passwords_available', '__return_true' );
+PHP
+
 # Disable WordPress auto-updates and pseudo-cron so Plugin_Upgrader never creates
 # .maintenance mid-run (which causes 503 responses in concurrent PHP workers).
 cat > "$WP_DIR/wp-content/mu-plugins/airo-wp-e2e-disable-updates.php" <<'PHP'

@@ -52,6 +52,9 @@ jobs:
     outputs:
       channel: ${{ steps.version.outputs.channel }}
       version: ${{ steps.version.outputs.version }}
+      # Whether WordPress.org actually holds the release, verified against the remote
+      # rather than inferred from svn's exit code. See the verify step for why.
+      published: ${{ steps.verify.outputs.published }}
 
     steps:
       # Publishing is only ever done from a version tag, never a branch. A branch
@@ -148,6 +151,70 @@ jobs:
           fi
 
           echo "Slug provisioned; tags/${VERSION} is free."
+
+      # Runs BEFORE the build, because everything after it takes ~8 minutes and the
+      # credentials are not exercised until the very last step (the commit). Two
+      # failed publishes of v0.3.5 each burned a full build to discover a bad secret.
+      #
+      # What this CANNOT do: verify the credentials actually authenticate. WordPress.org
+      # permits anonymous read, so an authenticated read is not a test — passing
+      # deliberately invalid credentials to `svn info` against the plugin repository
+      # returns exit 0 and full repository metadata, because the server never issues a
+      # challenge. Only `svn commit` authenticates, and there is no dry-run commit. The
+      # obvious alternatives are worse: `svn lock` mutates shared lock state, and
+      # provoking an authenticated failure via a doomed `svn mkdir` risks a real commit
+      # if the server validates auth before the path. So this step deliberately checks
+      # only what it can check for certain, rather than shipping a probe that reports
+      # success on credentials that cannot commit.
+      #
+      # What it does check is the class of mistake that actually occurs: a secret that
+      # is empty, carries pasted whitespace, or holds an email address.
+      - name: Pre-flight - SVN credential shape
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          if [ "${DRY_RUN}" != "false" ]; then
+            echo "::notice::Dry run: credentials are NOT validated by this workflow. WordPress.org allows anonymous read, so the SVN checkout below succeeds without them. Only a real publish exercises authentication."
+          fi
+
+          fail=0
+
+          if [ -z "${SVN_USERNAME:-}" ]; then
+            echo "::error::SVN_USERNAME is not set. Add it as a repository secret."
+            fail=1
+          fi
+          if [ -z "${SVN_PASSWORD:-}" ]; then
+            echo "::error::SVN_PASSWORD is not set. Add it as a repository secret."
+            fail=1
+          fi
+          [ "${fail}" -eq 0 ] || exit 1
+
+          # A pasted trailing newline or stray space is a common and very confusing
+          # cause of E215004, because nothing in the log reveals it.
+          for pair in "SVN_USERNAME:${SVN_USERNAME}" "SVN_PASSWORD:${SVN_PASSWORD}"; do
+            name="${pair%%:*}"
+            value="${pair#*:}"
+            trimmed=$(printf '%s' "${value}" | tr -d '[:space:]')
+            if [ "${#value}" -ne "${#trimmed}" ]; then
+              echo "::error::${name} contains whitespace. Re-add the secret with no leading or trailing spaces or newline."
+              fail=1
+            fi
+          done
+
+          case "${SVN_USERNAME}" in
+            *@*)
+              echo "::error::SVN_USERNAME looks like an email address. WordPress.org SVN wants the account username, not the email."
+              fail=1
+              ;;
+          esac
+
+          [ "${fail}" -eq 0 ] || exit 1
+
+          echo "Credential shape OK (not an authentication test - see the comment above this step)."
 
       - uses: actions/setup-node@v4
         with:
@@ -290,6 +357,10 @@ jobs:
       # lane; deploy.sh logs "No assets directory found" and leaves SVN assets/
       # untouched.
       - name: Publish stable release to WordPress.org
+        id: deploy
+        # continue-on-error so the verify step below can have the final word: a
+        # client-side error over a landed commit must not end the job here.
+        continue-on-error: true
         if: steps.version.outputs.channel == 'stable'
         uses: 10up/action-wordpress-plugin-deploy@stable
         with:
@@ -320,6 +391,8 @@ jobs:
       # trunk. The script asserts trunk is byte-identical afterwards and honours
       # the normalised dry-run flag itself, since `svn import` has no dry-run mode.
       - name: Publish pre-release tag to WordPress.org
+        id: deploy_pre
+        continue-on-error: true
         if: steps.version.outputs.channel != 'stable'
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
@@ -330,6 +403,137 @@ jobs:
         run: |
           bash .github/scripts/svn-import-tag.sh \
             "${PAYLOAD}" "${SVN_ROOT}" "${SLUG}" "${VERSION}" "${DRY_RUN}"
+
+      # The deploy step's exit code is not a reliable answer to "did this publish?".
+      # WordPress.org's SVN server can complete a commit and then fail to finalise it
+      # client-side. On the first real publish of this plugin (v0.3.5) that produced a
+      # red run over a fully successful release:
+      #
+      #   13:47:09  Committing files...        (one commit: trunk + tag copy)
+      #   13:48:52  Committing transaction...
+      #   13:56:43  svn: E000002: Can't open file '.../3676222-2abau.txn/props'
+      #
+      # Eight minutes passed before the server failed to read its own transaction
+      # directory; on a ~1,100-file, ~11 MB commit it had been reaped or completed
+      # asynchronously. trunk/ and tags/0.3.5/ were 404 before that run and complete
+      # after it. The publish had landed.
+      #
+      # The cost was not just a misleading red mark: sync-assets is gated on this job's
+      # result, so the artwork was silently skipped and the plugin page went live
+      # unbranded. So ask the registry instead of trusting the client, and let this
+      # verdict — not the exit code — drive the asset lane.
+      #
+      # always() so this runs after a failed deploy, which is the whole point.
+      - name: Verify the release actually reached WordPress.org
+        id: verify
+        if: always() && steps.payload.outcome == 'success'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CHANNEL: ${{ steps.version.outputs.channel }}
+          DRY_RUN: ${{ steps.flags.outputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          if [ "${DRY_RUN}" != "false" ]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "Dry run - nothing was published, so there is nothing to verify."
+            exit 0
+          fi
+
+          tag_status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "${SVN_ROOT}/${SLUG}/tags/${VERSION}/")
+
+          ok=1
+          [ "${tag_status}" = "200" ] || ok=0
+
+          # A stable release must also have replaced trunk, and trunk's readme is what
+          # WordPress.org actually serves - so check the value, not just presence.
+          if [ "${CHANNEL}" = "stable" ]; then
+            trunk_readme=$(curl -s --max-time 30 "${SVN_ROOT}/${SLUG}/trunk/readme.txt" || true)
+            trunk_stable=$(printf '%s' "${trunk_readme}" | sed -n 's/^Stable tag:[[:space:]]*\([^[:space:]]*\).*/\1/p' | head -1)
+            [ "${trunk_stable}" = "${VERSION}" ] || ok=0
+            echo "trunk Stable tag: ${trunk_stable:-<none>} (expected ${VERSION})"
+          fi
+
+          echo "tags/${VERSION}: HTTP ${tag_status}"
+
+          if [ "${ok}" -eq 1 ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "WordPress.org holds ${VERSION}."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "WordPress.org does NOT hold ${VERSION}."
+          fi
+
+      # Reconcile the two answers. A verified remote overrides a client-side error,
+      # because the registry is the authority on what was published. The converse also
+      # holds: a green deploy that did not actually land must not pass silently.
+      - name: Reconcile deploy result with remote state
+        if: always() && steps.verify.conclusion == 'success' && steps.flags.outputs.dry_run == 'false'
+        env:
+          # Exactly one lane runs; the other reports 'skipped'.
+          DEPLOY: ${{ steps.version.outputs.channel == 'stable' && steps.deploy.outcome || steps.deploy_pre.outcome }}
+          PUBLISHED: ${{ steps.verify.outputs.published }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [ "${PUBLISHED}" = "true" ] && [ "${DEPLOY}" != "success" ]; then
+            echo "::warning::The Subversion client reported '${DEPLOY}', but WordPress.org holds ${VERSION}. Treating this as a successful publish. This is the known WordPress.org transaction-finalise race on large commits - do NOT re-publish; the tag guard would refuse anyway."
+            {
+              echo "### Publish succeeded despite a client-side error"
+              echo
+              echo "\`svn\` reported \`${DEPLOY}\`, but \`tags/${VERSION}\` is present on"
+              echo "WordPress.org and \`trunk\` declares the right \`Stable tag\`. The commit landed and"
+              echo "the client failed afterwards - the known transaction-finalise race on large commits."
+              echo
+              echo "**Do not re-publish.** The release is live."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ "${PUBLISHED}" != "true" ] && [ "${DEPLOY}" = "success" ]; then
+            echo "::error::The Subversion client reported success, but WordPress.org does not hold ${VERSION}. Refusing to report a publish that cannot be confirmed."
+            exit 1
+          fi
+
+          if [ "${PUBLISHED}" != "true" ]; then
+            echo "::error::Publish failed and WordPress.org does not hold ${VERSION}."
+            exit 1
+          fi
+
+          echo "Deploy and remote state agree: ${VERSION} is published."
+
+      # 10up's action surfaces svn's raw error and nothing else. E215004 is a bare
+      # credential rejection whose real causes are not guessable from the message, and
+      # all three below cost real time on the first release of this plugin.
+      - name: Explain a stable-lane authentication failure
+        # Keyed to the reconciled verdict, not raw failure(): a client-side error over a
+        # landed commit is a successful publish (see the verify step), and must not be
+        # reported as a credential problem.
+        if: always() && steps.version.outputs.channel == 'stable'
+          && steps.deploy.outcome == 'failure'
+          && steps.verify.outputs.published != 'true'
+        run: |
+          {
+            echo "### Publish failed"
+            echo
+            echo "If the log shows \`svn: E215004\` the credentials were rejected. Check, in order:"
+            echo
+            echo "1. **\`SVN_PASSWORD\` must be an SVN-specific password**, not the account login password."
+            echo "   Generate one at wordpress.org profile -> Account & Security -> SVN credentials ->"
+            echo "   Generate Password. WordPress.org is migrating all accounts off login passwords for"
+            echo "   SVN, and once an SVN password has been generated the account password stops working"
+            echo "   for SVN permanently."
+            echo "2. **\`SVN_USERNAME\` capitalisation is significant** for SVN, even though it is not for"
+            echo "   wordpress.org login."
+            echo "3. **The account must be a committer on this plugin.** Lacking that presents as an"
+            echo "   authentication failure, not a permissions error."
+            echo
+            echo "A dry run cannot catch any of these: WordPress.org allows anonymous read, so the"
+            echo "dry-run checkout succeeds without ever using the credentials."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "::error::SVN publish failed. See the job summary for the likely causes of an E215004 credential rejection."
 
   # Runs either standalone (sync_assets, no code release) or after a successful
   # stable deploy. Never for a pre-release: SVN assets/ is version-independent and
@@ -344,7 +548,7 @@ jobs:
     if: |
       always() && (
         inputs.sync_assets == true ||
-        (needs.publish.result == 'success' && needs.publish.outputs.channel == 'stable')
+        (needs.publish.outputs.published == 'true' && needs.publish.outputs.channel == 'stable')
       )
     runs-on: ubuntu-24.04
 
