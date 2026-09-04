@@ -3,7 +3,7 @@
  * Plugin Name:       Airo WP AI Builder
  * Plugin URI:        https://github.com/godaddy-wordpress/airo-wp
  * Description:       MCP server and block pattern library for AI-powered site building.
- * Version:           0.3.5
+ * Version:           0.3.6
  * Requires at least: 6.9
  * Requires PHP:      7.4
  * Author:            GoDaddy
@@ -47,7 +47,7 @@ declare(strict_types=1);
 defined( 'ABSPATH' ) || exit;
 
 if ( ! defined( 'AIRO_WP_VERSION' ) ) {
-	define( 'AIRO_WP_VERSION', '0.3.5' );
+	define( 'AIRO_WP_VERSION', '0.3.6' );
 }
 if ( ! defined( 'AIRO_WP_PLUGIN_FILE' ) ) {
 	define( 'AIRO_WP_PLUGIN_FILE', __FILE__ );

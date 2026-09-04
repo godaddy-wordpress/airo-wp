@@ -189,12 +189,19 @@ installs; `Stable tag` is, as described below.
 ### Publishing
 
 Dry run first — `dry_run` defaults to `true`, and a dry run reports the exact
-Subversion diff without committing anything:
+Subversion diff without committing anything.
+
+**A dry run does not validate your credentials.** WordPress.org allows anonymous read,
+so the dry run's Subversion checkout succeeds whether or not `SVN_USERNAME` and
+`SVN_PASSWORD` are usable — only `svn commit` authenticates, and that is the one step a
+dry run skips. A completely green dry run is therefore compatible with a publish that
+fails on authentication. Treat the dry run as a check of the payload and the guards,
+not of access.
 
 ```bash
 gh workflow run publish-plugin.yml \
   --repo godaddy-wordpress/airo-wp \
-  --ref v0.3.4 \
+  --ref v0.3.5 \
   -f dry_run=true
 ```
 
@@ -231,7 +238,7 @@ moment they are committed, so they can be updated without releasing any code:
 ```bash
 gh workflow run publish-plugin.yml \
   --repo godaddy-wordpress/airo-wp \
-  --ref v0.3.4 \
+  --ref v0.3.5 \
   -f sync_assets=true -f dry_run=false
 ```
 

@@ -12,7 +12,7 @@ name: Pre-release
 #
 # E2E matrix:
 #   Current WP 7.1  × PHP 7.4, 8.0, 8.1, 8.2, 8.3, 8.4
-#   Previous WP 7.0 × PHP 7.4
+#   Previous WP 7.0 × PHP 8.3   (most common PHP in the wild)
 #   Minimum WP 6.9  × PHP 7.4   (matches "Requires at least" in readme.txt)
 #   Nightly WP      × PHP 8.4
 
@@ -86,6 +86,10 @@ jobs:
     name: E2E (PHP ${{ matrix.php }} × WP ${{ matrix.wp }})
     needs: build
     runs-on: ubuntu-24.04
+    # Trunk moves under us: a core regression or a fresh deprecation in nightly
+    # would otherwise turn a release red for something that is not in our diff.
+    # Advisory, so it warns without gating.
+    continue-on-error: ${{ matrix.wp == 'nightly' }}
     strategy:
       fail-fast: false
       matrix:
@@ -96,7 +100,7 @@ jobs:
           - { php: "8.2", wp: "7.1" }
           - { php: "8.3", wp: "7.1" }
           - { php: "8.4", wp: "7.1" }
-          - { php: "7.4", wp: "7.0" }
+          - { php: "8.3", wp: "7.0" }
           - { php: "7.4", wp: "6.9" }
           - { php: "8.4", wp: "nightly" }
     steps:

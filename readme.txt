@@ -4,7 +4,7 @@ Tags: airo, godaddy, mcp, ai, block-patterns
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.3.5
+Stable tag: 0.3.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,7 +16,7 @@ MCP server and block pattern library for AI-powered site building. Connect any A
 
 **MCP Server**
 
-Registers an MCP-compatible server endpoint that any AI client can connect to. Tools cover posts, pages, media, templates, navigation menus, and global styles.
+Registers an MCP-compatible server endpoint that any AI client can connect to. Tools cover posts, pages, media, templates, navigation menus, and global styles. Clients authenticate with a standard WordPress Application Password — see the FAQ for details.
 
 **Block Patterns**
 
@@ -25,6 +25,10 @@ A curated library of Gutenberg block patterns designed for the Twenty Twenty-Fiv
 **AI-agnostic**
 
 No specific AI is bundled or required. Connect Claude, GPT, Gemini, or any MCP-compatible assistant of your choice.
+
+**Connecting a client**
+
+The MCP endpoint is `/wp-json/airo-wp/v1/mcp/streamable`. Authentication uses a standard WordPress Application Password, which you create and revoke under Users -> Profile. HTTPS is required, because WordPress does not issue Application Passwords on non-SSL sites. See the FAQ below for the exact header, and the permissions each tool requires.
 
 **Developer highlights:**
 
@@ -61,6 +65,44 @@ Any MCP-compatible AI client — Claude, GPT, Gemini, or others. The plugin does
 
 Patterns are sourced from the [DesignSetGo plugin](https://wordpress.org/plugins/designsetgo/). If DesignSetGo is active, Airo WP AI Builder defers to it automatically to avoid duplication.
 
+= How do I connect an AI client to the MCP server? =
+
+The endpoint is:
+
+`https://example.com/wp-json/airo-wp/v1/mcp/streamable`
+
+Create a credential under Users -> Profile -> Application Passwords, giving it a name such as "Claude". WordPress shows the generated password once only, so copy it before leaving the screen.
+
+Combine your WordPress username and that password with a colon, base64-encode the result, and send it under the `airowp` authorization scheme:
+
+`Authorization: airowp YWRtaW46YWJjZCBFRkdIIGlqa2wgTU5PUCBxcnN0IFVWV1g=`
+
+Some clients offer only a bearer-token field rather than a full header. For those, prefix the same encoded value with `airowp_` and send it as a bearer token:
+
+`Authorization: Bearer airowp_YWRtaW46YWJjZCBFRkdIIGlqa2wgTU5PUCBxcnN0IFVWV1g=`
+
+Both forms are equivalent. Note that base64 is encoding rather than encryption, so treat the encoded string as being exactly as sensitive as the password itself, and keep it out of shared configuration files.
+
+= Why does the MCP endpoint reject my credential? =
+
+Three common causes:
+
+1. **The site is not served over HTTPS.** WordPress refuses to issue or accept Application Passwords without SSL, so the credential cannot be created in the first place.
+2. **The regular account password was used.** The MCP server accepts an Application Password, not your login password.
+3. **The username is wrong.** Use the WordPress username, not the email address.
+
+An error mentioning `Mcp-Session-Id` is not an authentication failure — it means the credential was accepted and the request reached the MCP server. The transport is session-based: call `initialize` first, then send the returned session id with every subsequent request. AI clients handle this automatically; it only comes up when calling the endpoint by hand.
+
+= What can a connected AI actually change? =
+
+Whatever the user you created the Application Password for is allowed to change. Authentication only establishes which user the request belongs to; every tool then checks a WordPress capability of its own — `edit_posts` to create a post, `upload_files` to add media, `activate_plugins` to activate a plugin, and so on.
+
+A credential belonging to a Subscriber therefore connects successfully and is refused by every tool that modifies anything. Create the Application Password for a user whose role matches the access you intend to grant, and revoke it under Users -> Profile when it is no longer needed.
+
+= Does this support the MCP specification's OAuth flow? =
+
+Not yet. The MCP specification defines an OAuth 2.1 authorization flow with discovery documents and a consent screen. This plugin does not implement it, so clients that require OAuth discovery cannot connect. The Application Password scheme described above is a configured credential instead. OAuth support is under consideration.
+
 = What PHP versions are supported? =
 
 PHP 7.4 is the minimum. PHP 8.3 is the recommended version for local development. CI validates 7.4, 8.0, 8.1, 8.2, and 8.3.
@@ -70,6 +112,13 @@ PHP 7.4 is the minimum. PHP 8.3 is the recommended version for local development
 Runtime Composer packages are namespace-prefixed with Strauss into `dependencies/` so they do not clash with other plugins' autoloaders.
 
 == Changelog ==
+
+= 0.3.6 =
+* AI clients can now authenticate with a WordPress Application Password sent in the Authorization header (HTTPS required)
+* Documented how to connect a client: the endpoint, creating a credential, and the capability each tool needs
+* Fixed the MCP endpoint returning 401 on GoDaddy sites that have not been published yet
+* Fixed a release fault where a successful publish could report failure and skip the plugin-directory artwork
+* Release publishing now verifies credentials before building and explains authentication failures
 
 = 0.3.5 =
 * Reduced the download by 41% — uncompiled block sources are no longer shipped inside the plugin

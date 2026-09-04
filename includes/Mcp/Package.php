@@ -15,6 +15,8 @@ use GoDaddy\WordPress\Plugins\AiroWp\Container;
 use GoDaddy\WordPress\Plugins\AiroWp\Dependencies\WP\MCP\Core\McpAdapter;
 use GoDaddy\WordPress\Plugins\AiroWp\Dependencies\WP\MCP\Transport\HttpTransport;
 use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Infrastructure\AbilitiesApiProxy;
+use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Infrastructure\AppPasswordHeaderAuth;
+use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Infrastructure\RouteAccess;
 use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Plugins\ActivatePlugin;
 use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Plugins\DeactivatePlugin;
 use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Plugins\GetPlugin;
@@ -78,7 +80,8 @@ use GoDaddy\WordPress\Plugins\AiroWp\PackageInterface;
  * 'airo-wp' MCP server on the mcp_adapter_init action.
  *
  * No should_run guard: hooks are cheap; real work only happens on REST requests.
- * Auth providers are out of scope for this ticket.
+ * Auth providers (JWT, request signing) remain out of scope; RouteAccess only
+ * makes core's own Application Password auth work on the MCP route.
  */
 final class Package implements PackageInterface {
 
@@ -88,6 +91,20 @@ final class Package implements PackageInterface {
 	 * @param Container $container Plugin container.
 	 */
 	public static function init( Container $container ): void {
+		// Both register auth filters and must be in place before anything resolves
+		// the current user, because WordPress caches that answer for the whole
+		// request -- a filter added later is never consulted.
+		//
+		// They divide the work rather than duplicate it. RouteAccess answers the
+		// GoDaddy Launch platform: it lifts the coming-soon REST restriction, and
+		// asserts api-request status for the MCP route so that credentials Launch
+		// resolves early (notably core's own Basic auth) are still validated.
+		// AppPasswordHeaderAuth answers hosted MCP clients, which can send neither
+		// Basic auth nor a custom header name, and asserts api-request status only
+		// when one of its own credentials is present.
+		$container->get( RouteAccess::class )->setup();
+		$container->get( AppPasswordHeaderAuth::class )->setup();
+
 		$proxy = $container->get( AbilitiesApiProxy::class );
 		$proxy->setup();
 
