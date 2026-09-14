@@ -131,6 +131,58 @@ console.log( 'build-zip.mjs: removing package.json from zip...' );
 	const zip = new AdmZip( TEMP_ZIP );
 	zip.deleteFile( 'airo-wp/package.json' );
 
+	// Test-support code ships only because package.json "files" allowlists
+	// includes/ wholesale. Nothing in the plugin's runtime references any of it —
+	// the only referents are tests/, and phpcs.xml already excludes
+	// includes/Internal/Testing/ — so it installs on every user's site, unused.
+	//
+	// Dropped here rather than by narrowing the "files" allowlist, because the
+	// files must stay in the repo: PHPUnit's container tests use these fixtures.
+	// The allowlist cannot express "ship includes/ except this subtree".
+	//
+	// This list is duplicated in the release tooling's other zip builder. Change
+	// both together: if they drift, the archive that gets tested stops being the
+	// archive that gets published, which is the one property this strip exists to
+	// preserve.
+	const TEST_ONLY_PREFIXES = [
+		'airo-wp/includes/Internal/Testing/',
+		'airo-wp/includes/Internal/DependencyManagement/TestingContainer.php',
+	];
+
+	const testOnly = zip
+		.getEntries()
+		.map( ( entry ) => entry.entryName )
+		.filter( ( name ) =>
+			TEST_ONLY_PREFIXES.some( ( prefix ) => name.startsWith( prefix ) )
+		);
+
+	for ( const name of testOnly ) {
+		zip.deleteFile( name );
+	}
+
+	console.log(
+		`build-zip.mjs: removed ${ testOnly.length } test-support entries from zip`
+	);
+
+	// AdmZip silently ignores a deleteFile for a name it does not hold, so assert
+	// the removal actually happened rather than trusting the call.
+	const stillThere = zip
+		.getEntries()
+		.map( ( entry ) => entry.entryName )
+		.filter( ( name ) =>
+			TEST_ONLY_PREFIXES.some( ( prefix ) => name.startsWith( prefix ) )
+		);
+
+	if ( stillThere.length > 0 ) {
+		console.error(
+			`build-zip.mjs: test-support code survived removal:\n  ${ stillThere.join(
+				'\n  '
+			) }`
+		);
+		rmSync( TEMP_ZIP, { force: true } );
+		process.exit( 1 );
+	}
+
 	// .wordpress-org/ holds the WordPress.org plugin-directory art (banner, icon,
 	// screenshots). Those belong in SVN assets/, never inside the plugin users
 	// install. It is absent from package.json "files" so it is excluded already;

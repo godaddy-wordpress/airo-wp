@@ -1,8 +1,18 @@
 name: Publish Plugin
 
-# Ships a tagged release to the plugin's WordPress.org SVN repository. Dispatch it
-# manually against a v<version> tag — the tags created by release-artifact.yml on
-# merge to main. Nothing here runs automatically.
+# Ships an already-built release to the plugin's WordPress.org SVN repository.
+# Dispatch it manually with the `tag` of a release created by release-artifact.yml.
+# Nothing here runs automatically.
+#
+# It builds nothing. The payload is the release asset release-artifact.yml already
+# built, tested (PHPCS, PHPUnit, Plugin Check) and attached to that tag — so the
+# bytes reaching WordPress.org are the bytes that were tested, rather than a second
+# build that merely ought to match. This workflow's only question about the payload
+# is whether it exists.
+#
+# Dispatch from any ref: the `tag` input, not the dispatch ref, decides what is
+# published. The repository is checked out solely for the staging script, so you get
+# current tooling applied to a tagged payload.
 #
 # This workflow is authored in the private repo at .github/public/workflows/ and
 # mirrored here by release-mirror.yml. It is not dispatchable from the private
@@ -15,9 +25,9 @@ name: Publish Plugin
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to publish — defaults to package.json at the tag, and must match it. x.y.z, or a pre-release x.y.z-beta1 / x.y.z-rc1'
-        required: false
+      tag:
+        description: 'Release tag to publish, e.g. v0.4.1. Its GitHub Release must already carry the built artifact.'
+        required: true
         type: string
       dry_run:
         description: 'Report what would be published and make no SVN change'
@@ -57,61 +67,30 @@ jobs:
       published: ${{ steps.verify.outputs.published }}
 
     steps:
-      # Publishing is only ever done from a version tag, never a branch. A branch
-      # moves: dispatching from release/* could publish commits pushed after CI went
-      # green. A tag cannot, so what is published is exactly what was tested, and a
-      # re-run republishes byte-identical content. Tags are created by
-      # release-artifact.yml on merge to main.
-      #
-      # Fail before doing any work, rather than after building an artifact nobody
-      # will use.
-      - name: Guard - dispatch ref must be a version tag
-        run: |
-          if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
-            echo "::error::Refusing to publish from '${GITHUB_REF}'. Dispatch this workflow with a v<version> tag as the ref (for example --ref v0.3.4)."
-            exit 1
-          fi
-          echo "Ref: ${GITHUB_REF}"
-
+      # Only the staging script is taken from the repository. The payload comes from
+      # the release asset, so the dispatch ref does not decide what is published and
+      # a branch that moves cannot change the bytes.
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Resolve and validate version
         id: version
         env:
-          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
 
-          PKG_VERSION=$(node -p "require('./package.json').version")
-
-          if [ -n "${INPUT_VERSION}" ]; then
-            VERSION="${INPUT_VERSION}"
-          else
-            VERSION="${PKG_VERSION}"
-          fi
-
-          # Accept a stable x.y.z or a pre-release x.y.z-<suffix> (beta1, rc1).
-          if ! printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
-            echo "::error::Version '${VERSION}' is not x.y.z or x.y.z-<pre-release>."
+          # The tag is the single claim about what is being published. package.json
+          # is deliberately NOT consulted: the checkout is whatever ref was
+          # dispatched, so its version says nothing about the tagged payload. The
+          # artifact's own existence under this tag is the check that matters, and
+          # the download step below makes it.
+          if ! printf '%s' "${INPUT_TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::Tag '${INPUT_TAG}' is not a version tag. Expected v<x.y.z> or v<x.y.z>-<pre-release>, for example v0.4.1 or v0.5.0-beta1."
             exit 1
           fi
 
-          # An explicit input that disagrees with package.json means the branch and
-          # the request are out of step; publishing either one would be a guess.
-          if [ "${VERSION}" != "${PKG_VERSION}" ]; then
-            echo "::error::Requested version '${VERSION}' does not match package.json ('${PKG_VERSION}')."
-            exit 1
-          fi
-
-          # The dispatch ref is a tag (enforced above), so its name is another
-          # independent claim about which version this is. If it disagrees with
-          # package.json, the tag was cut at the wrong commit — publishing either
-          # answer would be a guess, and wp.org tags are effectively permanent.
-          if [ "v${VERSION}" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::Tag '${GITHUB_REF_NAME}' does not match version '${VERSION}' from package.json. Expected tag 'v${VERSION}'."
-            exit 1
-          fi
+          VERSION="${INPUT_TAG#v}"
 
           if printf '%s' "${VERSION}" | grep -q -- '-'; then
             CHANNEL=pre-release
@@ -216,22 +195,51 @@ jobs:
 
           echo "Credential shape OK (not an authentication test - see the comment above this step)."
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
+      # No build, and therefore no Node. The payload is the artifact
+      # release-artifact.yml already built under this tag and gated behind PHPCS,
+      # PHPUnit and Plugin Check. Rebuilding here would publish bytes nothing had
+      # tested, which is the whole thing this avoids.
+      #
+      # A missing asset is a controlled failure, not something to work around: it
+      # means the release was never built or its artifact was removed, and this
+      # workflow has no business inventing a replacement.
+      - name: Download the tested release artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
 
-      - run: npm ci
+          ASSET="airo-wp-${VERSION}.zip"
+          mkdir -p builds
 
-      # The zip is the canonical artifact: built from package.json "files", and
-      # the same one the pre-release workflow runs Plugin Check and the e2e
-      # matrix against.
-      - name: Build distributable zip
-        run: npm run build:zip
+          if ! gh release view "${INPUT_TAG}" --json tagName >/dev/null 2>&1; then
+            echo "::error::No GitHub Release ${INPUT_TAG}. release-artifact.yml creates the release and its artifact on merge to main; publish only after that has run."
+            exit 1
+          fi
+
+          if ! gh release view "${INPUT_TAG}" --json assets --jq '.assets[].name' | grep -qx "${ASSET}"; then
+            echo "::error::Release ${INPUT_TAG} carries no ${ASSET}. Dispatch release-artifact.yml with tag=${INPUT_TAG} to attach it, then retry."
+            exit 1
+          fi
+
+          gh release download "${INPUT_TAG}" --pattern "${ASSET}" --dir builds --clobber
+
+          # gh exits 0 on a pattern that matched nothing, so confirm the file rather
+          # than trusting the exit code.
+          if [ ! -f "builds/${ASSET}" ]; then
+            echo "::error::gh reported success but builds/${ASSET} is absent."
+            exit 1
+          fi
+
+          echo "Downloaded ${ASSET} ($(du -k "builds/${ASSET}" | awk '{print $1}') KiB) from ${INPUT_TAG}"
 
       - name: Stage SVN payload
         id: payload
-        run: bash .github/scripts/stage-svn-payload.sh builds/airo-wp.zip builds/svn-payload
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: bash .github/scripts/stage-svn-payload.sh "builds/airo-wp-${VERSION}.zip" builds/svn-payload
 
       # deploy.sh evaluates its dry-run input as a shell command (`if $INPUT_DRY_RUN`),
       # so it must receive exactly `true` or `false`. Normalise here: anything that
@@ -340,7 +348,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: airo-wp-${{ steps.version.outputs.version }}
-          path: builds/airo-wp.zip
+          path: builds/airo-wp-${{ steps.version.outputs.version }}.zip
           retention-days: 7
 
       # Stable lane: rsync the payload into trunk and copy trunk to tags/X.Y.Z.
@@ -553,15 +561,15 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Guard - dispatch ref must be a version tag
-        run: |
-          if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
-            echo "::error::Refusing to sync assets from '${GITHUB_REF}'. Dispatch this workflow with a v<version> tag as the ref."
-            exit 1
-          fi
-
-      - name: Checkout
+      # Artwork cannot come from the release asset: .wordpress-org/ is deliberately
+      # excluded from the plugin zip, since it belongs in SVN assets/ and must never
+      # install on a user's site. So this job stays repo-driven — but it checks out
+      # the TAG rather than the dispatch ref, so the artwork published is the artwork
+      # at the released commit, matching the payload the publish job sends.
+      - name: Checkout the tagged commit
         uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
 
       # Job-scoped: a standalone run skips the publish job, so its normalised flag
       # is not available here. Same fail-closed rule.

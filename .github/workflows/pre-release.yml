@@ -16,16 +16,18 @@ name: Pre-release
 #   Minimum WP 6.9  × PHP 7.4   (matches "Requires at least" in readme.txt)
 #   Nightly WP      × PHP 8.4
 
+# Manual only. It used to fire on release/* PRs as well, which meant the release
+# PR ran this full sweep AND ci.yml's subset, and then release-artifact.yml built
+# again on the merge — three executions of the same checks and two builds per
+# release. release-artifact.yml now gates the artifact it publishes, so dispatch
+# this when you want the full compatibility matrix run on top of that.
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
 
 jobs:
   lint:
     name: PHPCS (PHP 8.3 × WP 7.1)
     runs-on: ubuntu-24.04
-    if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,7 +40,6 @@ jobs:
   lint-js:
     name: JS/SCSS lint
     runs-on: ubuntu-24.04
-    if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,7 +53,6 @@ jobs:
   unit:
     name: PHPUnit (PHP 8.3 × WP 7.1)
     runs-on: ubuntu-24.04
-    if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -65,7 +65,6 @@ jobs:
   build:
     name: Build test zip
     runs-on: ubuntu-24.04
-    if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

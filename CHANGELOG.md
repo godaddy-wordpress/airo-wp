@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- The download no longer carries test-only helper classes that were never used at runtime, making the plugin slightly smaller
+
 ## 0.4.0
 
 - Images can again be uploaded from raw file data, not only from a URL — an image with no publicly reachable address could not be uploaded at all
