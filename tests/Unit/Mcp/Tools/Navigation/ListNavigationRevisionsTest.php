@@ -82,5 +82,17 @@ namespace GoDaddy\WordPress\Plugins\AiroWp\Tests\Unit\Mcp\Tools\Navigation {
 			$this->assertSame( array(), $result['revisions'] );
 			$this->assertSame( 0, $result['total'] );
 		}
+		/**
+		 * The revisions array declares its item shape rather than being an untyped array.
+		 */
+		public function test_output_schema_describes_revision_items(): void {
+			$schema    = $this->call_private( $this->tool, 'get_output_schema' );
+			$revisions = $schema['properties']['revisions'];
+
+			$this->assertArrayHasKey( 'items', $revisions, 'revisions lost its item schema' );
+			foreach ( array( 'id', 'author', 'date', 'date_gmt', 'guid', 'modified', 'modified_gmt', 'parent', 'slug', 'title', 'content' ) as $field ) {
+				$this->assertArrayHasKey( $field, $revisions['items']['properties'], "missing {$field}" );
+			}
+		}
 	}
 }

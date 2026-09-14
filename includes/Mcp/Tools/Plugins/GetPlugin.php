@@ -62,54 +62,8 @@ class GetPlugin extends BaseTool {
 			array(
 				'label'               => __( 'Get Plugin', 'airo-wp' ),
 				'description'         => __( 'Retrieves information about a specific WordPress plugin by its slug, including current version and available-update info (whether an update exists and the target version)', 'airo-wp' ),
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'plugin_slug' => array(
-							'type'        => 'string',
-							'description' => __( 'The plugin slug (e.g. "hello-dolly")', 'airo-wp' ),
-							'minLength'   => 1,
-						),
-						'context'     => array(
-							'type'        => 'string',
-							'description' => __( 'Response context: view, embed, or edit', 'airo-wp' ),
-							'enum'        => array( 'view', 'embed', 'edit' ),
-							'default'     => 'view',
-						),
-						'force_check' => array(
-							'type'        => 'boolean',
-							'description' => __( 'Force a refresh of available plugin updates from WordPress.org before reading. Defaults to false; the cached transient is normally kept fresh by core cron.', 'airo-wp' ),
-							'default'     => false,
-						),
-					),
-					'required'   => array( 'plugin_slug' ),
-				),
-				'output_schema'       => $this->build_output_schema(
-					__( 'Plugin information', 'airo-wp' ),
-					array(
-						'plugin' => array(
-							'type'        => 'object',
-							'description' => __( 'Plugin details', 'airo-wp' ),
-							'properties'  => array(
-								'slug'             => array( 'type' => 'string' ),
-								'name'             => array( 'type' => 'string' ),
-								'version'          => array( 'type' => 'string' ),
-								'author'           => array( 'type' => 'string' ),
-								'description'      => array( 'type' => 'string' ),
-								'plugin_uri'       => array( 'type' => 'string' ),
-								'author_uri'       => array( 'type' => 'string' ),
-								'text_domain'      => array( 'type' => 'string' ),
-								'status'           => array( 'type' => 'string' ),
-								'file'             => array( 'type' => 'string' ),
-								'network_only'     => array( 'type' => 'boolean' ),
-								'requires_wp'      => array( 'type' => 'string' ),
-								'requires_php'     => array( 'type' => 'string' ),
-								'update_available' => array( 'type' => 'boolean' ),
-								'new_version'      => array( 'type' => array( 'string', 'null' ) ),
-							),
-						),
-					)
-				),
+				'input_schema'        => $this->get_input_schema(),
+				'output_schema'       => $this->get_output_schema(),
 				'execute_callback'    => array( $this, 'execute' ),
 				'permission_callback' => array( $this, 'check_permissions' ),
 				'category'            => 'plugin-management',
@@ -117,6 +71,69 @@ class GetPlugin extends BaseTool {
 		);
 	}
 
+	/**
+	 * Get the input schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'plugin_slug' => array(
+					'type'        => 'string',
+					'description' => __( 'The plugin slug (e.g. "hello-dolly")', 'airo-wp' ),
+					'minLength'   => 1,
+				),
+				'context'     => array(
+					'type'        => 'string',
+					'description' => __( 'Response context: view, embed, or edit', 'airo-wp' ),
+					'enum'        => array( 'view', 'embed', 'edit' ),
+					'default'     => 'view',
+				),
+				'force_check' => array(
+					'type'        => 'boolean',
+					'description' => __( 'Force a refresh of available plugin updates from WordPress.org before reading. Defaults to false; the cached transient is normally kept fresh by core cron.', 'airo-wp' ),
+					'default'     => false,
+				),
+			),
+			'required'   => array( 'plugin_slug' ),
+		);
+	}
+
+	/**
+	 * Get the output schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_output_schema(): array {
+		return $this->build_output_schema(
+			__( 'Plugin information', 'airo-wp' ),
+			array(
+				'plugin' => array(
+					'type'        => 'object',
+					'description' => __( 'Plugin details', 'airo-wp' ),
+					'properties'  => array(
+						'slug'             => array( 'type' => 'string' ),
+						'name'             => array( 'type' => 'string' ),
+						'version'          => array( 'type' => 'string' ),
+						'author'           => array( 'type' => 'string' ),
+						'description'      => array( 'type' => 'string' ),
+						'plugin_uri'       => array( 'type' => 'string' ),
+						'author_uri'       => array( 'type' => 'string' ),
+						'text_domain'      => array( 'type' => 'string' ),
+						'status'           => array( 'type' => 'string' ),
+						'file'             => array( 'type' => 'string' ),
+						'network_only'     => array( 'type' => 'boolean' ),
+						'requires_wp'      => array( 'type' => 'string' ),
+						'requires_php'     => array( 'type' => 'string' ),
+						'update_available' => array( 'type' => 'boolean' ),
+						'new_version'      => array( 'type' => array( 'string', 'null' ) ),
+					),
+				),
+			)
+		);
+	}
 	/**
 	 * Execute the tool.
 	 *

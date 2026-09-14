@@ -22,25 +22,56 @@
 import { createHash } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { execSync, spawnSync } from 'node:child_process';
+import path from 'node:path';
 
 // ─── internal helpers ──────────────────────────────────────────────────────────
 
+/**
+ * The Docker Compose project names wp-env may be using for this config.
+ *
+ * wp-env names its containers after its work directory, and it derives that
+ * directory two different ways: historically the full md5 of the config file
+ * path, and since 11.0.0 a descriptive `wp-env-<dir>-<first 8 of that md5>`. It
+ * keeps the legacy spelling only when that cache directory already exists, so a
+ * machine that has run an older wp-env stays on the old name while a clean one
+ * gets the new name.
+ *
+ * Both are accepted rather than tracking which applies. Checking only the full
+ * hash made this fail exactly where it is least visible: on a clean CI runner
+ * `wp-env start` succeeded and reported both sites up, then the check below found
+ * nothing and aborted the run — while every developer machine, having a legacy
+ * cache directory, kept working.
+ */
+export function composeProjectNames(root) {
+	const fullHash = createHash('md5').update(`${root}/.wp-env.json`).digest('hex');
+	return [
+		// wp-env 10.x, and 11.x where a legacy cache directory already exists.
+		fullHash,
+		// wp-env 11.x on a directory it has not seen before.
+		`wp-env-${path.basename(root).toLowerCase()}-${fullHash.slice(0, 8)}`,
+	];
+}
+
 function detectRunning(root) {
-	const hash = createHash('md5').update(`${root}/.wp-env.json`).digest('hex');
-	try {
-		// Match the long-lived tests-wordpress service specifically, not any
-		// container carrying the env hash. The mysql services can stay Up while
-		// the WordPress containers have exited (e.g. OOM-killed): filtering on the
-		// bare hash would misread that half-up state as "running" and skip
-		// wp-env start, so commands then hit an exited tests-wordpress container.
-		const out = execSync(
-			`docker ps --filter "name=${hash}-tests-wordpress" --format "{{.Names}}"`,
-			{ encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
-		);
-		return out.trim().length > 0;
-	} catch {
-		return false;
+	// Match the long-lived tests-wordpress service specifically, not any
+	// container carrying the env hash. The mysql services can stay Up while
+	// the WordPress containers have exited (e.g. OOM-killed): filtering on the
+	// bare hash would misread that half-up state as "running" and skip
+	// wp-env start, so commands then hit an exited tests-wordpress container.
+	for (const project of composeProjectNames(root)) {
+		try {
+			const out = execSync(
+				`docker ps --filter "name=${project}-tests-wordpress" --format "{{.Names}}"`,
+				{ encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+			);
+			if (out.trim().length > 0) {
+				return true;
+			}
+		} catch {
+			// Docker unavailable, or this spelling matched nothing: try the next.
+		}
 	}
+	return false;
 }
 
 function startEnv(root) {

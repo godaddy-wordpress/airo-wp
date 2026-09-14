@@ -66,4 +66,18 @@ final class CreateNavigationTest extends TestCase {
 		$this->assertArrayHasKey( 'navigation', $result );
 		$this->assertSame( 10, $result['navigation']['id'] );
 	}
+
+	/**
+	 * The navigation object in the output schema describes its own fields, so a
+	 * client can tell what the response contains.
+	 */
+	public function test_output_schema_describes_navigation_fields(): void {
+		$schema = $this->call_private( $this->tool, 'get_output_schema' );
+		$nav    = $schema['properties']['navigation'];
+
+		$this->assertArrayHasKey( 'properties', $nav, 'navigation was flattened to a bare object' );
+		foreach ( array( 'id', 'date', 'date_gmt', 'guid', 'modified', 'modified_gmt', 'slug', 'status', 'type', 'link', 'title', 'content', 'template' ) as $field ) {
+			$this->assertArrayHasKey( $field, $nav['properties'], "missing {$field}" );
+		}
+	}
 }

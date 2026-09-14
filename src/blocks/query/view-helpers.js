@@ -100,6 +100,7 @@ export function notifyItemsAppended(container, queryId, added) {
 			detail: { queryId, added },
 		})
 	);
+	notifyContentUpdated(container, 'query-append');
 }
 
 // ---------------------------------------------------------------------------
@@ -261,6 +262,65 @@ export function announceResultCount(
 	}
 	statusEl.textContent = message;
 	statusEl.setAttribute('data-airo-wp-total-items', String(n));
+}
+
+/**
+ * Read the signed refresh source a query region carries.
+ *
+ * First paint embeds the query's definition and an HMAC signature; the
+ * public REST route renders only a definition whose signature verifies, so
+ * the pair is sent back verbatim.
+ *
+ * @param {Element|null} blobsHost The region's `[data-airo-wp-blobs-for]` element.
+ * @return {{source: string, signature: string}|null} Signed source, or null.
+ */
+export function readRefreshSource(blobsHost) {
+	const source = blobsHost?.getAttribute('data-airo-wp-refresh-source') || '';
+	const signature = blobsHost?.getAttribute('data-airo-wp-signature') || '';
+	return source && signature ? { source, signature } : null;
+}
+
+/**
+ * Build the fetch() arguments for a query refresh.
+ *
+ * X-WP-Nonce goes only with a nonce the region itself carries, which the
+ * server emits for logged-in users alone: a cached page outlives its nonce,
+ * and core rejects a stale one before the route runs. A page-wide
+ * wpApiSettings nonce is never borrowed for the same reason.
+ *
+ * @param {Object} ctx                IAPI context (queryId, restUrl, nonce).
+ * @param {Object} refreshSource      Result of readRefreshSource().
+ * @param {Object} request            Request details.
+ * @param {number} request.page       Page to render.
+ * @param {Object} request.params     Filter params (see collectParams()).
+ * @param {string} request.currentUrl URL the results are for.
+ * @return {{url: string, init: Object}} fetch() URL and options.
+ */
+export function buildRefreshRequest(ctx, refreshSource, request) {
+	const headers = { 'Content-Type': 'application/json' };
+	if (ctx?.nonce) {
+		headers['X-WP-Nonce'] = ctx.nonce;
+	}
+
+	return {
+		url:
+			ctx?.restUrl ||
+			(window.wpApiSettings?.root || '/wp-json/') +
+				'airo-wp/v1/query/render',
+		init: {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers,
+			body: JSON.stringify({
+				queryId: ctx?.queryId,
+				source: refreshSource.source,
+				signature: refreshSource.signature,
+				page: request.page,
+				params: request.params,
+				currentUrl: request.currentUrl,
+			}),
+		},
+	};
 }
 
 /**

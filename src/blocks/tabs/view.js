@@ -11,7 +11,9 @@
 		constructor(element) {
 			this.element = element;
 			this.nav = element.querySelector('.airo-wp-tabs__nav');
-			this.panels = element.querySelectorAll('.airo-wp-tab');
+			this.panels = Array.from(
+				element.querySelectorAll('.airo-wp-tab')
+			).filter((panel) => panel.closest('.airo-wp-tabs') === element);
 			this.activeTab = this.clampTabIndex(
 				parseInt(element.dataset.activeTab, 10)
 			);

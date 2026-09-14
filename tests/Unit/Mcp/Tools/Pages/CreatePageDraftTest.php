@@ -101,6 +101,8 @@ final class CreatePageDraftTest extends TestCase {
 			}
 		);
 
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
 		Functions\when( 'get_post_meta' )->alias(
 			function ( $id, $key, $single ) {
 				if ( 10 === (int) $id && DraftPageService::META_HAS_DRAFT === $key ) {
@@ -150,6 +152,8 @@ final class CreatePageDraftTest extends TestCase {
 
 		Functions\when( 'get_post' )->justReturn( $post );
 		Functions\when( 'get_post_meta' )->justReturn( '' );  // no draft exists
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
 		Functions\when( 'get_current_user_id' )->justReturn( 1 );
 		Functions\when( 'wp_slash' )->returnArg();
 		Functions\when( 'wp_insert_post' )->justReturn( new \WP_Error( 'test', 'stop here' ) );

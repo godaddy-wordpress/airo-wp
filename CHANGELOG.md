@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Images can again be uploaded from raw file data, not only from a URL — an image with no publicly reachable address could not be uploaded at all
+- Plugin tools now reject an empty plugin slug up front instead of failing partway through
+- Navigation and page-revision tools describe the fields they return again, so a client knows the shape of the response
+
 ## 0.3.6
 
 - AI clients can now authenticate with a WordPress Application Password sent in the `Authorization` header (HTTPS required)

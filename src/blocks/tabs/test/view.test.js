@@ -10,7 +10,7 @@
  */
 
 const TABS_HTML = `
-	<div class="wp-block-airo-wp-tabs" data-active-tab="0" data-deep-linking="true">
+	<div class="wp-block-airo-wp-tabs airo-wp-tabs" data-active-tab="0" data-deep-linking="true">
 		<div class="airo-wp-tabs__nav"></div>
 		<div class="airo-wp-tab" id="panel-one" aria-label="One"></div>
 		<div class="airo-wp-tab" id="panel-two" aria-label="Two"></div>
@@ -64,5 +64,25 @@ describe('tabs deep linking', () => {
 
 		const first = el.querySelector('#panel-one');
 		expect(first.classList.contains('is-active')).toBe(true);
+	});
+
+	it('keeps nested tab panels out of the outer navigation', () => {
+		const el = mount('');
+		el.classList.add('airo-wp-tabs');
+		el.innerHTML =
+			'<div class="airo-wp-tabs__nav"></div>' +
+			'<div class="airo-wp-tab" id="panel-outer-one" aria-label="Outer one"><div class="airo-wp-tabs"><div class="airo-wp-tab" id="panel-inner-one" aria-label="Inner one"></div><div class="airo-wp-tab" id="panel-inner-two" aria-label="Inner two"></div></div></div>' +
+			'<div class="airo-wp-tab" id="panel-outer-two" aria-label="Outer two"></div>';
+
+		const tabs = new window.DSGTabs(el);
+
+		expect(
+			el.querySelectorAll(
+				':scope > .airo-wp-tabs__nav .airo-wp-tabs__tab'
+			)
+		).toHaveLength(2);
+		tabs.setActiveTab(1);
+		expect(el.querySelector('#panel-outer-one').hidden).toBe(true);
+		expect(el.querySelector('#panel-outer-two').hidden).toBe(false);
 	});
 });

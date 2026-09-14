@@ -178,11 +178,14 @@ class CreatePageDraft extends BaseTool {
 
 		$this->draft_service->copy_post_meta( $post_id, $draft_id );
 
-		// Copy thumbnail if exists.
-		$thumbnail_id = get_post_meta( $post_id, '_thumbnail_id', true );
+		// Copy the featured image through the thumbnail API rather than writing
+		// _thumbnail_id directly: set_post_thumbnail() clears the meta when the
+		// attachment no longer resolves to an image, where a raw update_post_meta()
+		// would copy a dangling attachment ID onto the draft.
+		$thumbnail_id = get_post_thumbnail_id( $post_id );
 
-		if ( ! empty( $thumbnail_id ) ) {
-			update_post_meta( $draft_id, '_thumbnail_id', $thumbnail_id );
+		if ( $thumbnail_id ) {
+			set_post_thumbnail( $draft_id, (int) $thumbnail_id );
 		}
 
 		// Set draft meta relationships.

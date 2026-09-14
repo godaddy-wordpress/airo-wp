@@ -45,33 +45,52 @@ class DeactivatePlugin extends BaseTool {
 			array(
 				'label'               => __( 'Deactivate Plugin', 'airo-wp' ),
 				'description'         => __( 'Deactivates a plugin by slug, optionally uninstalling it', 'airo-wp' ),
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'plugin_slug' => array(
-							'type'        => 'string',
-							'description' => __( 'The plugin slug (e.g. "hello-dolly")', 'airo-wp' ),
-						),
-						'uninstall'   => array(
-							'type'        => 'boolean',
-							'description' => __( 'Whether to also uninstall (delete) the plugin', 'airo-wp' ),
-							'default'     => false,
-						),
-					),
-					'required'   => array( 'plugin_slug' ),
-				),
-				'output_schema'       => $this->build_output_schema(
-					__( 'Plugin deactivation result', 'airo-wp' ),
-					array(
-						'plugin' => array(
-							'type'        => 'string',
-							'description' => __( 'The plugin slug', 'airo-wp' ),
-						),
-					)
-				),
+				'input_schema'        => $this->get_input_schema(),
+				'output_schema'       => $this->get_output_schema(),
 				'execute_callback'    => array( $this, 'execute' ),
 				'permission_callback' => array( $this, 'check_permissions' ),
 				'category'            => 'plugin-management',
+			)
+		);
+	}
+
+	/**
+	 * Get the input schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'plugin_slug' => array(
+					'type'        => 'string',
+					'description' => __( 'The plugin slug (e.g. "hello-dolly")', 'airo-wp' ),
+					'minLength'   => 1,
+				),
+				'uninstall'   => array(
+					'type'        => 'boolean',
+					'description' => __( 'Whether to also uninstall (delete) the plugin', 'airo-wp' ),
+					'default'     => false,
+				),
+			),
+			'required'   => array( 'plugin_slug' ),
+		);
+	}
+
+	/**
+	 * Get the output schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_output_schema(): array {
+		return $this->build_output_schema(
+			__( 'Plugin deactivation result', 'airo-wp' ),
+			array(
+				'plugin' => array(
+					'type'        => 'string',
+					'description' => __( 'The plugin slug', 'airo-wp' ),
+				),
 			)
 		);
 	}

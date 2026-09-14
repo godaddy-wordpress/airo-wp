@@ -8,12 +8,12 @@
  * always tears down even on failure.
  */
 
-import { createHash } from 'node:crypto';
 import { execSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync, copyFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import AdmZip from 'adm-zip';
+import { composeProjectNames } from './wp-env-lifecycle.mjs';
 
 const ROOT        = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '../..' );
 const ZIP_SRC     = path.join( ROOT, 'builds', 'airo-wp.zip' );
@@ -75,9 +75,22 @@ for ( let attempt = 1; attempt <= 3; attempt++ ) {
 
 try {
 	// Copy PCP early-init marker into the CLI container.
-	// wp-env stores compose files at ~/.wp-env/<md5-of-wp-env.json-path>/
-	const hash       = createHash( 'md5' ).update( WP_ENV_JSON ).digest( 'hex' );
-	const composeDir = path.join( WP_ENV_HOME, hash );
+	// wp-env stores compose files under WP_ENV_HOME in a directory whose name it
+	// derives from the config path, and 11.0.0 changed how: the full md5 became a
+	// descriptive `wp-env-<dir>-<first 8 of that md5>`, with the old spelling kept
+	// only where that directory already exists. Resolve whichever is really there
+	// rather than recomputing one, so this works on both a developer machine
+	// carrying a legacy directory and a clean CI runner that is not.
+	const composeDir = composeProjectNames( WP_ENV_DIR )
+		.map( ( name ) => path.join( WP_ENV_HOME, name ) )
+		.find( ( dir ) => existsSync( path.join( dir, 'docker-compose.yml' ) ) );
+
+	if ( ! composeDir ) {
+		console.error(
+			`✗ No wp-env compose directory found under ${ WP_ENV_HOME } for ${ WP_ENV_JSON }.`
+		);
+		process.exit( 1 );
+	}
 	const containerId = execSync(
 		'docker compose ps -q cli',
 		{ cwd: composeDir, encoding: 'utf8' }

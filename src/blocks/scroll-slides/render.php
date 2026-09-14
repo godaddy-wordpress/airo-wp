@@ -153,7 +153,7 @@ if ( ! function_exists( 'airowp_render_scroll_slides' ) ) {
 
 		$inner_style = '';
 		if ( ! empty( $atts['constrainWidth'] ) ) {
-			$max_width = $atts['contentWidth'] !== ''
+				$max_width = '' !== $atts['contentWidth']
 				? airowp_safe_css_value( $atts['contentWidth'] )
 				: 'var(--wp--style--global--content-size, 1140px)';
 			if ( '' === $max_width ) {

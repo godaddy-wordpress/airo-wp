@@ -23,6 +23,7 @@ class Controller {
 	 * Registers action hooks on instantiation.
 	 */
 	public function __construct() {
+		RefreshSource::bootstrap();
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 	}
 
@@ -36,18 +37,53 @@ class Controller {
 			array(
 				'methods'             => \WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'handle_render' ),
-				'permission_callback' => array( $this, 'check_permission' ),
+				'permission_callback' => array( $this, 'check_public_render_permission' ),
+				'args'                => array(
+					'queryId'    => array(
+						'type'              => 'string',
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_key',
+					),
+					// Signed query definition embedded at first paint. See RefreshSource.
+					'source'     => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+					'signature'  => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+					'page'       => array(
+						'type'              => 'integer',
+						'default'           => 1,
+						'sanitize_callback' => 'absint',
+					),
+					'params'     => array(
+						'type'    => 'object',
+						'default' => array(),
+					),
+					'currentUrl' => array(
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'esc_url_raw',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::REST_NAMESPACE,
+			'/query/render-preview',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'handle_preview_render' ),
+				'permission_callback' => array( $this, 'check_edit_posts_permission' ),
 				'args'                => array(
 					'queryId'     => array(
 						'type'              => 'string',
 						'required'          => true,
 						'sanitize_callback' => 'sanitize_key',
 					),
-
-					// NOTE: `attributes` and `params` are nested objects; WP only enforces the
-					// top-level type. The shared render helper (airowp_query_render) is
-					// responsible for per-field sanitization of every value before it reaches
-					// WP_Query args or HTML output. Do NOT assume these arrive sanitized.
 					'attributes'  => array(
 						'type'     => 'object',
 						'required' => true,
@@ -419,34 +455,31 @@ class Controller {
 	}
 
 	/**
-	 * Checks that the request is authenticated and carries a valid nonce.
+	 * Allow public rendering only of a query the site itself rendered.
+	 *
+	 * The signature proves the definition came from a first paint. A query
+	 * placed in a post's content is further limited to people who can see that
+	 * post; one in a template, pattern or widget was public wherever it rendered.
 	 *
 	 * @param \WP_REST_Request $request The REST request.
 	 * @return true|\WP_Error
 	 */
-	public function check_permission( \WP_REST_Request $request ) {
-		if ( ! is_user_logged_in() ) {
-			return new \WP_Error(
-				'rest_forbidden',
-				__( 'You must be logged in.', 'airo-wp' ),
-				array( 'status' => 401 )
-			);
-		}
+	public function check_public_render_permission( \WP_REST_Request $request ) {
+		$source = $this->verified_source( $request );
 
-		$nonce = $request->get_header( 'X-WP-Nonce' );
-		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+		if ( null === $source ) {
 			return new \WP_Error(
 				'rest_forbidden',
-				__( 'Invalid nonce.', 'airo-wp' ),
-				array( 'status' => 401 )
-			);
-		}
-
-		if ( ! current_user_can( 'read' ) ) {
-			return new \WP_Error(
-				'rest_forbidden',
-				__( 'Insufficient permissions.', 'airo-wp' ),
+				__( 'This query could not be verified.', 'airo-wp' ),
 				array( 'status' => 403 )
+			);
+		}
+
+		if ( ! RefreshSource::can_view_source( $source['sourcePostId'] ) ) {
+			return new \WP_Error(
+				'rest_forbidden',
+				__( 'This query is not publicly available.', 'airo-wp' ),
+				array( 'status' => 404 )
 			);
 		}
 
@@ -454,16 +487,156 @@ class Controller {
 	}
 
 	/**
+	 * Decode the request's signed source, or null when it doesn't verify.
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return array|null Verified definition.
+	 */
+	private function verified_source( \WP_REST_Request $request ) {
+		return RefreshSource::verify(
+			$request->get_param( 'source' ),
+			$request->get_param( 'signature' ),
+			(string) $request->get_param( 'queryId' )
+		);
+	}
+
+	/**
 	 * Handles the render REST request and returns HTML + pagination metadata.
 	 *
 	 * @param \WP_REST_Request $request The REST request.
-	 * @return \WP_REST_Response
+	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function handle_render( \WP_REST_Request $request ) {
-		$query_id    = $request->get_param( 'queryId' );
-		$attributes  = (array) $request->get_param( 'attributes' );
+		$source = $this->verified_source( $request );
+
+		if ( null === $source ) {
+			return new \WP_Error(
+				'rest_forbidden',
+				__( 'This query could not be verified.', 'airo-wp' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		return $this->render_request(
+			$source['attributes'],
+			$source['queryId'],
+			$source['innerBlocks'],
+			$request,
+			$source['sourcePostId']
+		);
+	}
+
+	/**
+	 * Render arbitrary attributes for the authenticated editor preview only.
+	 *
+	 * Output carries no refresh source: signing editor-supplied settings would
+	 * let a preview mint a definition the public route then trusts.
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function handle_preview_render( \WP_REST_Request $request ) {
+		$attributes = (array) $request->get_param( 'attributes' );
+		$query_id   = (string) $request->get_param( 'queryId' );
+		$source     = sanitize_key( (string) ( $attributes['source'] ?? 'posts' ) );
+
+		// Anyone who can edit posts can preview, so a query is limited to post
+		// types they could already see or edit — never coupons, orders, etc.
+		// Every source but users and terms can reach the posts renderer:
+		// unknown sources and `current` fall through to it, and relationship's
+		// 'all' fallback becomes it, each reading postType.
+		if ( ! in_array( $source, array( 'users', 'terms' ), true ) && ! self::can_preview_post_type( (string) ( $attributes['postType'] ?? 'post' ) ) ) {
+			return new \WP_Error(
+				'rest_forbidden',
+				__( 'You cannot preview this content type.', 'airo-wp' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		// Manual IDs (and an empty manual list) query post_type 'any', which
+		// spans every searchable type. Narrow the final WP_Query args instead of
+		// each path to them, after the query-scoped filter too: its name comes
+		// from the caller's queryId.
+		$restrict = array( __CLASS__, 'restrict_preview_post_types' );
+		$hooks    = array( 'airowp_query_args', 'airowp_query_' . $query_id . '_args' );
+		foreach ( $hooks as $hook ) {
+			add_filter( $hook, $restrict, PHP_INT_MAX );
+		}
+
+		try {
+			return $this->render_request(
+				$attributes,
+				$query_id,
+				(string) $request->get_param( 'innerBlocks' ),
+				$request,
+				null
+			);
+		} finally {
+			foreach ( $hooks as $hook ) {
+				remove_filter( $hook, $restrict, PHP_INT_MAX );
+			}
+		}
+	}
+
+	/**
+	 * Narrow an editor preview's WP_Query to post types the user may preview.
+	 *
+	 * @param mixed $args Query args (WP_Query, or WP_User_Query / get_terms for
+	 *                    other sources, which carry no post_type).
+	 * @return mixed Args with post_type narrowed.
+	 */
+	public static function restrict_preview_post_types( $args ) {
+		if ( ! is_array( $args ) || ! isset( $args['post_type'] ) ) {
+			return $args;
+		}
+
+		$requested = 'any' === $args['post_type']
+			? get_post_types( array( 'exclude_from_search' => false ) )
+			: (array) $args['post_type'];
+		$allowed   = array_values(
+			array_filter(
+				$requested,
+				static function ( $post_type ) {
+					return self::can_preview_post_type( (string) $post_type );
+				}
+			)
+		);
+
+		if ( empty( $allowed ) ) {
+			$args['post__in'] = array( 0 );
+		} else {
+			$args['post_type'] = $allowed;
+		}
+
+		return $args;
+	}
+
+	/**
+	 * Whether the current user may preview posts of a type.
+	 *
+	 * @param string $post_type Post type name.
+	 * @return bool True for types the public can view or the user can edit.
+	 */
+	private static function can_preview_post_type( $post_type ) {
+		$object = get_post_type_object( sanitize_key( $post_type ) );
+
+		return $object && ( is_post_type_viewable( $object ) || current_user_can( $object->cap->edit_posts ) );
+	}
+
+	/**
+	 * Render a query request after its source has been authorised.
+	 *
+	 * @param array            $attributes Saved or editor-preview attributes.
+	 * @param string           $query_id Query ID.
+	 * @param string           $inner_html Serialized child blocks.
+	 * @param \WP_REST_Request $request The REST request.
+	 * @param int|null         $source_post_id Post holding the query (0 outside
+	 *                                         post content), or null to emit
+	 *                                         no refresh source.
+	 * @return \WP_REST_Response
+	 */
+	private function render_request( array $attributes, $query_id, $inner_html, \WP_REST_Request $request, $source_post_id ) {
 		$page        = max( 1, (int) $request->get_param( 'page' ) );
-		$inner_html  = (string) $request->get_param( 'innerBlocks' );
 		$params      = (array) $request->get_param( 'params' );
 		$current_url = (string) $request->get_param( 'currentUrl' );
 
@@ -502,16 +675,25 @@ class Controller {
 			}
 		}
 
+		$context = array(
+			'query_id'               => $query_id,
+			'page'                   => $page,
+			'inner_html'             => $inner_html,
+			'params'                 => $params,
+			'refresh_source_post_id' => $source_post_id,
+		);
+
 		try {
-			$result = self::render(
-				$attributes,
-				array(
-					'query_id'   => $query_id,
-					'page'       => $page,
-					'inner_html' => $inner_html,
-					'params'     => $params,
-				)
-			);
+			// A public refresh renders within its source post, so queries nested
+			// in the region are re-signed behind the same gate.
+			$result = null === $source_post_id
+				? self::render( $attributes, $context )
+				: RefreshSource::render_within(
+					$source_post_id,
+					static function () use ( $attributes, $context ) {
+						return self::render( $attributes, $context );
+					}
+				);
 		} finally {
 			$_GET                   = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$_SERVER['REQUEST_URI'] = $original_uri;

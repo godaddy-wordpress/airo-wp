@@ -149,4 +149,19 @@ final class DeactivatePluginTest extends TestCase {
 		$this->assertTrue( $result['success'] );
 		$this->assertStringContainsString( 'deactivated successfully', $result['message'] );
 	}
+
+	/**
+	 * plugin_slug carries minLength so an empty string is rejected at the
+	 * schema boundary rather than only inside execute().
+	 */
+	public function test_input_schema_constrains_plugin_slug_to_non_empty(): void {
+		$schema = $this->call_private( $this->tool, 'get_input_schema' );
+
+		$this->assertSame(
+			1,
+			$schema['properties']['plugin_slug']['minLength'] ?? null,
+			'plugin_slug lost its minLength constraint'
+		);
+		$this->assertContains( 'plugin_slug', $schema['required'] );
+	}
 }

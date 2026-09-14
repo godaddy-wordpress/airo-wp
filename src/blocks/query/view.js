@@ -25,6 +25,8 @@ import {
 	notifyItemsAppended as dsgoNotifyItemsAppended,
 	markHandledEvent as dsgoMarkHandledEvent,
 	isHandledEvent as dsgoIsHandledEvent,
+	readRefreshSource as dsgoReadRefreshSource,
+	buildRefreshRequest as dsgoBuildRefreshRequest,
 } from './view-helpers.js';
 
 // Query IDs with an in-flight delegated refresh. The delegated handlers build
@@ -273,16 +275,6 @@ function dsgoGetQueryContainer(queryId, el) {
 	return region?.querySelector(selector) || doc.querySelector(selector);
 }
 
-function dsgoGetRestConfig(ctx) {
-	return {
-		restUrl:
-			ctx.restUrl ||
-			(window.wpApiSettings?.root || '/wp-json/') +
-				'airo-wp/v1/query/render',
-		restNonce: ctx.nonce || window.wpApiSettings?.nonce || '',
-	};
-}
-
 async function dsgoLoadMorePlain(ctx, button) {
 	if (!ctx?.queryId || ctx.busy || !(button instanceof HTMLElement)) {
 		return;
@@ -315,37 +307,23 @@ async function dsgoLoadMorePlain(ctx, button) {
 		const blobsHost = document.querySelector(
 			`[data-airo-wp-blobs-for="${ctx.queryId}"]`
 		);
-		const attrsEl = blobsHost?.querySelector('script[data-airo-wp-attrs]');
-		const innerEl = blobsHost?.querySelector('script[data-airo-wp-inner]');
-
-		if (!attrsEl || !innerEl) {
+		const refreshSource = dsgoReadRefreshSource(blobsHost);
+		if (!refreshSource) {
 			return;
 		}
 
-		const attributes = JSON.parse(attrsEl.textContent);
-		const innerBlocks = JSON.parse(innerEl.textContent);
 		const nextPage = (ctx.page || 1) + 1;
-		const { restUrl, restNonce } = dsgoGetRestConfig(ctx);
-		const res = await fetch(restUrl, {
-			method: 'POST',
-			credentials: 'same-origin',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-WP-Nonce': restNonce,
-			},
-			body: JSON.stringify({
-				queryId: ctx.queryId,
-				attributes,
-				page: nextPage,
-				innerBlocks,
-				currentUrl: window.location.href,
-			}),
+		const request = dsgoBuildRefreshRequest(ctx, refreshSource, {
+			page: nextPage,
+			params: dsgoCollectParams(new URL(window.location.href)),
+			currentUrl: window.location.href,
 		});
+		const res = await fetch(request.url, request.init);
 
 		if (!res.ok) {
 			// eslint-disable-next-line no-console
 			console.warn(
-				`[airo-wp/query] load-more request failed (${res.status}). If 401, the nonce has likely expired — reload the page.`
+				`[airo-wp/query] load-more request failed (${res.status}). Reloading the page will refresh it.`
 			);
 			return;
 		}
@@ -748,43 +726,28 @@ function* dsgoQueryRefresh(ctx, url) {
 	}
 
 	try {
-		const attrsEl = blobsHost.querySelector('script[data-airo-wp-attrs]');
-		const innerEl = blobsHost.querySelector('script[data-airo-wp-inner]');
-		if (!attrsEl || !innerEl) {
+		// Filters live in the URL, so when the in-place refresh can't run (no
+		// signed source, or the server refused it — a cached page whose signature
+		// predates a salt change, say) the server-rendered page is the fallback.
+		const refreshSource = dsgoReadRefreshSource(blobsHost);
+		if (!refreshSource) {
+			window.location.assign(url.toString());
 			return;
 		}
 
-		const attributes = JSON.parse(attrsEl.textContent);
-		const innerBlocks = JSON.parse(innerEl.textContent);
-		const params = dsgoCollectParams(url);
-
-		const restUrl =
-			ctx.restUrl ||
-			(window.wpApiSettings?.root || '/wp-json/') +
-				'airo-wp/v1/query/render';
-		const restNonce = ctx.nonce || window.wpApiSettings?.nonce || '';
-		const res = yield fetch(restUrl, {
-			method: 'POST',
-			credentials: 'same-origin',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-WP-Nonce': restNonce,
-			},
-			body: JSON.stringify({
-				queryId,
-				attributes,
-				page: 1,
-				innerBlocks,
-				params,
-				currentUrl: url.toString(),
-			}),
+		const request = dsgoBuildRefreshRequest(ctx, refreshSource, {
+			page: 1,
+			params: dsgoCollectParams(url),
+			currentUrl: url.toString(),
 		});
+		const res = yield fetch(request.url, request.init);
 
 		if (!res.ok) {
 			// eslint-disable-next-line no-console
 			console.warn(
-				`[airo-wp/query] filter refresh failed (${res.status}). If 401, the nonce has likely expired — reload the page.`
+				`[airo-wp/query] filter refresh failed (${res.status}); loading the filtered page instead.`
 			);
+			window.location.assign(url.toString());
 			return;
 		}
 		// Defence-in-depth: only parse responses we recognise. A misbehaving
@@ -883,43 +846,26 @@ async function dsgoQueryRefreshPlain(ctx, url) {
 	}
 
 	try {
-		const attrsEl = blobsHost.querySelector('script[data-airo-wp-attrs]');
-		const innerEl = blobsHost.querySelector('script[data-airo-wp-inner]');
-		if (!attrsEl || !innerEl) {
+		// Same fallback as dsgoQueryRefresh: the server renders the filtered page.
+		const refreshSource = dsgoReadRefreshSource(blobsHost);
+		if (!refreshSource) {
+			window.location.assign(url.toString());
 			return;
 		}
 
-		const attributes = JSON.parse(attrsEl.textContent);
-		const innerBlocks = JSON.parse(innerEl.textContent);
-		const params = dsgoCollectParams(url);
-
-		const restUrl =
-			ctx.restUrl ||
-			(window.wpApiSettings?.root || '/wp-json/') +
-				'airo-wp/v1/query/render';
-		const restNonce = ctx.nonce || window.wpApiSettings?.nonce || '';
-		const res = await fetch(restUrl, {
-			method: 'POST',
-			credentials: 'same-origin',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-WP-Nonce': restNonce,
-			},
-			body: JSON.stringify({
-				queryId,
-				attributes,
-				page: 1,
-				innerBlocks,
-				params,
-				currentUrl: url.toString(),
-			}),
+		const request = dsgoBuildRefreshRequest(ctx, refreshSource, {
+			page: 1,
+			params: dsgoCollectParams(url),
+			currentUrl: url.toString(),
 		});
+		const res = await fetch(request.url, request.init);
 
 		if (!res.ok) {
 			// eslint-disable-next-line no-console
 			console.warn(
-				`[airo-wp/query] debounced refresh failed (${res.status}). If 401, the nonce has likely expired — reload the page.`
+				`[airo-wp/query] debounced refresh failed (${res.status}); loading the filtered page instead.`
 			);
+			window.location.assign(url.toString());
 			return;
 		}
 		// Defence-in-depth: see dsgoQueryRefresh — only inject from JSON envelopes.

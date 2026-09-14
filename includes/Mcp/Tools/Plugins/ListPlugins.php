@@ -62,64 +62,8 @@ class ListPlugins extends BaseTool {
 			array(
 				'label'               => __( 'List Plugins', 'airo-wp' ),
 				'description'         => __( 'Retrieves a list of installed WordPress plugins with their status, metadata, and available-update info (current version plus the new version when an update is available)', 'airo-wp' ),
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'context'     => array(
-							'type'        => 'string',
-							'description' => __( 'Response context: view, embed, or edit', 'airo-wp' ),
-							'enum'        => array( 'view', 'embed', 'edit' ),
-							'default'     => 'view',
-						),
-						'search'      => array(
-							'type'        => 'string',
-							'description' => __( 'Search term to filter plugins by name or description', 'airo-wp' ),
-						),
-						'status'      => array(
-							'type'        => 'string',
-							'description' => __( 'Filter by plugin status', 'airo-wp' ),
-							'enum'        => array( 'active', 'inactive' ),
-						),
-						'force_check' => array(
-							'type'        => 'boolean',
-							'description' => __( 'Force a refresh of available plugin updates from WordPress.org before reading. Defaults to false; the cached transient is normally kept fresh by core cron.', 'airo-wp' ),
-							'default'     => false,
-						),
-					),
-				),
-				'output_schema'       => $this->build_output_schema(
-					__( 'Plugin list result', 'airo-wp' ),
-					array(
-						'plugins' => array(
-							'type'        => 'array',
-							'description' => __( 'List of plugins', 'airo-wp' ),
-							'items'       => array(
-								'type'       => 'object',
-								'properties' => array(
-									'slug'             => array( 'type' => 'string' ),
-									'name'             => array( 'type' => 'string' ),
-									'version'          => array( 'type' => 'string' ),
-									'author'           => array( 'type' => 'string' ),
-									'description'      => array( 'type' => 'string' ),
-									'status'           => array( 'type' => 'string' ),
-									'file'             => array( 'type' => 'string' ),
-									'plugin_uri'       => array( 'type' => 'string' ),
-									'author_uri'       => array( 'type' => 'string' ),
-									'text_domain'      => array( 'type' => 'string' ),
-									'network_only'     => array( 'type' => 'boolean' ),
-									'requires_wp'      => array( 'type' => 'string' ),
-									'requires_php'     => array( 'type' => 'string' ),
-									'update_available' => array( 'type' => 'boolean' ),
-									'new_version'      => array( 'type' => array( 'string', 'null' ) ),
-								),
-							),
-						),
-						'total'   => array(
-							'type'        => 'integer',
-							'description' => __( 'Total number of plugins returned', 'airo-wp' ),
-						),
-					)
-				),
+				'input_schema'        => $this->get_input_schema(),
+				'output_schema'       => $this->get_output_schema(),
 				'execute_callback'    => array( $this, 'execute' ),
 				'permission_callback' => array( $this, 'check_permissions' ),
 				'category'            => 'plugin-management',
@@ -127,6 +71,79 @@ class ListPlugins extends BaseTool {
 		);
 	}
 
+	/**
+	 * Get the input schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'context'     => array(
+					'type'        => 'string',
+					'description' => __( 'Response context: view, embed, or edit', 'airo-wp' ),
+					'enum'        => array( 'view', 'embed', 'edit' ),
+					'default'     => 'view',
+				),
+				'search'      => array(
+					'type'        => 'string',
+					'description' => __( 'Search term to filter plugins by name or description', 'airo-wp' ),
+				),
+				'status'      => array(
+					'type'        => 'string',
+					'description' => __( 'Filter by plugin status', 'airo-wp' ),
+					'enum'        => array( 'active', 'inactive' ),
+				),
+				'force_check' => array(
+					'type'        => 'boolean',
+					'description' => __( 'Force a refresh of available plugin updates from WordPress.org before reading. Defaults to false; the cached transient is normally kept fresh by core cron.', 'airo-wp' ),
+					'default'     => false,
+				),
+			),
+		);
+	}
+
+	/**
+	 * Get the output schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_output_schema(): array {
+		return $this->build_output_schema(
+			__( 'Plugin list result', 'airo-wp' ),
+			array(
+				'plugins' => array(
+					'type'        => 'array',
+					'description' => __( 'List of plugins', 'airo-wp' ),
+					'items'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'slug'             => array( 'type' => 'string' ),
+							'name'             => array( 'type' => 'string' ),
+							'version'          => array( 'type' => 'string' ),
+							'author'           => array( 'type' => 'string' ),
+							'description'      => array( 'type' => 'string' ),
+							'status'           => array( 'type' => 'string' ),
+							'file'             => array( 'type' => 'string' ),
+							'plugin_uri'       => array( 'type' => 'string' ),
+							'author_uri'       => array( 'type' => 'string' ),
+							'text_domain'      => array( 'type' => 'string' ),
+							'network_only'     => array( 'type' => 'boolean' ),
+							'requires_wp'      => array( 'type' => 'string' ),
+							'requires_php'     => array( 'type' => 'string' ),
+							'update_available' => array( 'type' => 'boolean' ),
+							'new_version'      => array( 'type' => array( 'string', 'null' ) ),
+						),
+					),
+				),
+				'total'   => array(
+					'type'        => 'integer',
+					'description' => __( 'Total number of plugins returned', 'airo-wp' ),
+				),
+			)
+		);
+	}
 	/**
 	 * Execute the tool.
 	 *

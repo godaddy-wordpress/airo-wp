@@ -216,6 +216,14 @@ class DeletePageRevision extends BaseTool {
 							'type'        => 'string',
 							'description' => __( 'The revision title', 'airo-wp' ),
 						),
+						'content'      => array(
+							'type'        => 'string',
+							'description' => __( 'The revision content', 'airo-wp' ),
+						),
+						'slug'         => array(
+							'type'        => 'string',
+							'description' => __( 'The revision slug', 'airo-wp' ),
+						),
 					),
 				),
 			)

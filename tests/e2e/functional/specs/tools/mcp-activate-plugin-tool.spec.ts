@@ -62,20 +62,21 @@ test.describe('airo-wp/activate-plugin tool', () => {
     expect(sessionId, 'initialize did not return mcp-session-id header').toBeTruthy();
   });
 
-  test('returns error when plugin slug is empty', async ({ requestUtils }) => {
+  test('rejects an empty plugin_slug at the schema boundary', async ({ requestUtils }) => {
+    // minLength on plugin_slug means an empty string never reaches execute(): the MCP
+    // layer rejects it during input validation and returns isError=true, rather than
+    // the tool returning its own success:false payload.
     const response = await callTool(requestUtils, sessionId, 'airo-wp-activate-plugin', { plugin_slug: '' });
 
     expect(response.status(), `tools/call failed: ${await response.text()}`).toBe(200);
 
     const body = await response.json();
     expect(body.error, `JSON-RPC error: ${JSON.stringify(body.error)}`).toBeUndefined();
-    expect(body.result?.isError, 'tools/call result has isError=true').not.toBe(true);
+    expect(body.result?.isError, 'empty plugin_slug should fail input validation').toBe(true);
 
     const content: Array<{ type: string; text: string }> = body.result?.content ?? [];
-    const data = JSON.parse(content[0].text);
-
-    expect(data.success, 'response should indicate failure').toBe(false);
-    expect(data.message.toLowerCase()).toContain('required');
+    expect(content.length).toBeGreaterThan(0);
+    expect(content[0].text.toLowerCase()).toContain('invalid input');
   });
 
   test('activates an installed but inactive plugin', async ({ requestUtils }) => {

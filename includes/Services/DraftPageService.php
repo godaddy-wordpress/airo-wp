@@ -154,13 +154,18 @@ class DraftPageService {
 			return $update_result;
 		}
 
-		// Handle thumbnail: copy from draft or delete from original.
-		$draft_thumbnail = get_post_meta( $draft_id, '_thumbnail_id', true );
+		// Handle the featured image: copy from the draft, or clear it on the original
+		// when the draft has none. Uses the thumbnail API rather than writing
+		// _thumbnail_id directly — set_post_thumbnail() clears the meta if the
+		// attachment no longer resolves to an image, so publishing a draft whose
+		// featured image was deleted in the meantime cannot stamp a dangling
+		// attachment ID onto the live page.
+		$draft_thumbnail = get_post_thumbnail_id( $draft_id );
 
-		if ( ! empty( $draft_thumbnail ) ) {
-			update_post_meta( $original->ID, '_thumbnail_id', $draft_thumbnail );
+		if ( $draft_thumbnail ) {
+			set_post_thumbnail( $original->ID, (int) $draft_thumbnail );
 		} else {
-			delete_post_meta( $original->ID, '_thumbnail_id' );
+			delete_post_thumbnail( $original->ID );
 		}
 
 		$this->replace_post_meta( $draft_id, $original->ID );

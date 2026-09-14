@@ -4,7 +4,7 @@ Tags: airo, godaddy, mcp, ai, block-patterns
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.3.6
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -112,6 +112,11 @@ PHP 7.4 is the minimum. PHP 8.3 is the recommended version for local development
 Runtime Composer packages are namespace-prefixed with Strauss into `dependencies/` so they do not clash with other plugins' autoloaders.
 
 == Changelog ==
+
+= 0.4.0 =
+* Images can again be uploaded from raw file data, not only from a URL — an image with no publicly reachable address could not be uploaded at all
+* Plugin tools now reject an empty plugin slug up front instead of failing partway through
+* Navigation and page-revision tools describe the fields they return again, so a client knows the shape of the response
 
 = 0.3.6 =
 * AI clients can now authenticate with a WordPress Application Password sent in the Authorization header (HTTPS required)

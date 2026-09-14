@@ -45,43 +45,8 @@ class GetThemes extends BaseTool {
 			array(
 				'label'               => __( 'Get Themes', 'airo-wp' ),
 				'description'         => __( 'Retrieves theme information — either the active theme or all installed themes', 'airo-wp' ),
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'active' => array(
-							'type'        => 'boolean',
-							'description' => __( 'If true, return only the active theme; if false, return all themes', 'airo-wp' ),
-						),
-					),
-					'required'   => array( 'active' ),
-				),
-				'output_schema'       => $this->build_output_schema(
-					__( 'Theme information', 'airo-wp' ),
-					array(
-						'themes' => array(
-							'type'        => 'array',
-							'description' => __( 'List of themes', 'airo-wp' ),
-							'items'       => array(
-								'type'       => 'object',
-								'properties' => array(
-									'name'             => array( 'type' => 'string' ),
-									'title'            => array( 'type' => 'string' ),
-									'description'      => array( 'type' => 'string' ),
-									'version'          => array( 'type' => 'string' ),
-									'author'           => array( 'type' => 'string' ),
-									'author_uri'       => array( 'type' => 'string' ),
-									'theme_uri'        => array( 'type' => 'string' ),
-									'stylesheet'       => array( 'type' => 'string' ),
-									'template'         => array( 'type' => 'string' ),
-									'status'           => array( 'type' => 'string' ),
-									'tags'             => array( 'type' => 'array' ),
-									'is_block_theme'   => array( 'type' => 'boolean' ),
-									'global_styles_id' => array( 'type' => 'integer' ),
-								),
-							),
-						),
-					)
-				),
+				'input_schema'        => $this->get_input_schema(),
+				'output_schema'       => $this->get_output_schema(),
 				'execute_callback'    => array( $this, 'execute' ),
 				'permission_callback' => array( $this, 'check_permissions' ),
 				'category'            => 'theme-management',
@@ -89,6 +54,58 @@ class GetThemes extends BaseTool {
 		);
 	}
 
+	/**
+	 * Get the input schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'active' => array(
+					'type'        => 'boolean',
+					'description' => __( 'If true, return only the active theme; if false, return all themes', 'airo-wp' ),
+				),
+			),
+			'required'   => array( 'active' ),
+		);
+	}
+
+	/**
+	 * Get the output schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_output_schema(): array {
+		return $this->build_output_schema(
+			__( 'Theme information', 'airo-wp' ),
+			array(
+				'themes' => array(
+					'type'        => 'array',
+					'description' => __( 'List of themes', 'airo-wp' ),
+					'items'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'name'             => array( 'type' => 'string' ),
+							'title'            => array( 'type' => 'string' ),
+							'description'      => array( 'type' => 'string' ),
+							'version'          => array( 'type' => 'string' ),
+							'author'           => array( 'type' => 'string' ),
+							'author_uri'       => array( 'type' => 'string' ),
+							'theme_uri'        => array( 'type' => 'string' ),
+							'stylesheet'       => array( 'type' => 'string' ),
+							'template'         => array( 'type' => 'string' ),
+							'status'           => array( 'type' => 'string' ),
+							'tags'             => array( 'type' => 'array' ),
+							'is_block_theme'   => array( 'type' => 'boolean' ),
+							'global_styles_id' => array( 'type' => 'integer' ),
+						),
+					),
+				),
+			)
+		);
+	}
 	/**
 	 * Execute the tool.
 	 *

@@ -60,7 +60,7 @@ export default function useRenderedItems({
 
 		const timer = setTimeout(() => {
 			apiFetch({
-				path: '/airo-wp/v1/query/render',
+				path: '/airo-wp/v1/query/render-preview',
 				method: 'POST',
 				data: {
 					queryId,
