@@ -3,11 +3,13 @@ name: CI
 # PR gate: PHPCS, PHPUnit, and Plugin Check run on ubuntu-24.04 via wp-env.
 # E2E tests run only on release/* branches — see pre-release.yml.
 
+# PR gate only. main is deliberately absent: on this repository main advances
+# solely by merging a release PR, and release-artifact.yml re-runs these same
+# checks against the built artifact before it publishes anything. Running them
+# again on the push would be a third execution of a tree already tested twice.
 on:
   pull_request:
     branches: [main, 'feature/**', 'fix/**']
-  push:
-    branches: [main]
 
 permissions:
   contents: read

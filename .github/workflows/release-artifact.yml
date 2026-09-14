@@ -1,6 +1,6 @@
 name: Release Artifact
 
-# Builds the distributable zip on every merge to main and attaches it to a GitHub
+# Builds the distributable zip, tests it, and only then publishes it as a GitHub
 # Release tagged v<version>.
 #
 # Why this exists: the repository ships no vendor/ and no dist/. Both are generated
@@ -10,8 +10,21 @@ name: Release Artifact
 # that is actually installable, and is what the Git Updater headers in airo-wp.php
 # point at (Release Asset: true).
 #
+# Pipeline — build once, test that build, publish that same build:
+#
+#   build ──► check-plugin ──┐
+#   lint ────────────────────┼──► publish
+#   unit ────────────────────┘
+#
+# The zip is built exactly once and passed between jobs as a workflow artifact.
+# lint and unit run against the repository (they need tests/ and the dev
+# dependencies, neither of which ships in the zip) so they do not wait on the
+# build. check-plugin and publish consume the built artifact, which is what makes
+# the bytes published identical to the bytes tested.
+#
 # It does NOT publish to WordPress.org. That is publish-plugin.yml, dispatched
-# manually against the tag this workflow creates.
+# manually against the tag this workflow creates, and it reuses this artifact
+# rather than building its own.
 #
 # Note for anyone extending this: the tag created below is pushed with GITHUB_TOKEN,
 # and GitHub does not start workflow runs for events raised by GITHUB_TOKEN. So this
@@ -23,28 +36,41 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing v<version> tag to build a missing artifact for (repair path). Leave empty to release the version in package.json on the dispatch ref.'
+        required: false
+        type: string
 
 concurrency:
   group: release-artifact
   cancel-in-progress: false
 
-permissions:
-  contents: write
-
 jobs:
-  release:
-    name: Build and publish release artifact
+  build:
+    name: Build artifact
     runs-on: ubuntu-24.04
-
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      mode: ${{ steps.guard.outputs.mode }}
     steps:
+      # With a tag input we build that tag's tree, so a missing artifact can be
+      # rebuilt from exactly the code it should contain. Without one, the dispatch
+      # ref (or the pushed commit) is the source, as before.
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-tags: true
           fetch-depth: 0
 
       - name: Resolve version
         id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
 
@@ -56,8 +82,16 @@ jobs:
             exit 1
           fi
 
-          # A hyphen means a pre-release. Flagging the GitHub Release keeps it out of
-          # Git Updater's "latest", which is the same containment readme.txt's
+          # A tag input names a version too. If it disagrees with package.json at
+          # that tag, the tag was cut at the wrong commit and either answer would
+          # be a guess.
+          if [ -n "${INPUT_TAG}" ] && [ "${INPUT_TAG}" != "v${VERSION}" ]; then
+            echo "::error::Tag '${INPUT_TAG}' does not match package.json version '${VERSION}' at that tag. Expected 'v${VERSION}'."
+            exit 1
+          fi
+
+          # A hyphen means a pre-release. Flagging the GitHub Release keeps it out
+          # of Git Updater's "latest", which is the same containment readme.txt's
           # Stable tag gives us on WordPress.org.
           if printf '%s' "${VERSION}" | grep -q -- '-'; then
             PRERELEASE=true
@@ -69,48 +103,69 @@ jobs:
           echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
           echo "Version ${VERSION} (prerelease=${PRERELEASE})"
 
-      # Not an error: main can be pushed for reasons that do not bump the version
-      # (a docs commit, a revert, a re-run of this workflow). Only a NEW version is
-      # a new release, so an existing tag means there is nothing to do.
-      - name: Check whether this version is already released
-        id: gate
+      # An artifact that already exists is never overwritten. Publishing a second
+      # zip under a version users may already have installed would make "v0.4.1"
+      # mean two different payloads, and Git Updater serves whatever is attached.
+      #
+      # On this repository main advances ONLY by merging a release PR, so a push
+      # whose version is already released is not a no-op to shrug at — it means a
+      # release landed without its version being bumped. Fail loudly.
+      - name: Guard - refuse to overwrite an existing artifact
+        id: guard
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
 
-          if gh api "repos/${GITHUB_REPOSITORY}/git/refs/tags/v${VERSION}" --silent 2>/dev/null; then
-            echo "release=false" >> "$GITHUB_OUTPUT"
-            echo "Tag v${VERSION} already exists — nothing to release."
-            echo "Tag \`v${VERSION}\` already exists; no new release." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "release=true" >> "$GITHUB_OUTPUT"
-            echo "Tag v${VERSION} is free — will build and release."
+          TAG="v${VERSION}"
+
+          if ! gh release view "${TAG}" --json tagName >/dev/null 2>&1; then
+            # Nothing published yet: the normal path.
+            echo "mode=create" >> "$GITHUB_OUTPUT"
+            echo "No release ${TAG} yet — will create it."
+            exit 0
           fi
 
+          # The release exists. Whether that is an error depends on the asset.
+          ASSETS=$(gh release view "${TAG}" --json assets --jq '.assets[].name')
+
+          if printf '%s\n' "${ASSETS}" | grep -qx "airo-wp-${VERSION}.zip"; then
+            echo "::error::Release ${TAG} already has asset airo-wp-${VERSION}.zip. Refusing to overwrite a published artifact — bump the version instead. To replace it deliberately, delete the asset first."
+            exit 1
+          fi
+
+          if [ -z "${INPUT_TAG}" ]; then
+            echo "::error::Release ${TAG} already exists but carries no artifact. That is a repair, so ask for it explicitly: dispatch this workflow with tag=${TAG}."
+            exit 1
+          fi
+
+          echo "mode=upload" >> "$GITHUB_OUTPUT"
+          echo "Release ${TAG} exists without an artifact — will attach one."
+
       - uses: actions/setup-node@v4
-        if: steps.gate.outputs.release == 'true'
         with:
           node-version: '20'
           cache: npm
 
       - run: npm ci
-        if: steps.gate.outputs.release == 'true'
 
       # Runs wp-scripts build (populates dist/) then build-zip.mjs, which runs
       # composer install --no-dev to generate vendor/ and the Strauss-prefixed
       # dependencies/, and zips per the package.json "files" allowlist.
       - name: Build distributable zip
-        if: steps.gate.outputs.release == 'true'
         run: npm run build:zip
 
       # The whole point of the release asset is that it is installable, so assert
       # that before publishing rather than discovering it from a bug report. A zip
-      # missing either of these installs as a dead plugin: no autoloader means
-      # airo-wp.php returns early, no dist/blocks/ means nothing registers.
-      - name: Verify the artifact is installable
-        if: steps.gate.outputs.release == 'true'
+      # missing either of the first two installs as a dead plugin: no autoloader
+      # means airo-wp.php returns early, no dist/blocks/ means nothing registers.
+      #
+      # These run here, in the job that produces the zip, because the same archive
+      # is what the test jobs consume and what publish attaches. Asserting it once
+      # at the source is what makes "tested" and "published" the same bytes.
+      - name: Verify the artifact is installable and free of test code
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -151,38 +206,169 @@ jobs:
             exit 1
           fi
 
-          echo "Artifact OK: autoloader present, ${block_count} block.json files."
+          # Test-support code must not reach users. It ships only because "files"
+          # allowlists includes/ wholesale, so build-zip.mjs strips it after
+          # packaging; this asserts that strip actually happened. Nothing in the
+          # plugin's runtime references any of it — verified by PHPUnit, Plugin
+          # Check and the E2E suite all passing against a zip without it.
+          test_code=$(printf '%s\n' "${manifest}" | grep -E '^airo-wp/(tests/|includes/Internal/Testing/|includes/Internal/DependencyManagement/TestingContainer\.php)' || true)
+          if [ -n "${test_code}" ]; then
+            echo "::error::${ZIP} contains test-support code, which must not ship:"
+            printf '  %s\n' "${test_code}"
+            exit 1
+          fi
+
+          echo "Artifact OK: autoloader present, ${block_count} block.json files, no test code."
+
+      - name: Upload built artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: airo-wp-zip
+          path: |
+            builds/airo-wp.zip
+            builds/airo-wp-${{ steps.version.outputs.version }}.zip
+          retention-days: 1
+          if-no-files-found: error
+
+  # lint and unit run against the repository, not the artifact: PHPCS needs the
+  # dev dependencies and PHPUnit needs tests/, and neither ships in the zip. They
+  # therefore do not depend on build, and run alongside it.
+  lint:
+    name: PHPCS
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:php
+
+  unit:
+    name: PHPUnit
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit:php
+
+  # Plugin Check runs against the built artifact, installed into a real WordPress
+  # — the same zip publish attaches, downloaded rather than rebuilt.
+  check-plugin:
+    name: Plugin Check
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Download built artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: airo-wp-zip
+          path: builds/
+      - run: npm run plugin-check
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-check-results
+          path: builds/plugin-check-results.txt
+          retention-days: 7
+
+  publish:
+    name: Publish release
+    needs: [build, lint, unit, check-plugin]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      # gh release create tags the commit it is given, so the repository is needed
+      # for --target to resolve.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          fetch-depth: 0
+
+      - name: Download built artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: airo-wp-zip
+          path: builds/
 
       - name: Create tag and GitHub Release
-        if: steps.gate.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.version.outputs.version }}
-          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          VERSION: ${{ needs.build.outputs.version }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          MODE: ${{ needs.build.outputs.mode }}
+          TARGET_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
           ZIP="builds/airo-wp-${VERSION}.zip"
+          TAG="v${VERSION}"
 
-          # gh release create makes the tag at the current commit, so there is no
-          # separate tagging step to keep in sync with it.
-          FLAGS=(--title "v${VERSION}" --generate-notes)
-          if [ "${PRERELEASE}" = "true" ]; then
-            FLAGS+=(--prerelease)
-          fi
-
-          # The authoritative permission check: this is the write itself. A 403 here
-          # almost always means the repository's workflow permissions are read-only,
-          # so say that instead of leaving a bare API error in the log.
-          if ! gh release create "v${VERSION}" "${ZIP}" \
-            --target "${GITHUB_SHA}" \
-            "${FLAGS[@]}"
-          then
-            echo "::error::Could not create release v${VERSION}. If this was a 403, GITHUB_TOKEN lacks contents: write - set Settings -> Actions -> General -> Workflow permissions to 'Read and write permissions'. No tag or release was created, so re-running after fixing it is safe."
+          if [ ! -f "${ZIP}" ]; then
+            echo "::error::${ZIP} is missing from the build artifact."
             exit 1
           fi
 
-          echo "Created release v${VERSION} at ${GITHUB_SHA}"
+          if [ "${MODE}" = "upload" ]; then
+            # Repair path: the release exists without an artifact. Attach one; do
+            # not touch the release itself, whose notes and tag are already public.
+            if ! gh release upload "${TAG}" "${ZIP}"; then
+              echo "::error::Could not attach ${ZIP} to existing release ${TAG}."
+              exit 1
+            fi
+            echo "Attached $(basename "${ZIP}") to existing release ${TAG}"
+          else
+            FLAGS=(--title "${TAG}" --generate-notes)
+            if [ "${PRERELEASE}" = "true" ]; then
+              FLAGS+=(--prerelease)
+            fi
+
+            # --target is github.sha: the head of the dispatch ref, not the tag's
+            # commit. That is correct on the only path that consumes it — the
+            # push: main merge, where no tag exists yet and this is what creates
+            # it at the merged commit. A tag-input dispatch can only reach this
+            # branch when the git tag already exists but carries no GitHub
+            # Release (the build job's refs/tags/<tag> checkout fails otherwise),
+            # and gh ignores --target for an existing tag. So it is never read
+            # from the wrong commit.
+            #
+            # The authoritative permission check: this is the write itself. A 403
+            # here almost always means the repository's workflow permissions are
+            # read-only, so say that instead of leaving a bare API error in the log.
+            if ! gh release create "${TAG}" "${ZIP}" \
+              --target "${TARGET_SHA}" \
+              "${FLAGS[@]}"
+            then
+              echo "::error::Could not create release ${TAG}. If this was a 403, GITHUB_TOKEN lacks contents: write - set Settings -> Actions -> General -> Workflow permissions to 'Read and write permissions'. No tag or release was created, so re-running after fixing it is safe."
+              exit 1
+            fi
+            echo "Created release ${TAG} at ${TARGET_SHA}"
+          fi
 
           {
             echo "### Release artifact"
@@ -190,13 +376,16 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| Version | \`${VERSION}\` |"
-            echo "| Tag | \`v${VERSION}\` |"
+            echo "| Tag | \`${TAG}\` |"
             echo "| Pre-release | ${PRERELEASE} |"
+            echo "| Mode | ${MODE} |"
             echo "| Asset | \`$(basename "${ZIP}")\` ($(du -k "${ZIP}" | awk '{print $1}') KiB) |"
             echo
-            echo "Publish to WordPress.org by dispatching \`publish-plugin.yml\` against \`v${VERSION}\`:"
+            echo "Tested before publishing: PHPCS, PHPUnit, and Plugin Check against this exact archive."
+            echo
+            echo "Publish to WordPress.org by dispatching \`publish-plugin.yml\` with this tag:"
             echo
             echo '```bash'
-            echo "gh workflow run publish-plugin.yml --ref v${VERSION} -f dry_run=true"
+            echo "gh workflow run publish-plugin.yml -f tag=${TAG} -f dry_run=true"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

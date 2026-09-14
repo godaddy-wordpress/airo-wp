@@ -137,28 +137,44 @@ by directory rather than enumerated.
 
 ## CI
 
-`ci.yml` runs automatically on pull requests and pushes to `main`:
+`ci.yml` runs automatically on every pull request:
 
 - **PHPCS** — WordPress coding standards
 - **PHPUnit** — PHP unit tests
 - **Plugin Check (PCP)** — WordPress.org plugin requirements check
 
-All three must pass before merge.
+All three must pass before merge. It does not run on pushes to `main`, because the
+Release Artifact workflow re-runs the same checks there against the built artifact
+before publishing anything — see *Releasing*.
 
-`pre-release.yml` additionally runs on `release/*` pull requests and adds JS/SCSS
-lint, the distributable zip build, and the full Playwright E2E matrix across the
-supported PHP and WordPress versions. Those run before a release, not on every PR.
+`pre-release.yml` is the full compatibility sweep: JS/SCSS lint on top of the above,
+plus the Playwright E2E matrix across every supported PHP and WordPress version. It
+runs on request only (`gh workflow run pre-release.yml`), not on pull requests.
 
 ## Releasing
 
 Releasing has two distinct stages, and only the first is automatic.
 
 **1. Merge to `main` produces the installable artifact.** The **Release Artifact**
-workflow reads the version from `package.json`, builds the distributable zip, checks
-it actually contains `vendor/autoload.php` and `dist/blocks/*/block.json`, then
-creates tag `v<version>` and a GitHub Release with the zip attached. A version whose
-tag already exists is a no-op, not a failure, so an unrelated push to `main` does not
-try to re-release.
+workflow reads the version from `package.json` and runs one pipeline:
+
+1. **Build** the distributable zip, once, and check it is actually installable — it
+   must contain `vendor/autoload.php` and `dist/blocks/*/block.json`, and must not
+   contain `src/`, plugin-directory artwork or test-support code.
+2. **Test** it — PHPCS and PHPUnit against the repository, and Plugin Check against
+   that built zip installed into a real WordPress.
+3. **Publish** only if all of those pass: create tag `v<version>` and a GitHub
+   Release with the zip attached.
+
+The zip is built once and handed between the jobs, so the archive that is tested is
+byte-for-byte the archive that is published.
+
+A version whose release already carries an artifact is a **failure**, not a no-op.
+On this repository `main` advances only by merging a release, so a push whose version
+is already released means a release landed without its version being bumped — which
+is worth stopping for rather than skipping past. If a release exists but its artifact
+is missing, dispatch the workflow with `-f tag=v<version>` to attach one; it will
+never overwrite an artifact that is already published.
 
 That artifact matters because `vendor/` and `dist/` are generated at build time and
 never committed. GitHub's source zipball is therefore not an installable plugin, and
@@ -167,10 +183,14 @@ the attached build is what both manual installs and
 `airo-wp.php`.
 
 **2. Publishing to WordPress.org is manual.** The **Publish Plugin** workflow is
-dispatched by hand against a `v<version>` tag and refuses any other ref. Tags, not
-branches: a branch can move after CI went green, so dispatching from one could
-publish commits nobody tested. A tag cannot, which also means re-running a publish
-republishes byte-identical content.
+dispatched by hand with the `tag` of a release from step 1. It builds nothing: the
+payload is the artifact that workflow already built and tested, downloaded from that
+release. So what reaches WordPress.org is the archive that passed Plugin Check, not a
+second build that ought to match it, and re-running a publish republishes identical
+bytes. If the tag has no artifact, the run fails and tells you to build one.
+
+Because the `tag` decides what is published, the ref you dispatch from does not
+matter — dispatch from `main`.
 
 ### Version numbers
 
@@ -201,13 +221,14 @@ not of access.
 ```bash
 gh workflow run publish-plugin.yml \
   --repo godaddy-wordpress/airo-wp \
-  --ref v0.3.5 \
+  -f tag=v0.3.5 \
   -f dry_run=true
 ```
 
 The tag is the one created by the Release Artifact workflow when the release merged;
-`gh release list` shows what is available. Dispatching a ref that is not a `v*` tag
-fails immediately, before anything is built.
+`gh release list` shows what is available, and only a tag whose release carries the
+built artifact can be published. A tag that is missing, malformed, or has no artifact
+fails immediately — and since nothing is ever built here, that costs seconds.
 
 Read the job summary: it lists the target Subversion tag, the full payload
 manifest, and the current `Stable tag` in `trunk`. When it looks right, re-dispatch
@@ -238,12 +259,14 @@ moment they are committed, so they can be updated without releasing any code:
 ```bash
 gh workflow run publish-plugin.yml \
   --repo godaddy-wordpress/airo-wp \
-  --ref v0.3.5 \
+  -f tag=v0.3.5 \
   -f sync_assets=true -f dry_run=false
 ```
 
-`sync_assets` means *artwork only* — no code is built, no tag is created, and
-`trunk` is not touched.
+`sync_assets` means *artwork only* — no code is published, no tag is created, and
+`trunk` is not touched. Artwork is read from the commit the `tag` points at, since
+`.wordpress-org/` is deliberately excluded from the plugin zip and so cannot come
+from the release artifact.
 
 If `.github/ASSETS_ARE_PLACEHOLDERS` is present, a real artwork sync is refused and
 only dry runs are allowed. It exists to stop unfinished artwork reaching the live
