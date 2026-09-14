@@ -11,8 +11,6 @@ namespace GoDaddy\WordPress\Plugins\AiroWp\Tests\Unit\Mcp;
 
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
-use GoDaddy\WordPress\Plugins\AiroWp\Container;
-use GoDaddy\WordPress\Plugins\AiroWp\Internal\DependencyManagement\TestingContainer;
 use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Infrastructure\AbilitiesApiProxy;
 use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Package;
 use GoDaddy\WordPress\Plugins\AiroWp\Tests\TestCase;
@@ -29,9 +27,7 @@ final class PackageTest extends TestCase {
 		$mock_proxy = \Mockery::mock( AbilitiesApiProxy::class );
 		$mock_proxy->shouldReceive( 'setup' )->once();
 
-		$testing_container = new TestingContainer( array() );
-		$testing_container->replace( AbilitiesApiProxy::class, $mock_proxy );
-		$container = new Container( $testing_container );
+		$container = $this->make_container( array( AbilitiesApiProxy::class => $mock_proxy ) );
 
 		// McpAdapter::instance() internally calls add_action( 'rest_api_init', ... ).
 		Actions\expectAdded( 'rest_api_init' )->atLeast()->once();
@@ -60,7 +56,7 @@ final class PackageTest extends TestCase {
 	 * genuinely covered rather than merely absent.
 	 */
 	public function test_init_sets_up_auth_compatibility_layers(): void {
-		$container = new Container( new TestingContainer( array() ) );
+		$container = $this->make_container();
 
 		// Only these filters are asserted. The adapter's own add_action calls are
 		// singleton-guarded, so whether they fire depends on whether an earlier

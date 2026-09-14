@@ -193,9 +193,6 @@ final class DraftPageServiceTest extends TestCase {
 				if ( $post_id === $draft_id && $key === DraftPageService::META_DRAFT_OF ) {
 					return (string) $original_id;
 				}
-				if ( $key === '_thumbnail_id' ) {
-					return '';
-				}
 				// replace_post_meta: get_post_meta( $source_id ) with no key returns array.
 				if ( null === $key ) {
 					return array();
@@ -210,6 +207,9 @@ final class DraftPageServiceTest extends TestCase {
 
 		Functions\when( 'is_wp_error' )->justReturn( false );
 		Functions\when( 'delete_post_meta' )->justReturn( true );
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
+		Functions\when( 'delete_post_thumbnail' )->justReturn( true );
 		Functions\when( 'update_post_meta' )->justReturn( true );
 		Functions\when( 'do_action' )->justReturn( null );
 		Functions\when( 'apply_filters' )->returnArg( 2 );
@@ -256,9 +256,6 @@ final class DraftPageServiceTest extends TestCase {
 				if ( $post_id === $draft_id && $key === DraftPageService::META_DRAFT_OF ) {
 					return (string) $original_id;
 				}
-				if ( $key === '_thumbnail_id' ) {
-					return '';
-				}
 				if ( null === $key ) {
 					return array();
 				}
@@ -272,6 +269,9 @@ final class DraftPageServiceTest extends TestCase {
 
 		Functions\when( 'is_wp_error' )->justReturn( false );
 		Functions\when( 'delete_post_meta' )->justReturn( true );
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
+		Functions\when( 'delete_post_thumbnail' )->justReturn( true );
 		Functions\when( 'update_post_meta' )->justReturn( true );
 		Functions\when( 'do_action' )->justReturn( null );
 		Functions\when( 'apply_filters' )->returnArg( 2 );
@@ -317,9 +317,6 @@ final class DraftPageServiceTest extends TestCase {
 				if ( $post_id === $draft_id && $key === DraftPageService::META_DRAFT_OF ) {
 					return (string) $original_id;
 				}
-				if ( $key === '_thumbnail_id' ) {
-					return '';
-				}
 				if ( null === $key ) {
 					return array();
 				}
@@ -333,6 +330,9 @@ final class DraftPageServiceTest extends TestCase {
 
 		Functions\when( 'is_wp_error' )->justReturn( false );
 		Functions\when( 'delete_post_meta' )->justReturn( true );
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
+		Functions\when( 'delete_post_thumbnail' )->justReturn( true );
 		Functions\when( 'update_post_meta' )->justReturn( true );
 		Functions\when( 'apply_filters' )->returnArg( 2 );
 
@@ -366,6 +366,9 @@ final class DraftPageServiceTest extends TestCase {
 			->andReturn( (string) $original_id );
 
 		Functions\when( 'delete_post_meta' )->justReturn( true );
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
+		Functions\when( 'delete_post_thumbnail' )->justReturn( true );
 
 		Functions\expect( 'wp_trash_post' )
 			->once()
@@ -401,6 +404,9 @@ final class DraftPageServiceTest extends TestCase {
 			->andReturn( (string) $original_id );
 
 		Functions\when( 'delete_post_meta' )->justReturn( true );
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
+		Functions\when( 'delete_post_thumbnail' )->justReturn( true );
 
 		Functions\expect( 'wp_delete_post' )
 			->once()
@@ -435,6 +441,9 @@ final class DraftPageServiceTest extends TestCase {
 			->andReturn( (string) $original_id );
 
 		Functions\when( 'delete_post_meta' )->justReturn( true );
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
+		Functions\when( 'delete_post_thumbnail' )->justReturn( true );
 
 		Functions\expect( 'wp_trash_post' )
 			->once()
@@ -444,5 +453,91 @@ final class DraftPageServiceTest extends TestCase {
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'trash_failed', $result->get_error_code() );
+	}
+
+	/**
+	 * A draft carrying a featured image transfers it to the original via the
+	 * thumbnail API, not a raw _thumbnail_id write.
+	 *
+	 * set_post_thumbnail() drops the meta when the attachment no longer resolves to
+	 * an image; update_post_meta() would happily copy a dangling attachment ID onto
+	 * the live page.
+	 */
+	public function test_publish_draft_transfers_featured_image_via_the_thumbnail_api(): void {
+		$draft_id     = 200;
+		$original_id  = 100;
+		$thumbnail_id = 4242;
+
+		$this->arrange_publish_draft( $draft_id, $original_id );
+
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( $thumbnail_id );
+		Functions\expect( 'set_post_thumbnail' )->once()->with( $original_id, $thumbnail_id )->andReturn( true );
+		Functions\expect( 'delete_post_thumbnail' )->never();
+
+		$this->assertSame( true, $this->service->publish_draft( $draft_id ) );
+	}
+
+	/**
+	 * A draft with no featured image clears the original's, through the API.
+	 */
+	public function test_publish_draft_clears_featured_image_when_draft_has_none(): void {
+		$draft_id    = 200;
+		$original_id = 100;
+
+		$this->arrange_publish_draft( $draft_id, $original_id );
+
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\expect( 'delete_post_thumbnail' )->once()->with( $original_id )->andReturn( true );
+		Functions\expect( 'set_post_thumbnail' )->never();
+
+		$this->assertSame( true, $this->service->publish_draft( $draft_id ) );
+	}
+
+	/**
+	 * Shared arrangement for a successful publish_draft, minus the thumbnail stubs
+	 * the caller wants to assert on.
+	 *
+	 * @param int $draft_id    Draft post ID.
+	 * @param int $original_id Original post ID.
+	 */
+	private function arrange_publish_draft( int $draft_id, int $original_id ): void {
+		$draft                        = new \stdClass();
+		$draft->ID                    = $draft_id;
+		$draft->post_type             = 'page';
+		$draft->post_status           = 'draft';
+		$draft->post_content          = 'content';
+		$draft->post_title            = 'title';
+		$draft->post_excerpt          = '';
+		$draft->menu_order            = 0;
+		$draft->post_password         = '';
+		$draft->comment_status        = 'open';
+		$draft->ping_status           = 'open';
+		$draft->post_content_filtered = '';
+
+		$original              = new \stdClass();
+		$original->ID          = $original_id;
+		$original->post_status = 'publish';
+
+		Functions\expect( 'get_post' )->twice()->andReturnValues( array( $draft, $original ) );
+
+		Functions\when( 'get_post_meta' )->alias(
+			function ( $post_id, $key = null, $single = false ) use ( $draft_id, $original_id ) {
+				if ( $post_id === $draft_id && $key === DraftPageService::META_DRAFT_OF ) {
+					return (string) $original_id;
+				}
+				if ( null === $key ) {
+					return array();
+				}
+				return '';
+			}
+		);
+
+		Functions\expect( 'wp_update_post' )->once()->andReturn( $original_id );
+		Functions\when( 'is_wp_error' )->justReturn( false );
+		Functions\when( 'delete_post_meta' )->justReturn( true );
+		Functions\when( 'update_post_meta' )->justReturn( true );
+		Functions\when( 'do_action' )->justReturn( null );
+		Functions\when( 'apply_filters' )->returnArg( 2 );
+		Functions\when( 'wp_trash_post' )->justReturn( new \WP_Post() );
 	}
 }

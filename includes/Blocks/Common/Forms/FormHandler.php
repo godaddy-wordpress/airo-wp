@@ -99,6 +99,11 @@ class FormHandler {
 	private FormSecurity $security;
 
 	/**
+	 * Transient holding definitions for forms that live outside wp_posts.
+	 */
+	const EXTERNAL_DEFINITIONS_CACHE = 'airowp_form_external_definitions_v1';
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -120,6 +125,10 @@ class FormHandler {
 
 		// Invalidate cached form block attributes when posts are saved.
 		add_action( 'save_post', array( $this, 'clear_form_attributes_cache' ) );
+
+		// Forms outside wp_posts (block widgets, theme-file templates, patterns).
+		add_action( 'update_option_widget_block', array( $this, 'clear_external_form_definitions' ) );
+		add_action( 'switch_theme', array( $this, 'clear_external_form_definitions' ) );
 	}
 
 	/**
@@ -268,12 +277,21 @@ class FormHandler {
 		$timestamp     = $request->get_param( 'timestamp' );
 		$form_settings = $this->get_form_settings();
 
-		// Look up per-block attributes for rate limiting and Turnstile enforcement.
-		// Fallback (2/60s) is intentionally stricter than the block-level default
-		// — it only applies to orphaned/legacy submissions where the per-block
-		// configuration is missing.
-		$block_attrs        = $this->get_form_block_attributes( $form_id );
-		$rate_limit_count   = isset( $block_attrs['rateLimitCount'] ) ? absint( $block_attrs['rateLimitCount'] ) : 2;
+		// Resolve the complete published form definition before running checks that
+		// can consume resources. A form ID is an untrusted client value: accepting
+		// an unknown one would let callers bypass its field schema and per-form
+		// controls entirely.
+		$form_definition = $this->get_form_definition( $form_id );
+		if ( null === $form_definition ) {
+			return new WP_Error(
+				'unknown_form',
+				__( 'This form is no longer available.', 'airo-wp' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$block_attrs        = $form_definition['attributes'];
+		$rate_limit_count   = isset( $block_attrs['rateLimitCount'] ) ? absint( $block_attrs['rateLimitCount'] ) : 3;
 		$rate_limit_window  = isset( $block_attrs['rateLimitWindow'] ) ? absint( $block_attrs['rateLimitWindow'] ) : 60;
 		$turnstile_required = ! empty( $block_attrs['enableTurnstile'] );
 
@@ -297,6 +315,11 @@ class FormHandler {
 			$rate_limit_check = $this->security->check_rate_limit( $form_id, $rate_limit_count );
 			if ( is_wp_error( $rate_limit_check ) ) {
 				return $rate_limit_check;
+			}
+
+			$global_rate_limit_check = $this->security->check_global_rate_limit();
+			if ( is_wp_error( $global_rate_limit_check ) ) {
+				return $global_rate_limit_check;
 			}
 		}
 
@@ -327,8 +350,8 @@ class FormHandler {
 		}
 
 		// Sanitize and validate all fields.
-		$form_field_types  = $this->get_form_field_types( $form_id );
-		$field_constraints = $this->get_form_field_value_constraints( $form_id );
+		$form_field_types  = $form_definition['field_types'];
+		$field_constraints = $form_definition['constraints'];
 		$sanitized_fields  = array();
 		foreach ( $fields as $field ) {
 			if ( ! isset( $field['name'] ) || ! isset( $field['value'] ) ) {
@@ -338,9 +361,17 @@ class FormHandler {
 			$field_name           = sanitize_text_field( $field['name'] );
 			$field_value          = $field['value'];
 			$submitted_field_type = isset( $field['type'] ) ? sanitize_text_field( $field['type'] ) : 'text';
-			$field_type           = isset( $form_field_types[ $field_name ] )
-				? $form_field_types[ $field_name ]
-				: $submitted_field_type;
+
+			// Only fields the saved form declares are validated, stored and
+			// emailed. Anything else is dropped rather than failing the whole
+			// submission: Cloudflare Turnstile injects cf-turnstile-response
+			// inside the form, other plugins add hidden inputs of their own, and
+			// none of that is the visitor's data.
+			if ( ! isset( $form_field_types[ $field_name ] ) && ! empty( $form_field_types ) ) {
+				continue;
+			}
+
+			$field_type = isset( $form_field_types[ $field_name ] ) ? $form_field_types[ $field_name ] : $submitted_field_type;
 
 			// Server-defined allowed values for constrained field types (only
 			// present for select/checkbox/hidden fields resolved from the block).
@@ -375,6 +406,16 @@ class FormHandler {
 			);
 		}
 
+		foreach ( $form_definition['required_fields'] as $field_name ) {
+			if ( ! isset( $sanitized_fields[ $field_name ] ) || $this->is_empty_field_value( $sanitized_fields[ $field_name ]['value'] ) ) {
+				return new WP_Error(
+					'required_field_missing',
+					__( 'Please complete all required fields.', 'airo-wp' ),
+					array( 'status' => 400 )
+				);
+			}
+		}
+
 		// Store submission.
 		$submission_id = $this->store_submission( $form_id, $sanitized_fields );
 
@@ -392,6 +433,7 @@ class FormHandler {
 		// Increment rate limit counter ONLY after successful submission.
 		if ( $form_settings['enable_rate_limiting'] ) {
 			$this->security->increment_rate_limit( $form_id, $rate_limit_window );
+			$this->security->increment_global_rate_limit();
 		}
 
 		// Trigger action hook for email notifications, integrations, etc.
@@ -405,6 +447,20 @@ class FormHandler {
 			),
 			200
 		);
+	}
+
+	/**
+	 * Determine whether a sanitized field value should fail a required check.
+	 *
+	 * @param mixed $value Sanitized field value.
+	 * @return bool True when the value is empty.
+	 */
+	private function is_empty_field_value( $value ) {
+		if ( is_array( $value ) ) {
+			return empty( $value );
+		}
+
+		return '' === trim( (string) $value );
 	}
 
 	/**
@@ -604,6 +660,16 @@ class FormHandler {
 					return new WP_Error(
 						'invalid_phone',
 						__( 'Invalid phone number.', 'airo-wp' )
+					);
+				}
+				break;
+
+			case 'country_code':
+				// Every entry in form-phone-field/country-codes.js is "+" and 1-4 digits.
+				if ( ! is_string( $value ) || ! preg_match( '/^\+\d{1,4}$/', $value ) ) {
+					return new WP_Error(
+						'invalid_country_code',
+						__( 'Invalid country code.', 'airo-wp' )
 					);
 				}
 				break;
@@ -1106,13 +1172,40 @@ class FormHandler {
 	 * @return array|null Block attributes array, or null if not found.
 	 */
 	private function get_form_block_attributes( $form_id ) {
-		// Check transient cache first to avoid LIKE queries on every submission.
-		// v2 prefix invalidates older caches that were stored before block-type
-		// defaults were merged into parsed attributes.
-		$cache_key = 'airowp_form_attrs_v2_' . md5( $form_id );
+		// Preserve the legacy attributes cache for installations that already have
+		// it populated. New lookups use the complete definition cache below.
+		$legacy_cache = get_transient( 'airowp_form_attrs_v2_' . md5( $form_id ) );
+		if ( false !== $legacy_cache && is_array( $legacy_cache ) ) {
+			return $legacy_cache;
+		}
+
+		$form_definition = $this->get_form_definition( $form_id );
+
+		return null === $form_definition ? null : $form_definition['attributes'];
+	}
+
+	/**
+	 * Resolve the server-owned definition for a public form.
+	 *
+	 * Parsing the post once keeps the validation schema, required flags, and
+	 * submission configuration in sync. Only published posts are eligible: a
+	 * private or draft form must not become a public submission endpoint just
+	 * because its predictable ID is known. Forms that never live in wp_posts —
+	 * block widgets, templates still served from theme or plugin files, and
+	 * registered patterns — are resolved from those sources instead.
+	 *
+	 * @param string $form_id Form identifier to look up.
+	 * @return array{attributes: array, field_types: array, constraints: array, required_fields: string[]}|null Form definition or null.
+	 */
+	private function get_form_definition( $form_id ) {
+		if ( ! is_string( $form_id ) || '' === $form_id ) {
+			return null;
+		}
+
+		$cache_key = 'airowp_form_definition_v2_' . md5( $form_id );
 		$cached    = get_transient( $cache_key );
 
-		if ( false !== $cached ) {
+		if ( false !== $cached && is_array( $cached ) ) {
 			return $cached;
 		}
 
@@ -1129,7 +1222,7 @@ class FormHandler {
 				"SELECT ID, post_content FROM {$wpdb->posts}
 				WHERE post_content LIKE %s
 				AND post_content LIKE %s
-				AND post_status IN ('publish', 'private')
+				AND post_status = 'publish'
 				LIMIT 5",
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 				'%' . $wpdb->esc_like( 'airo-wp/form-builder' ) . '%',
@@ -1138,47 +1231,158 @@ class FormHandler {
 			)
 		);
 
-		if ( empty( $posts ) ) {
-			return null;
-		}
+		foreach ( (array) $posts as $post ) {
+			$blocks     = parse_blocks( $post->post_content );
+			$form_block = $this->find_form_block( $blocks, $form_id );
+			if ( null !== $form_block ) {
+				$definition = $this->build_form_definition( $form_block );
 
-		foreach ( $posts as $post ) {
-			$blocks = parse_blocks( $post->post_content );
-			$attrs  = $this->find_form_block_attributes( $blocks, $form_id );
-			if ( null !== $attrs ) {
-				// Cache for 1 hour. Invalidated on save_post via clear_form_attributes_cache().
-				set_transient( $cache_key, $attrs, HOUR_IN_SECONDS );
-				return $attrs;
+				set_transient( $cache_key, $definition, HOUR_IN_SECONDS );
+				return $definition;
 			}
 		}
 
-		return null;
+		return $this->get_external_form_definition( $form_id );
 	}
 
 	/**
-	 * Recursively search parsed blocks for a form-builder block with matching formId.
+	 * Build the server-owned definition for a parsed form block.
 	 *
-	 * @param array  $blocks  Parsed blocks array.
-	 * @param string $form_id Form identifier to match.
-	 * @return array|null Block attributes if found, null otherwise.
+	 * @param array $form_block Parsed airo-wp/form-builder block.
+	 * @return array{attributes: array, field_types: array, constraints: array, required_fields: string[]} Form definition.
 	 */
-	private function find_form_block_attributes( $blocks, $form_id ) {
+	private function build_form_definition( array $form_block ) {
+		$inner_blocks = isset( $form_block['innerBlocks'] ) ? $form_block['innerBlocks'] : array();
+
+		return array(
+			'attributes'      => $this->apply_form_block_defaults( $form_block['attrs'] ),
+			'field_types'     => $this->extract_field_types_from_blocks( $inner_blocks ),
+			'constraints'     => $this->extract_field_value_constraints_from_blocks( $inner_blocks ),
+			'required_fields' => $this->extract_required_field_names_from_blocks( $inner_blocks ),
+		);
+	}
+
+	/**
+	 * Resolve a form that lives outside wp_posts.
+	 *
+	 * Block widgets, templates and template parts still served from theme or
+	 * plugin files, and registered patterns (which templates pull in with
+	 * wp:pattern) never appear in wp_posts. All of them are site-owner
+	 * content. The index is built once and cached, so an unknown form ID costs
+	 * a transient read here rather than a rescan of every template and pattern.
+	 *
+	 * @param string $form_id Form identifier to look up.
+	 * @return array|null Form definition, or null when no such form exists.
+	 */
+	private function get_external_form_definition( $form_id ) {
+		$definitions = get_transient( self::EXTERNAL_DEFINITIONS_CACHE );
+
+		if ( ! is_array( $definitions ) ) {
+			$definitions = array();
+			foreach ( $this->get_external_block_content() as $content ) {
+				if ( ! is_string( $content ) || false === strpos( $content, 'airo-wp/form-builder' ) ) {
+					continue;
+				}
+				foreach ( $this->find_form_blocks( parse_blocks( $content ) ) as $form_block ) {
+					$id = (string) $form_block['attrs']['formId'];
+					if ( ! isset( $definitions[ $id ] ) ) {
+						$definitions[ $id ] = $this->build_form_definition( $form_block );
+					}
+				}
+			}
+			set_transient( self::EXTERNAL_DEFINITIONS_CACHE, $definitions, HOUR_IN_SECONDS );
+		}
+
+		return isset( $definitions[ $form_id ] ) ? $definitions[ $form_id ] : null;
+	}
+
+	/**
+	 * Collect block content that isn't stored as a post.
+	 *
+	 * @return string[] Serialized block content.
+	 */
+	private function get_external_block_content() {
+		$contents = array();
+
+		foreach ( (array) get_option( 'widget_block', array() ) as $widget ) {
+			if ( is_array( $widget ) && isset( $widget['content'] ) ) {
+				$contents[] = $widget['content'];
+			}
+		}
+
+		if ( function_exists( 'get_block_templates' ) ) {
+			foreach ( array( 'wp_template', 'wp_template_part' ) as $template_type ) {
+				foreach ( get_block_templates( array(), $template_type ) as $template ) {
+					$contents[] = $template->content;
+				}
+			}
+		}
+
+		foreach ( \WP_Block_Patterns_Registry::get_instance()->get_all_registered() as $pattern ) {
+			if ( isset( $pattern['content'] ) ) {
+				$contents[] = $pattern['content'];
+			}
+		}
+
+		return $contents;
+	}
+
+	/**
+	 * Recursively collect every form block that carries a form ID.
+	 *
+	 * @param array $blocks Parsed blocks.
+	 * @return array[] Parsed airo-wp/form-builder blocks.
+	 */
+	private function find_form_blocks( $blocks ) {
+		$forms = array();
+
 		foreach ( $blocks as $block ) {
 			if (
 				'airo-wp/form-builder' === $block['blockName'] &&
 				isset( $block['attrs']['formId'] ) &&
-				$block['attrs']['formId'] === $form_id
+				is_string( $block['attrs']['formId'] ) &&
+				'' !== $block['attrs']['formId']
 			) {
-				// parse_blocks() returns only the attributes that were serialized into
-				// the block comment. The editor omits attributes that equal their
-				// declared default, so booleans like `enableEmail` (default true) and
-				// similar may be missing here. Merge in the block-type defaults so
-				// server-side consumers see the same attribute set the editor does.
-				return $this->apply_form_block_defaults( $block['attrs'] );
+				$forms[] = $block;
 			}
 
 			if ( ! empty( $block['innerBlocks'] ) ) {
-				$result = $this->find_form_block_attributes( $block['innerBlocks'], $form_id );
+				$forms = array_merge( $forms, $this->find_form_blocks( $block['innerBlocks'] ) );
+			}
+		}
+
+		return $forms;
+	}
+
+	/**
+	 * Drop the cached index of forms outside wp_posts.
+	 *
+	 * Hooked to widget and theme changes; template edits are covered by
+	 * clear_form_attributes_cache().
+	 */
+	public function clear_external_form_definitions() {
+		delete_transient( self::EXTERNAL_DEFINITIONS_CACHE );
+	}
+
+	/**
+	 * Recursively find a form block with its inner-block schema intact.
+	 *
+	 * @param array  $blocks  Parsed blocks array.
+	 * @param string $form_id Form identifier to match.
+	 * @return array|null Matching parsed block.
+	 */
+	private function find_form_block( $blocks, $form_id ) {
+		foreach ( $blocks as $block ) {
+			if (
+				'airo-wp/form-builder' === $block['blockName'] &&
+				isset( $block['attrs']['formId'] ) &&
+				$form_id === $block['attrs']['formId']
+			) {
+				return $block;
+			}
+
+			if ( ! empty( $block['innerBlocks'] ) ) {
+				$result = $this->find_form_block( $block['innerBlocks'], $form_id );
 				if ( null !== $result ) {
 					return $result;
 				}
@@ -1195,16 +1399,24 @@ class FormHandler {
 	 * @return array Attributes with block.json defaults filled in for missing keys.
 	 */
 	private function apply_form_block_defaults( $attrs ) {
-		if ( ! class_exists( '\WP_Block_Type_Registry' ) ) {
-			return $attrs;
+		$schemas    = array();
+		$block_type = class_exists( '\WP_Block_Type_Registry' )
+			? \WP_Block_Type_Registry::get_instance()->get_registered( 'airo-wp/form-builder' )
+			: null;
+
+		if ( $block_type && is_array( $block_type->attributes ) ) {
+			$schemas = $block_type->attributes;
+		} elseif ( function_exists( 'wp_json_file_decode' ) ) {
+			$metadata = wp_json_file_decode(
+				dirname( __DIR__, 3 ) . '/src/blocks/form-builder/block.json',
+				array( 'associative' => true )
+			);
+			$schemas  = is_array( $metadata ) && isset( $metadata['attributes'] ) && is_array( $metadata['attributes'] )
+				? $metadata['attributes']
+				: array();
 		}
 
-		$block_type = \WP_Block_Type_Registry::get_instance()->get_registered( 'airo-wp/form-builder' );
-		if ( ! $block_type || ! is_array( $block_type->attributes ) ) {
-			return $attrs;
-		}
-
-		foreach ( $block_type->attributes as $key => $schema ) {
+		foreach ( $schemas as $key => $schema ) {
 			if ( array_key_exists( $key, $attrs ) ) {
 				continue;
 			}
@@ -1217,142 +1429,32 @@ class FormHandler {
 	}
 
 	/**
-	 * Look up server-defined field types for a form by form ID.
+	 * Extract names of required fields from a form's inner blocks.
 	 *
-	 * Uses parsed block content so validation/sanitization does not rely on
-	 * client-supplied field types.
-	 *
-	 * @param string $form_id Form identifier to look up.
-	 * @return array<string, string> Field types keyed by field name.
+	 * @param array $blocks Parsed inner blocks.
+	 * @return string[] Required field names.
 	 */
-	private function get_form_field_types( $form_id ) {
-		$cache_key = 'airowp_form_field_types_' . md5( $form_id );
-		$cached    = get_transient( $cache_key );
+	private function extract_required_field_names_from_blocks( $blocks ) {
+		$required_fields = array();
 
-		if ( false !== $cached && is_array( $cached ) ) {
-			return $cached;
-		}
-
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-		$posts = $wpdb->get_results(
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-				"SELECT ID, post_content FROM {$wpdb->posts}
-				WHERE post_content LIKE %s
-				AND post_content LIKE %s
-				AND post_status IN ('publish', 'private')
-				LIMIT 5",
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-				'%' . $wpdb->esc_like( 'airo-wp/form-builder' ) . '%',
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-				'%' . $wpdb->esc_like( '"formId":"' . $form_id . '"' ) . '%'
-			)
-		);
-
-		if ( empty( $posts ) ) {
-			return array();
-		}
-
-		foreach ( $posts as $post ) {
-			$blocks      = parse_blocks( $post->post_content );
-			$field_types = $this->find_form_field_types( $blocks, $form_id );
-
-			if ( ! empty( $field_types ) ) {
-				set_transient( $cache_key, $field_types, HOUR_IN_SECONDS );
-				return $field_types;
-			}
-		}
-
-		return array();
-	}
-
-	/**
-	 * Look up server-defined allowed values for constrained fields by form ID.
-	 *
-	 * Parallels get_form_field_types() but returns, per field name, the list of
-	 * values the server will accept. Only select/checkbox/hidden fields are
-	 * constrained; all other field types are omitted (unconstrained). Used to
-	 * reject forged option values and hidden-field constants from the client.
-	 *
-	 * @param string $form_id Form identifier to look up.
-	 * @return array<string, string[]> Allowed values keyed by field name.
-	 */
-	private function get_form_field_value_constraints( $form_id ) {
-		$cache_key = 'airowp_form_field_constraints_' . md5( $form_id );
-		$cached    = get_transient( $cache_key );
-
-		if ( false !== $cached && is_array( $cached ) ) {
-			return $cached;
-		}
-
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-		$posts = $wpdb->get_results(
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-				"SELECT ID, post_content FROM {$wpdb->posts}
-				WHERE post_content LIKE %s
-				AND post_content LIKE %s
-				AND post_status IN ('publish', 'private')
-				LIMIT 5",
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-				'%' . $wpdb->esc_like( 'airo-wp/form-builder' ) . '%',
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-				'%' . $wpdb->esc_like( '"formId":"' . $form_id . '"' ) . '%'
-			)
-		);
-
-		if ( empty( $posts ) ) {
-			return array();
-		}
-
-		foreach ( $posts as $post ) {
-			$blocks      = parse_blocks( $post->post_content );
-			$constraints = $this->find_form_field_constraints( $blocks, $form_id );
-
-			if ( ! empty( $constraints ) ) {
-				set_transient( $cache_key, $constraints, HOUR_IN_SECONDS );
-				return $constraints;
-			}
-		}
-
-		return array();
-	}
-
-	/**
-	 * Recursively search parsed blocks for a form-builder block and extract
-	 * allowed values for constrained fields.
-	 *
-	 * @param array  $blocks  Parsed blocks array.
-	 * @param string $form_id Form identifier to match.
-	 * @return array<string, string[]> Allowed values keyed by field name.
-	 */
-	private function find_form_field_constraints( $blocks, $form_id ) {
 		foreach ( $blocks as $block ) {
-			if (
-				'airo-wp/form-builder' === $block['blockName'] &&
-				isset( $block['attrs']['formId'] ) &&
-				$block['attrs']['formId'] === $form_id
-			) {
-				return $this->extract_field_value_constraints_from_blocks(
-					isset( $block['innerBlocks'] ) ? $block['innerBlocks'] : array()
-				);
+			$attrs      = isset( $block['attrs'] ) ? $block['attrs'] : array();
+			$field_name = isset( $attrs['fieldName'] ) ? sanitize_text_field( $attrs['fieldName'] ) : '';
+			$field_type = $this->map_block_name_to_field_type( isset( $block['blockName'] ) ? $block['blockName'] : '' );
+
+			if ( $field_name && $field_type && ! empty( $attrs['required'] ) ) {
+				$required_fields[] = $field_name;
 			}
 
 			if ( ! empty( $block['innerBlocks'] ) ) {
-				$result = $this->find_form_field_constraints( $block['innerBlocks'], $form_id );
-				if ( ! empty( $result ) ) {
-					return $result;
-				}
+				$required_fields = array_merge(
+					$required_fields,
+					$this->extract_required_field_names_from_blocks( $block['innerBlocks'] )
+				);
 			}
 		}
 
-		return array();
+		return array_values( array_unique( $required_fields ) );
 	}
 
 	/**
@@ -1415,36 +1517,6 @@ class FormHandler {
 	}
 
 	/**
-	 * Recursively search parsed blocks for a form-builder block and extract field types.
-	 *
-	 * @param array  $blocks  Parsed blocks array.
-	 * @param string $form_id Form identifier to match.
-	 * @return array<string, string> Field types keyed by field name.
-	 */
-	private function find_form_field_types( $blocks, $form_id ) {
-		foreach ( $blocks as $block ) {
-			if (
-				'airo-wp/form-builder' === $block['blockName'] &&
-				isset( $block['attrs']['formId'] ) &&
-				$block['attrs']['formId'] === $form_id
-			) {
-				return $this->extract_field_types_from_blocks(
-					isset( $block['innerBlocks'] ) ? $block['innerBlocks'] : array()
-				);
-			}
-
-			if ( ! empty( $block['innerBlocks'] ) ) {
-				$result = $this->find_form_field_types( $block['innerBlocks'], $form_id );
-				if ( ! empty( $result ) ) {
-					return $result;
-				}
-			}
-		}
-
-		return array();
-	}
-
-	/**
 	 * Extract field types from a form block's inner blocks.
 	 *
 	 * @param array $blocks Parsed inner blocks.
@@ -1460,6 +1532,15 @@ class FormHandler {
 
 			if ( $field_name && $field_type ) {
 				$field_types[ $field_name ] = $field_type;
+
+				// form-phone-field renders a companion <select name="{name}_country_code">
+				// unless showCountryCode is turned off (block.json default: on).
+				if (
+					'airo-wp/form-phone-field' === $block_name &&
+					( ! isset( $block['attrs']['showCountryCode'] ) || ! empty( $block['attrs']['showCountryCode'] ) )
+				) {
+					$field_types[ $field_name . '_country_code' ] = 'country_code';
+				}
 			}
 
 			if ( ! empty( $block['innerBlocks'] ) ) {
@@ -1528,6 +1609,9 @@ class FormHandler {
 	 */
 	public function clear_form_attributes_cache( $post_id ) {
 		$post = get_post( $post_id );
+		if ( $post && in_array( $post->post_type, array( 'wp_template', 'wp_template_part' ), true ) ) {
+			$this->clear_external_form_definitions();
+		}
 		if ( ! $post || false === strpos( $post->post_content, 'airo-wp/form-builder' ) ) {
 			return;
 		}
@@ -1547,6 +1631,7 @@ class FormHandler {
 				'airo-wp/form-builder' === $block['blockName'] &&
 				isset( $block['attrs']['formId'] )
 			) {
+				delete_transient( 'airowp_form_definition_v2_' . md5( $block['attrs']['formId'] ) );
 				delete_transient( 'airowp_form_attrs_v2_' . md5( $block['attrs']['formId'] ) );
 				delete_transient( 'airowp_form_field_types_' . md5( $block['attrs']['formId'] ) );
 				delete_transient( 'airowp_form_field_constraints_' . md5( $block['attrs']['formId'] ) );

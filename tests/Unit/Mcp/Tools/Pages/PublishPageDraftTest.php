@@ -136,6 +136,9 @@ final class PublishPageDraftTest extends TestCase {
 		Functions\when( 'is_wp_error' )->justReturn( false );
 		Functions\when( 'delete_post_meta' )->justReturn( true );
 		Functions\when( 'update_post_meta' )->justReturn( true );
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
+		Functions\when( 'delete_post_thumbnail' )->justReturn( true );
 		Functions\when( 'do_action' )->justReturn( null );
 		Functions\when( 'apply_filters' )->returnArg( 2 );
 
@@ -207,6 +210,9 @@ final class PublishPageDraftTest extends TestCase {
 		Functions\when( 'is_wp_error' )->justReturn( false );
 		Functions\when( 'delete_post_meta' )->justReturn( true );
 		Functions\when( 'update_post_meta' )->justReturn( true );
+		Functions\when( 'get_post_thumbnail_id' )->justReturn( 0 );
+		Functions\when( 'set_post_thumbnail' )->justReturn( true );
+		Functions\when( 'delete_post_thumbnail' )->justReturn( true );
 		Functions\when( 'do_action' )->justReturn( null );
 		Functions\when( 'apply_filters' )->returnArg( 2 );
 

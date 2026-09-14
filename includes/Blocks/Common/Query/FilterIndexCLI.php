@@ -160,8 +160,10 @@ class FilterIndexCLI {
 		delete_option( FilterIndex::OPTION_STATUS );
 		// Also clear the plugin db version so the next admin_init fires
 		// maybe_upgrade() and reinstalls the table. Without this, the stored
-		// version is still '2.2.0' and the install logic is skipped.
-		delete_option( 'airowp_db_version' );
+		// version is still '2.2.0' and the install logic is skipped. Clearing
+		// a recorded install failure lifts the retry backoff as well.
+		delete_option( \airo - wp\Core\SchemaUpgrader::OPTION_VERSION );
+		\airo - wp\Core\SchemaUpgrader::clear_failure();
 
 		\WP_CLI::success( 'Filter index table dropped.' );
 	}

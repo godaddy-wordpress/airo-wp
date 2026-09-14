@@ -79,4 +79,16 @@ final class DeletePageRevisionTest extends TestCase {
 		$this->assertFalse( $result['success'] );
 		$this->assertStringContainsString( 'does not belong to the specified parent page', $result['message'] );
 	}
+
+	/**
+	 * The deleted-revision object describes every field the tool actually returns.
+	 */
+	public function test_output_schema_describes_deleted_revision_fields(): void {
+		$schema  = $this->call_private( $this->tool, 'get_output_schema' );
+		$deleted = $schema['properties']['deleted'];
+
+		foreach ( array( 'id', 'parent_id', 'author_id', 'date_created', 'title', 'content', 'slug' ) as $field ) {
+			$this->assertArrayHasKey( $field, $deleted['properties'], "missing {$field}" );
+		}
+	}
 }

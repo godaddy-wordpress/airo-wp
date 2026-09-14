@@ -61,34 +61,8 @@ class ActivateTheme extends BaseTool {
 			array(
 				'label'               => __( 'Activate Theme', 'airo-wp' ),
 				'description'         => __( 'Installs a theme from WordPress.org if not present, then activates it', 'airo-wp' ),
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'theme_slug' => array(
-							'type'        => 'string',
-							'description' => __( 'The theme slug (e.g. "twentytwentyfour")', 'airo-wp' ),
-							'minLength'   => 1,
-						),
-					),
-					'required'   => array( 'theme_slug' ),
-				),
-				'output_schema'       => $this->build_output_schema(
-					__( 'Theme activation result', 'airo-wp' ),
-					array(
-						'theme'          => array(
-							'type'        => 'string',
-							'description' => __( 'The theme slug', 'airo-wp' ),
-						),
-						'version'        => array(
-							'type'        => 'string',
-							'description' => __( 'The activated theme version', 'airo-wp' ),
-						),
-						'previous_theme' => array(
-							'type'        => 'string',
-							'description' => __( 'The previously active theme slug', 'airo-wp' ),
-						),
-					)
-				),
+				'input_schema'        => $this->get_input_schema(),
+				'output_schema'       => $this->get_output_schema(),
 				'execute_callback'    => array( $this, 'execute' ),
 				'permission_callback' => array( $this, 'check_permissions' ),
 				'category'            => 'theme-management',
@@ -96,6 +70,49 @@ class ActivateTheme extends BaseTool {
 		);
 	}
 
+	/**
+	 * Get the input schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'theme_slug' => array(
+					'type'        => 'string',
+					'description' => __( 'The theme slug (e.g. "twentytwentyfour")', 'airo-wp' ),
+					'minLength'   => 1,
+				),
+			),
+			'required'   => array( 'theme_slug' ),
+		);
+	}
+
+	/**
+	 * Get the output schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_output_schema(): array {
+		return $this->build_output_schema(
+			__( 'Theme activation result', 'airo-wp' ),
+			array(
+				'theme'          => array(
+					'type'        => 'string',
+					'description' => __( 'The theme slug', 'airo-wp' ),
+				),
+				'version'        => array(
+					'type'        => 'string',
+					'description' => __( 'The activated theme version', 'airo-wp' ),
+				),
+				'previous_theme' => array(
+					'type'        => 'string',
+					'description' => __( 'The previously active theme slug', 'airo-wp' ),
+				),
+			)
+		);
+	}
 	/**
 	 * Execute the tool.
 	 *

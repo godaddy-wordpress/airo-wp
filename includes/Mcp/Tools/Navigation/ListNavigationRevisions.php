@@ -276,6 +276,55 @@ class ListNavigationRevisions extends BaseTool {
 				'revisions'   => array(
 					'type'        => 'array',
 					'description' => __( 'Array of revision objects', 'airo-wp' ),
+					'items'       => array(
+						'type'       => 'object',
+						'properties' => array(
+							'id'           => array(
+								'type'        => 'integer',
+								'description' => __( 'Unique identifier for the revision', 'airo-wp' ),
+							),
+							'author'       => array(
+								'type'        => 'integer',
+								'description' => __( 'The ID for the author of the revision', 'airo-wp' ),
+							),
+							'date'         => array(
+								'type'        => 'string',
+								'description' => __( 'The date the revision was published, in the site\'s timezone', 'airo-wp' ),
+							),
+							'date_gmt'     => array(
+								'type'        => 'string',
+								'description' => __( 'The date the revision was published, as GMT', 'airo-wp' ),
+							),
+							'guid'         => array(
+								'type'        => 'object',
+								'description' => __( 'The globally unique identifier for the post', 'airo-wp' ),
+							),
+							'modified'     => array(
+								'type'        => 'string',
+								'description' => __( 'The date the revision was last modified, in the site\'s timezone', 'airo-wp' ),
+							),
+							'modified_gmt' => array(
+								'type'        => 'string',
+								'description' => __( 'The date the revision was last modified, as GMT', 'airo-wp' ),
+							),
+							'parent'       => array(
+								'type'        => 'integer',
+								'description' => __( 'The ID for the parent of the revision', 'airo-wp' ),
+							),
+							'slug'         => array(
+								'type'        => 'string',
+								'description' => __( 'An alphanumeric identifier for the revision unique to its type', 'airo-wp' ),
+							),
+							'title'        => array(
+								'type'        => 'object',
+								'description' => __( 'The title for the post', 'airo-wp' ),
+							),
+							'content'      => array(
+								'type'        => 'object',
+								'description' => __( 'The content for the post', 'airo-wp' ),
+							),
+						),
+					),
 				),
 				'total'       => array(
 					'type'        => 'integer',

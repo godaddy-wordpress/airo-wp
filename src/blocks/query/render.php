@@ -59,5 +59,6 @@ echo airowp_query_render_container( // phpcs:ignore WordPress.Security.EscapeOut
 	$airowp_page,
 	$airowp_query_id,
 	$airowp_wrapper_attrs,
-	(array) ( $block->context ?? array() )
+	(array) ( $block->context ?? array() ),
+	class_exists( 'airo-wp\\Blocks\\Query\\RefreshSource' ) ? \airo-wp\Blocks\Query\RefreshSource::current_content_post_id() : 0
 );

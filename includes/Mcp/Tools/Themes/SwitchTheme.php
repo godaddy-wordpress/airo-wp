@@ -45,30 +45,8 @@ class SwitchTheme extends BaseTool {
 			array(
 				'label'               => __( 'Switch Theme', 'airo-wp' ),
 				'description'         => __( 'Switches to an already-installed theme', 'airo-wp' ),
-				'input_schema'        => array(
-					'type'       => 'object',
-					'properties' => array(
-						'theme_slug' => array(
-							'type'        => 'string',
-							'description' => __( 'The theme slug (e.g. "twentytwentyfour")', 'airo-wp' ),
-							'minLength'   => 1,
-						),
-					),
-					'required'   => array( 'theme_slug' ),
-				),
-				'output_schema'       => $this->build_output_schema(
-					__( 'Theme switch result', 'airo-wp' ),
-					array(
-						'theme'          => array(
-							'type'        => 'string',
-							'description' => __( 'The theme slug', 'airo-wp' ),
-						),
-						'previous_theme' => array(
-							'type'        => 'string',
-							'description' => __( 'The previously active theme slug', 'airo-wp' ),
-						),
-					)
-				),
+				'input_schema'        => $this->get_input_schema(),
+				'output_schema'       => $this->get_output_schema(),
 				'execute_callback'    => array( $this, 'execute' ),
 				'permission_callback' => array( $this, 'check_permissions' ),
 				'category'            => 'theme-management',
@@ -76,6 +54,45 @@ class SwitchTheme extends BaseTool {
 		);
 	}
 
+	/**
+	 * Get the input schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array(
+				'theme_slug' => array(
+					'type'        => 'string',
+					'description' => __( 'The theme slug (e.g. "twentytwentyfour")', 'airo-wp' ),
+					'minLength'   => 1,
+				),
+			),
+			'required'   => array( 'theme_slug' ),
+		);
+	}
+
+	/**
+	 * Get the output schema for the tool.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function get_output_schema(): array {
+		return $this->build_output_schema(
+			__( 'Theme switch result', 'airo-wp' ),
+			array(
+				'theme'          => array(
+					'type'        => 'string',
+					'description' => __( 'The theme slug', 'airo-wp' ),
+				),
+				'previous_theme' => array(
+					'type'        => 'string',
+					'description' => __( 'The previously active theme slug', 'airo-wp' ),
+				),
+			)
+		);
+	}
 	/**
 	 * Execute the tool.
 	 *

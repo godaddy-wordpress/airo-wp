@@ -200,6 +200,60 @@ class CreateNavigation extends BaseTool {
 				'navigation' => array(
 					'type'        => 'object',
 					'description' => __( 'The created navigation data', 'airo-wp' ),
+					'properties'  => array(
+						'id'           => array(
+							'type'        => 'integer',
+							'description' => __( 'Unique identifier for the post', 'airo-wp' ),
+						),
+						'date'         => array(
+							'type'        => 'string',
+							'description' => __( 'The date the post was published, in the site\'s timezone', 'airo-wp' ),
+						),
+						'date_gmt'     => array(
+							'type'        => 'string',
+							'description' => __( 'The date the post was published, as GMT', 'airo-wp' ),
+						),
+						'guid'         => array(
+							'type'        => 'object',
+							'description' => __( 'The globally unique identifier for the post', 'airo-wp' ),
+						),
+						'modified'     => array(
+							'type'        => 'string',
+							'description' => __( 'The date the post was last modified, in the site\'s timezone', 'airo-wp' ),
+						),
+						'modified_gmt' => array(
+							'type'        => 'string',
+							'description' => __( 'The date the post was last modified, as GMT', 'airo-wp' ),
+						),
+						'slug'         => array(
+							'type'        => 'string',
+							'description' => __( 'An alphanumeric identifier for the post unique to its type', 'airo-wp' ),
+						),
+						'status'       => array(
+							'type'        => 'string',
+							'description' => __( 'A named status for the post', 'airo-wp' ),
+						),
+						'type'         => array(
+							'type'        => 'string',
+							'description' => __( 'Type of post', 'airo-wp' ),
+						),
+						'link'         => array(
+							'type'        => 'string',
+							'description' => __( 'URL to the post', 'airo-wp' ),
+						),
+						'title'        => array(
+							'type'        => 'object',
+							'description' => __( 'The title for the post', 'airo-wp' ),
+						),
+						'content'      => array(
+							'type'        => 'object',
+							'description' => __( 'The content for the post', 'airo-wp' ),
+						),
+						'template'     => array(
+							'type'        => 'string',
+							'description' => __( 'The theme file to use to display the post', 'airo-wp' ),
+						),
+					),
 				),
 			)
 		);

@@ -11,13 +11,15 @@ namespace GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Site;
 
 defined( 'ABSPATH' ) || exit;
 
+use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\BaseTool;
+
 /**
  * Registers and executes the get-site-info MCP ability.
  *
- * Ported from mcp-adapter-initializer's Site_Info_Tool.
- * Simplified: no singleton, no Base_Tool dependency, PHP 7.4 compatible.
+ * Simplified from the upstream reference implementation: no singleton, PHP 7.4
+ * compatible.
  */
-class SiteInfo {
+class SiteInfo extends BaseTool {
 
 	/**
 	 * MCP ability identifier.

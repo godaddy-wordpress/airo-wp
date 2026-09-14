@@ -17,58 +17,7 @@ use GoDaddy\WordPress\Plugins\AiroWp\Dependencies\WP\MCP\Transport\HttpTransport
 use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Infrastructure\AbilitiesApiProxy;
 use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Infrastructure\AppPasswordHeaderAuth;
 use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Infrastructure\RouteAccess;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Plugins\ActivatePlugin;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Plugins\DeactivatePlugin;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Plugins\GetPlugin;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Plugins\ListPlugins;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Plugins\UpdatePlugin;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Site\SiteInfo;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Site\UpdateSiteOptions;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Themes\ActivateTheme;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Themes\GetThemes;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Themes\SwitchTheme;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Posts\CreatePost;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Posts\UpdatePost;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Posts\DeletePost;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Posts\ListPosts;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Posts\GetPost;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Posts\GetPostByOptionName;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Posts\ListPostRevisions;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Posts\RestorePostRevision;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Posts\UpdatePostImageAltText;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Pages\CreatePageDraft;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Pages\PublishPageDraft;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Pages\DiscardPageDraft;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Pages\GetPageDraftStatus;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Pages\ListPageRevisions;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Pages\GetPageRevision;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Pages\DeletePageRevision;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Media\DeleteMedia;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Media\GetAllMedia;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Media\GetMediaById;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Media\ListMedia;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Media\UpdateMediaMeta;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Media\UploadImage;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Templates\ListTemplates;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Templates\UpdateTemplate;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Templates\DeleteTemplate;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Templates\ListTemplateParts;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Templates\UpdateTemplatePart;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Templates\DeleteTemplatePart;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Templates\ListTemplateRevisions;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Templates\ListTemplatePartRevisions;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\GlobalStyles\GetGlobalStyles;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\GlobalStyles\ListGlobalStyles;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\GlobalStyles\ListGlobalStylesRevisions;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\GlobalStyles\UpdateGlobalStyles;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\GlobalStyles\GetBlockTypes;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\GlobalStyles\GetBlockPatterns;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Navigation\CreateNavigation;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Navigation\DeleteNavigation;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Navigation\GetNavigation;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Navigation\ListNavigationRevisions;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Navigation\ListNavigations;
-use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\Navigation\UpdateNavigation;
+use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Infrastructure\ToolRegistry;
 use GoDaddy\WordPress\Plugins\AiroWp\Services\DraftPageService;
 use GoDaddy\WordPress\Plugins\AiroWp\PackageInterface;
 
@@ -105,8 +54,14 @@ final class Package implements PackageInterface {
 		$container->get( RouteAccess::class )->setup();
 		$container->get( AppPasswordHeaderAuth::class )->setup();
 
+		$registry = $container->get( ToolRegistry::class );
+
 		$proxy = $container->get( AbilitiesApiProxy::class );
 		$proxy->setup();
+
+		// Resolved before the closure so the server's tool list and the abilities the
+		// proxy registers always come from the same source.
+		$tool_ids = $registry->tool_ids();
 
 		$draft_service = $container->get( DraftPageService::class );
 		add_action( 'before_delete_post', array( $draft_service, 'cleanup_draft_meta' ) );
@@ -116,12 +71,12 @@ final class Package implements PackageInterface {
 		$adapter = McpAdapter::instance();
 
 		// Create the 'airo-wp' MCP server when OUR adapter fires mcp_adapter_init.
-		// The identity check prevents responding to mcp-adapter-initializer's adapter
-		// if both plugins are active (they share the same action name but are separate
-		// Strauss-prefixed instances).
+		// The identity check prevents responding to another plugin's adapter if both
+		// are active: they share the same action name but are separate Strauss-prefixed
+		// instances, so the firing adapter must be verified as ours.
 		add_action(
 			'mcp_adapter_init',
-			static function ( $fired_adapter ) use ( $adapter ) {
+			static function ( $fired_adapter ) use ( $adapter, $tool_ids ) {
 				if ( $fired_adapter !== $adapter ) {
 					return;
 				}
@@ -135,60 +90,7 @@ final class Package implements PackageInterface {
 					array( HttpTransport::class ),
 					null,     // Error handler: NullMcpErrorHandler used by default.
 					null,     // Observability handler: NullMcpObservabilityHandler used by default.
-					array(
-						SiteInfo::TOOL_ID,
-						UpdateSiteOptions::TOOL_ID,
-						ActivatePlugin::TOOL_ID,
-						DeactivatePlugin::TOOL_ID,
-						GetPlugin::TOOL_ID,
-						ListPlugins::TOOL_ID,
-						UpdatePlugin::TOOL_ID,
-						ActivateTheme::TOOL_ID,
-						GetThemes::TOOL_ID,
-						SwitchTheme::TOOL_ID,
-						CreatePost::TOOL_ID,
-						UpdatePost::TOOL_ID,
-						DeletePost::TOOL_ID,
-						ListPosts::TOOL_ID,
-						GetPost::TOOL_ID,
-						GetPostByOptionName::TOOL_ID,
-						ListPostRevisions::TOOL_ID,
-						RestorePostRevision::TOOL_ID,
-						UpdatePostImageAltText::TOOL_ID,
-						CreatePageDraft::TOOL_ID,
-						PublishPageDraft::TOOL_ID,
-						DiscardPageDraft::TOOL_ID,
-						GetPageDraftStatus::TOOL_ID,
-						ListPageRevisions::TOOL_ID,
-						GetPageRevision::TOOL_ID,
-						DeletePageRevision::TOOL_ID,
-						DeleteMedia::TOOL_ID,
-						GetAllMedia::TOOL_ID,
-						GetMediaById::TOOL_ID,
-						ListMedia::TOOL_ID,
-						UpdateMediaMeta::TOOL_ID,
-						UploadImage::TOOL_ID,
-						ListTemplates::TOOL_ID,
-						UpdateTemplate::TOOL_ID,
-						DeleteTemplate::TOOL_ID,
-						ListTemplateParts::TOOL_ID,
-						UpdateTemplatePart::TOOL_ID,
-						DeleteTemplatePart::TOOL_ID,
-						ListTemplateRevisions::TOOL_ID,
-						ListTemplatePartRevisions::TOOL_ID,
-						GetGlobalStyles::TOOL_ID,
-						ListGlobalStyles::TOOL_ID,
-						ListGlobalStylesRevisions::TOOL_ID,
-						UpdateGlobalStyles::TOOL_ID,
-						GetBlockTypes::TOOL_ID,
-						GetBlockPatterns::TOOL_ID,
-						ListNavigations::TOOL_ID,
-						GetNavigation::TOOL_ID,
-						CreateNavigation::TOOL_ID,
-						UpdateNavigation::TOOL_ID,
-						DeleteNavigation::TOOL_ID,
-						ListNavigationRevisions::TOOL_ID,
-					),
+					$tool_ids,
 					array(),  // Resources.
 					array(),  // Prompts.
 					'is_user_logged_in'
