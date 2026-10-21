@@ -24,7 +24,12 @@ export default function TimelineSave({ attributes }) {
 			lineColor || 'var(--wp--preset--color--contrast, #e5e7eb)',
 		'--airo-wp-timeline-line-thickness': `${lineThickness}px`,
 		'--airo-wp-timeline-connector-style': connectorStyle,
-		'--airo-wp-timeline-marker-size': `${markerSize}px`,
+		// Only an explicit Marker Size is written; left unset, style.scss
+		// resolves it from the theme token. Keep this key's position — explicit
+		// sizes saved before it became optional must still match byte-for-byte.
+		...(typeof markerSize === 'number' && {
+			'--airo-wp-timeline-marker-size': `${markerSize}px`,
+		}),
 		'--airo-wp-timeline-marker-color':
 			markerColor || 'var(--wp--preset--color--primary, #2563eb)',
 		'--airo-wp-timeline-marker-border-color':

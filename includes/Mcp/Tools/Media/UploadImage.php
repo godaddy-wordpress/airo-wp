@@ -16,8 +16,8 @@ use GoDaddy\WordPress\Plugins\AiroWp\Mcp\Tools\BaseTool;
 /**
  * Registers and executes the upload-image MCP ability.
  *
- * Downloads an image from a URL and uploads it to the WordPress media library,
- * optionally attaching it to a post.
+ * Uploads an image to the WordPress media library from a remote URL or from
+ * base64-encoded file data, optionally attaching it to a post.
  */
 class UploadImage extends BaseTool {
 
@@ -93,13 +93,24 @@ class UploadImage extends BaseTool {
 	}
 
 	/**
-	 * Handle upload from a remote URL via media_sideload_image().
+	 * Handle upload from a remote URL.
+	 *
+	 * Downloads first, names the file from the sniffed MIME type, then hands it to
+	 * media_handle_sideload() — the same route the base64 path takes.
+	 * media_sideload_image() is not used: it rejects a URL whose path carries no
+	 * image extension before downloading anything, which refuses most CDN, image
+	 * proxy and signed URLs even when they serve a valid image.
 	 *
 	 * @param array<string, mixed> $input Input parameters.
 	 * @return array<string, mixed>
 	 */
 	private function handle_url_upload( array $input ): array {
-		$url = esc_url_raw( $input['url'] );
+		// Check the scheme on the raw input: esc_url_raw() prepends http:// to a
+		// scheme-less string, which would turn garbage into a DNS lookup.
+		$scheme = wp_parse_url( (string) $input['url'], PHP_URL_SCHEME );
+		$url    = is_string( $scheme ) && in_array( strtolower( $scheme ), array( 'http', 'https' ), true )
+			? esc_url_raw( $input['url'] )
+			: '';
 
 		if ( ! $url || ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
 			return array(
@@ -119,22 +130,74 @@ class UploadImage extends BaseTool {
 
 		$this->ensure_media_admin_files();
 
-		$attachment_id = media_sideload_image( $url, $post_id, $title, 'id' );
+		$tmp_file = download_url( $url, 300 );
 
-		if ( is_wp_error( $attachment_id ) ) {
+		if ( is_wp_error( $tmp_file ) ) {
 			return array(
 				'success' => false,
 				/* translators: %s: Error message */
-				'message' => sprintf( __( 'Failed to upload image: %s', 'airo-wp' ), $attachment_id->get_error_message() ),
+				'message' => sprintf( __( 'Failed to upload image: %s', 'airo-wp' ), $tmp_file->get_error_message() ),
 			);
 		}
 
-		return array(
-			'success'       => true,
-			'attachment_id' => $attachment_id,
-			'url'           => wp_get_attachment_url( $attachment_id ),
-			'message'       => __( 'Image uploaded successfully', 'airo-wp' ),
-		);
+		try {
+			$mime = wp_get_image_mime( $tmp_file );
+
+			if ( ! $mime ) {
+				return array(
+					'success' => false,
+					'message' => __( 'Failed to upload image: Downloaded content is not a supported image', 'airo-wp' ),
+				);
+			}
+
+			$filename = $this->filename_for_url_sideload( $url, $mime );
+
+			if ( null === $filename ) {
+				return array(
+					'success' => false,
+					'message' => __( 'Unsupported MIME type. Provide a type allowed by this WordPress installation.', 'airo-wp' ),
+				);
+			}
+
+			// filesize() is false only for an unreadable path; media_handle_sideload()
+			// re-checks the file before moving it, so 0 is a safe fallback.
+			$file_size = filesize( $tmp_file );
+
+			$file_array = array(
+				'name'     => $filename,
+				'type'     => $mime,
+				'tmp_name' => $tmp_file,
+				'error'    => 0,
+				'size'     => false === $file_size ? 0 : $file_size,
+			);
+
+			$attachment_id = media_handle_sideload( $file_array, $post_id, $title );
+
+			if ( is_wp_error( $attachment_id ) ) {
+				return array(
+					'success' => false,
+					/* translators: %s: Error message */
+					'message' => sprintf( __( 'Failed to upload image: %s', 'airo-wp' ), $attachment_id->get_error_message() ),
+				);
+			}
+
+			// media_handle_sideload() moved the temp file into uploads; nothing to clean up.
+			$tmp_file = '';
+
+			// media_sideload_image() records where the image came from; keep doing so.
+			add_post_meta( $attachment_id, '_source_url', $url );
+
+			return array(
+				'success'       => true,
+				'attachment_id' => $attachment_id,
+				'url'           => wp_get_attachment_url( $attachment_id ),
+				'message'       => __( 'Image uploaded successfully', 'airo-wp' ),
+			);
+		} finally {
+			if ( $tmp_file && file_exists( $tmp_file ) ) {
+				wp_delete_file( $tmp_file );
+			}
+		}
 	}
 
 	/**
@@ -266,13 +329,18 @@ class UploadImage extends BaseTool {
 	 * Check preconditions shared by both upload paths.
 	 *
 	 * The upload_files capability is enforced by check_permissions(), so it is not
-	 * re-checked here. Only the optional attachment target is validated.
+	 * re-checked here. Only the optional attachment target is validated: it must
+	 * exist and be editable by the caller, as core's media endpoint requires.
 	 *
 	 * @param int|null $post_id Resolved post ID, or null when not provided.
 	 * @return array<string, mixed>|null Error array on failure, null when all checks pass.
 	 */
 	private function check_upload_preconditions( ?int $post_id ): ?array {
-		if ( $post_id && ! get_post( $post_id ) ) {
+		if ( ! $post_id ) {
+			return null;
+		}
+
+		if ( ! get_post( $post_id ) ) {
 			return array(
 				'success' => false,
 				/* translators: %d: Post ID */
@@ -280,23 +348,99 @@ class UploadImage extends BaseTool {
 			);
 		}
 
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to attach media to this post', 'airo-wp' ),
+			);
+		}
+
 		return null;
 	}
 
 	/**
-	 * Ensure the WordPress admin media files are loaded.
+	 * Ensure the WordPress admin includes that either upload path needs are loaded.
 	 *
-	 * Both upload paths need the same three files; centralising the guard keeps them
-	 * from diverging if the list ever changes.
+	 * Guarded per function, not as a set: a context that already loaded media.php
+	 * can still be missing file.php, and download_url() / wp_tempnam() live there.
 	 *
 	 * @return void
 	 */
 	private function ensure_media_admin_files(): void {
 		if ( ! function_exists( 'media_handle_sideload' ) ) {
 			$this->load_admin_file( 'media.php' );
+		}
+
+		if ( ! function_exists( 'download_url' ) ) {
 			$this->load_admin_file( 'file.php' );
+		}
+
+		if ( ! function_exists( 'wp_read_image_metadata' ) ) {
 			$this->load_admin_file( 'image.php' );
 		}
+	}
+
+	/**
+	 * Build a sideload filename whose extension matches the sniffed MIME type.
+	 *
+	 * Keeps the URL's basename when there is one, but always replaces its extension,
+	 * so a .jpg URL serving PNG bytes is stored as .png and name and type agree.
+	 * Only an extension this site recognises is replaced: CDN paths often end in a
+	 * dotted segment that is not one (hero-v1.2, 1234.5678), and that stays.
+	 *
+	 * @param string $url  Source URL.
+	 * @param string $mime Image MIME type from wp_get_image_mime().
+	 * @return string|null Filename, or null when the MIME type is not allowed on this site.
+	 */
+	private function filename_for_url_sideload( string $url, string $mime ): ?string {
+		$allowed   = get_allowed_mime_types();
+		$extension = $this->extension_for_image_mime( $mime, $allowed );
+
+		if ( null === $extension ) {
+			return null;
+		}
+
+		$path     = wp_parse_url( $url, PHP_URL_PATH );
+		$basename = is_string( $path ) ? sanitize_file_name( basename( $path ) ) : '';
+		$base     = $basename;
+		$dot      = strrpos( $basename, '.' );
+
+		if ( false !== $dot ) {
+			$known = explode( '|', implode( '|', array_keys( $allowed ) ) );
+
+			if ( in_array( strtolower( substr( $basename, $dot + 1 ) ), $known, true ) ) {
+				$base = substr( $basename, 0, $dot );
+			}
+		}
+
+		if ( '' === $base ) {
+			$base = 'upload';
+		}
+
+		return $base . '.' . $extension;
+	}
+
+	/**
+	 * Preferred file extension for an image MIME type this site allows.
+	 *
+	 * Reads get_allowed_mime_types() — the same gate the base64 path uses — so
+	 * aliases such as jpg|jpeg|jpe resolve to their first entry. Returns null rather
+	 * than guessing, so a type the site does not allow fails closed.
+	 *
+	 * @param string                $mime    MIME type.
+	 * @param array<string, string> $allowed get_allowed_mime_types() result.
+	 * @return string|null Extension without the leading dot, or null if not allowed.
+	 */
+	private function extension_for_image_mime( string $mime, array $allowed ): ?string {
+		foreach ( $allowed as $extensions => $allowed_mime ) {
+			if ( $allowed_mime !== $mime ) {
+				continue;
+			}
+
+			return explode( '|', (string) $extensions )[0];
+		}
+
+		return null;
 	}
 
 	/**

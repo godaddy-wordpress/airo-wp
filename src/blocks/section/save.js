@@ -12,13 +12,20 @@ import {
 	convertColorToCSSVar,
 	convertPresetToCSSVar,
 } from '../../utils/convert-preset-to-css-var';
+import { getOverlayOpacity } from '../../utils/overlay-opacity';
 import {
 	hasOverlayStyleClass,
 	hoverVariationClasses,
 } from './utils/has-overlay-style';
+import {
+	BOX_WIDTH_CLASS,
+	getBoxWidthStyle,
+	hasBoxWidth,
+} from './utils/box-width';
 import ShapeDivider, {
 	getRenderedShapeHeight,
 } from './components/ShapeDivider';
+import { getContentColumnMargins } from './utils/content-position';
 
 /**
  * Section Container Save Component
@@ -32,6 +39,7 @@ export default function SectionSave({ attributes }) {
 		tagName = 'div',
 		constrainWidth,
 		contentWidth,
+		contentPosition,
 		hoverBackgroundColor,
 		hoverTextColor,
 		hoverIconBackgroundColor,
@@ -84,12 +92,16 @@ export default function SectionSave({ attributes }) {
 		hasOverlay && 'airo-wp-stack--has-overlay',
 		(shapeDividerTop || shapeDividerBottom) &&
 			'airo-wp-stack--has-shape-divider',
+		hasBoxWidth(attributes) && BOX_WIDTH_CLASS,
 		...hoverVariationClasses(attributes.className),
 	]
 		.filter(Boolean)
 		.join(' ');
 
-	// Block wrapper props - outer div stays full width
+	// Block wrapper props. The outer element stays full width UNLESS `boxWidth`
+	// is set, in which case getBoxWidthStyle() caps and centers the section's
+	// own box (background, border, shadow, overlay and shape dividers included).
+	// See utils/box-width.js. Must match edit.js EXACTLY.
 	const TagName = tagName || 'div';
 	const blockProps = useBlockProps.save({
 		className,
@@ -114,7 +126,10 @@ export default function SectionSave({ attributes }) {
 			}),
 			...(overlayColor && {
 				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
-				'--airo-wp-overlay-opacity': '0.8',
+				'--airo-wp-overlay-opacity': getOverlayOpacity(
+					overlayColor,
+					attributes.overlayOpacity
+				),
 			}),
 			// Default content clearance: expose the divider's RENDERED height on
 			// the wrapper so the stylesheet fallback (see _shape-divider.scss)
@@ -141,6 +156,9 @@ export default function SectionSave({ attributes }) {
 						shapeDividerBottomHeight
 					)}px`,
 				}),
+			// Outer box width. Emits nothing when `boxWidth` is unset, so
+			// existing content serializes byte-identically.
+			...getBoxWidthStyle(attributes),
 		},
 	});
 
@@ -150,8 +168,7 @@ export default function SectionSave({ attributes }) {
 	if (constrainWidth) {
 		innerStyle.maxWidth =
 			contentWidth || 'var(--wp--style--global--content-size, 1140px)';
-		innerStyle.marginLeft = 'auto';
-		innerStyle.marginRight = 'auto';
+		Object.assign(innerStyle, getContentColumnMargins(contentPosition));
 	}
 
 	// Inner content clearance for shape dividers. The value is a block-user

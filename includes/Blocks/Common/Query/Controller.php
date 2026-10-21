@@ -67,6 +67,19 @@ class Controller {
 						'default'           => '',
 						'sanitize_callback' => 'esc_url_raw',
 					),
+					// Whether the page holds other Queries, so the rendered
+					// controls and pagination use per-Query URL keys.
+					'multiQuery' => array(
+						'type'    => 'boolean',
+						'default' => false,
+					),
+					// A random-order Query's first-paint seed, so later pages
+					// continue the same shuffle.
+					'seed'       => array(
+						'type'              => 'integer',
+						'default'           => 0,
+						'sanitize_callback' => 'absint',
+					),
 				),
 			)
 		);
@@ -259,11 +272,13 @@ class Controller {
 
 		if ( 'users' === $source ) {
 			$user_query = new \WP_User_Query(
-				array(
-					'number'  => $per_page,
-					'orderby' => 'registered',
-					'order'   => 'DESC',
-					'fields'  => array( 'ID', 'display_name' ),
+				self::restrict_preview_users(
+					array(
+						'number'  => $per_page,
+						'orderby' => 'registered',
+						'order'   => 'DESC',
+						'fields'  => array( 'ID', 'display_name' ),
+					)
 				)
 			);
 			$items      = array();
@@ -281,7 +296,14 @@ class Controller {
 			$taxonomy = isset( $attributes['taxonomy'] )
 				? sanitize_key( $attributes['taxonomy'] )
 				: 'category';
-			$terms    = get_terms(
+			if ( ! self::can_preview_taxonomy( $taxonomy ) ) {
+				return new \WP_Error(
+					'rest_forbidden',
+					__( 'You cannot preview this taxonomy.', 'airo-wp' ),
+					array( 'status' => 403 )
+				);
+			}
+			$terms = get_terms(
 				array(
 					'taxonomy'   => $taxonomy,
 					'number'     => $per_page,
@@ -306,6 +328,23 @@ class Controller {
 		}
 
 		return rest_ensure_response( array() );
+	}
+
+	/**
+	 * Whether the current user may see a taxonomy's terms in an editor preview.
+	 *
+	 * Only taxonomies meant to be seen (public or with an admin UI) that the user
+	 * can assign terms from. Internal taxonomies stay hidden from contributors.
+	 *
+	 * @param string $taxonomy Taxonomy slug.
+	 * @return bool
+	 */
+	public static function can_preview_taxonomy( string $taxonomy ): bool {
+		$object = get_taxonomy( $taxonomy );
+		if ( ! $object ) {
+			return false;
+		}
+		return ( ! empty( $object->public ) || ! empty( $object->show_ui ) ) && current_user_can( $object->cap->assign_terms );
 	}
 
 	/**
@@ -522,7 +561,8 @@ class Controller {
 			$source['queryId'],
 			$source['innerBlocks'],
 			$request,
-			$source['sourcePostId']
+			$source['sourcePostId'],
+			isset( $source['pageContext'] ) && is_array( $source['pageContext'] ) ? $source['pageContext'] : array()
 		);
 	}
 
@@ -539,6 +579,21 @@ class Controller {
 		$attributes = (array) $request->get_param( 'attributes' );
 		$query_id   = (string) $request->get_param( 'queryId' );
 		$source     = sanitize_key( (string) ( $attributes['source'] ?? 'posts' ) );
+
+		// The terms renderer reads its taxonomies from taxQuery clauses
+		// (defaulting to category), so those are what must be previewable.
+		if ( 'terms' === $source ) {
+			$taxonomies = self::clause_taxonomies( (array) ( $attributes['taxQuery']['clauses'] ?? array() ) );
+			foreach ( $taxonomies ? $taxonomies : array( 'category' ) as $taxonomy ) {
+				if ( taxonomy_exists( $taxonomy ) && ! self::can_preview_taxonomy( $taxonomy ) ) {
+					return new \WP_Error(
+						'rest_forbidden',
+						__( 'You cannot preview this taxonomy.', 'airo-wp' ),
+						array( 'status' => 403 )
+					);
+				}
+			}
+		}
 
 		// Anyone who can edit posts can preview, so a query is limited to post
 		// types they could already see or edit — never coupons, orders, etc.
@@ -558,9 +613,17 @@ class Controller {
 		// each path to them, after the query-scoped filter too: its name comes
 		// from the caller's queryId.
 		$restrict = array( __CLASS__, 'restrict_preview_post_types' );
+		$users    = array( __CLASS__, 'restrict_preview_users' );
+		$terms    = array( __CLASS__, 'restrict_preview_terms' );
 		$hooks    = array( 'airowp_query_args', 'airowp_query_' . $query_id . '_args' );
 		foreach ( $hooks as $hook ) {
 			add_filter( $hook, $restrict, PHP_INT_MAX );
+			if ( 'users' === $source ) {
+				add_filter( $hook, $users, PHP_INT_MAX );
+			}
+			if ( 'terms' === $source ) {
+				add_filter( $hook, $terms, PHP_INT_MAX );
+			}
 		}
 
 		try {
@@ -574,8 +637,71 @@ class Controller {
 		} finally {
 			foreach ( $hooks as $hook ) {
 				remove_filter( $hook, $restrict, PHP_INT_MAX );
+				remove_filter( $hook, $users, PHP_INT_MAX );
+				remove_filter( $hook, $terms, PHP_INT_MAX );
 			}
 		}
+	}
+
+	/**
+	 * Taxonomies named by taxQuery clauses, including those in nested groups.
+	 *
+	 * @param array $clauses taxQuery clauses.
+	 * @return string[] Taxonomy slugs.
+	 */
+	private static function clause_taxonomies( array $clauses ): array {
+		$taxonomies = array();
+		foreach ( $clauses as $clause ) {
+			if ( ! is_array( $clause ) ) {
+				continue;
+			}
+			if ( isset( $clause['clauses'] ) && is_array( $clause['clauses'] ) ) {
+				$taxonomies = array_merge( $taxonomies, self::clause_taxonomies( $clause['clauses'] ) );
+			} elseif ( ! empty( $clause['taxonomy'] ) ) {
+				$taxonomies[] = sanitize_key( (string) $clause['taxonomy'] );
+			}
+		}
+		return array_values( array_unique( array_filter( $taxonomies ) ) );
+	}
+
+	/**
+	 * Narrow an editor preview's term query to taxonomies the user may preview.
+	 *
+	 * A backstop for the request check: it applies to the final get_terms()
+	 * args, however a renderer or filter chose the taxonomies.
+	 *
+	 * @param mixed $args get_terms() args (other sources carry no taxonomy).
+	 * @return mixed Args limited to previewable taxonomies.
+	 */
+	public static function restrict_preview_terms( $args ) {
+		if ( ! is_array( $args ) || ! isset( $args['taxonomy'] ) ) {
+			return $args;
+		}
+		$allowed = array_values( array_filter( (array) $args['taxonomy'], array( __CLASS__, 'can_preview_taxonomy' ) ) );
+		if ( empty( $allowed ) ) {
+			// An empty taxonomy list means "every taxonomy" to get_terms().
+			$args['include'] = array( 0 );
+			return $args;
+		}
+		$args['taxonomy'] = $allowed;
+		return $args;
+	}
+
+	/**
+	 * Narrow an editor preview's user query for someone who can't list users.
+	 *
+	 * They see only people with published posts, who are public already through
+	 * their author archives, rather than every account on the site.
+	 *
+	 * @param mixed $args WP_User_Query args.
+	 * @return mixed Args, limited to authors when the user can't list users.
+	 */
+	public static function restrict_preview_users( $args ) {
+		if ( ! is_array( $args ) || current_user_can( 'list_users' ) ) {
+			return $args;
+		}
+		$args['has_published_posts'] = true;
+		return $args;
 	}
 
 	/**
@@ -633,9 +759,13 @@ class Controller {
 	 * @param int|null         $source_post_id Post holding the query (0 outside
 	 *                                         post content), or null to emit
 	 *                                         no refresh source.
-	 * @return \WP_REST_Response
+	 * @param array|null       $page_context Page facts recorded in the signed
+	 *                                         definition at first paint (current
+	 *                                         post, inherited archive vars), or
+	 *                                         null for an editor preview.
+	 * @return \WP_REST_Response|\WP_Error
 	 */
-	private function render_request( array $attributes, $query_id, $inner_html, \WP_REST_Request $request, $source_post_id ) {
+	private function render_request( array $attributes, $query_id, $inner_html, \WP_REST_Request $request, $source_post_id, $page_context = null ) {
 		$page        = max( 1, (int) $request->get_param( 'page' ) );
 		$params      = (array) $request->get_param( 'params' );
 		$current_url = (string) $request->get_param( 'currentUrl' );
@@ -652,10 +782,27 @@ class Controller {
 		// (eats `+`, collapses whitespace) and this value is only ever restored
 		// to the superglobal, never echoed or used in HTML.
 		$original_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- restore-only, see comment above.
-		$allowed_keys = apply_filters( 'airowp_query_url_params', array( 'q', 'sort' ) );
+		$scoping      = AIRO_WP_PLUGIN_DIR . 'build/blocks/query/param-scoping.php';
+		if ( ! file_exists( $scoping ) ) {
+			return new \WP_Error( 'airowp_query_unavailable', __( 'Query rendering is unavailable.', 'airo-wp' ), array( 'status' => 500 ) );
+		}
+		require_once $scoping; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable -- build artifact; path resolved from plugin directory
+
+		// Same list first paint reads: WooCommerce's filter blocks write
+		// min_price / max_price / rating_filter and query_type_<attr> (which
+		// pairs with filter_<attr>). They are bare keys, never query-scoped.
+		$allowed_keys = apply_filters( 'airowp_query_url_params', array( 'q', 'sort', 'min_price', 'max_price', 'rating_filter' ) );
+		$own_id       = sanitize_key( (string) $query_id );
 		foreach ( $params as $key => $value ) {
 			$key = (string) $key;
-			if ( in_array( $key, $allowed_keys, true ) || 0 === strpos( $key, 'filter_' ) ) {
+			// Per-Query keys (`q__{queryId}`) resolve by their bare name, the
+			// same way airowp_query_owned_request_params() reads them back.
+			// Other Queries' filter_* keys pass through so this render's
+			// controls and chips see the whole URL, as on first paint.
+			list( $bare, $scope ) = airowp_query_split_param_key( sanitize_key( $key ), $own_id );
+			$is_wildcard          = 0 === strpos( $bare, 'filter_' ) || 0 === strpos( $bare, 'query_type_' );
+			$allowed              = in_array( $bare, $allowed_keys, true ) || $is_wildcard;
+			if ( $allowed && ( '' === $scope || $scope === $own_id || $is_wildcard ) ) {
 				// REST-supplied values are sanitized downstream before use in
 				// WP_Query / SQL / HTML, but nested block renders may pass
 				// through filter hooks or third-party code that reads $_GET
@@ -666,6 +813,14 @@ class Controller {
 					$_GET[ $key ] = sanitize_text_field( wp_unslash( (string) $value ) );
 				}
 			}
+		}
+		// The browser can see the whole page; this render sees one Query.
+		$original_multi                      = $GLOBALS['airowp_query_force_multi'] ?? null;
+		$GLOBALS['airowp_query_force_multi'] = (bool) $request->get_param( 'multiQuery' );
+		// This request has no page of its own: replay the facts first paint saw.
+		$original_page_context = $GLOBALS['airowp_query_request_context'] ?? null;
+		if ( is_array( $page_context ) ) {
+			$GLOBALS['airowp_query_request_context'] = $page_context;
 		}
 		if ( '' !== $current_url ) {
 			$parsed = wp_parse_url( $current_url );
@@ -681,6 +836,7 @@ class Controller {
 			'inner_html'             => $inner_html,
 			'params'                 => $params,
 			'refresh_source_post_id' => $source_post_id,
+			'rand_seed'              => absint( $request->get_param( 'seed' ) ),
 		);
 
 		try {
@@ -697,6 +853,16 @@ class Controller {
 		} finally {
 			$_GET                   = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$_SERVER['REQUEST_URI'] = $original_uri;
+			if ( null === $original_multi ) {
+				unset( $GLOBALS['airowp_query_force_multi'] );
+			} else {
+				$GLOBALS['airowp_query_force_multi'] = $original_multi;
+			}
+			if ( null === $original_page_context ) {
+				unset( $GLOBALS['airowp_query_request_context'] );
+			} else {
+				$GLOBALS['airowp_query_request_context'] = $original_page_context;
+			}
 		}
 
 		return rest_ensure_response( $result );

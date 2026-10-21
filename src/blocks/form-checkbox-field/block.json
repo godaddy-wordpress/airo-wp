@@ -14,7 +14,8 @@
 		"agree"
 	],
 	"parent": [
-		"airo-wp/form-builder"
+		"airo-wp/form-builder",
+		"airo-wp/form-step"
 	],
 	"textdomain": "airo-wp",
 	"icon": "yes-alt",
@@ -30,6 +31,10 @@
 		"airo-wp/form/fieldBorderColor"
 	],
 	"attributes": {
+		"dsgoConditions": {
+			"type": "object",
+			"default": null
+		},
 		"fieldName": {
 			"type": "string",
 			"default": ""

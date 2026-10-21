@@ -79,6 +79,7 @@ export default function save({ attributes }) {
 		closeButtonPosition,
 		closeButtonSize,
 		closeButtonLabel,
+		savedCloseButtonLabel,
 		closeButtonIconColor,
 		closeButtonBgColor,
 		disableBodyScroll,
@@ -119,7 +120,12 @@ export default function save({ attributes }) {
 		role: 'dialog',
 		'aria-modal': 'true',
 		// Use aria-label for accessibility; do not set aria-labelledby unless title element is guaranteed
-		'aria-label': attributes.modalLabel?.trim() || __('Modal', 'airo-wp'),
+		'aria-label':
+			attributes.modalLabel?.trim() ||
+			// The fallback is read back from the stored markup, so opening
+			// the post in another editor language keeps the block valid.
+			attributes.savedModalLabel ||
+			__('Modal', 'airo-wp'),
 		'aria-hidden': 'true',
 		'data-airo-wp-modal': 'true',
 		'data-modal-id': modalId,
@@ -174,7 +180,9 @@ export default function save({ attributes }) {
 			}}
 			type="button"
 			aria-label={
-				closeButtonLabel?.trim() || __('Close modal', 'airo-wp')
+				closeButtonLabel?.trim() ||
+				savedCloseButtonLabel ||
+				__('Close modal', 'airo-wp')
 			}
 		>
 			<svg

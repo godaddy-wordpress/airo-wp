@@ -4,6 +4,7 @@
  * Handles OpenStreetMap (Leaflet.js) initialization.
  */
 
+import { __ } from '@wordpress/i18n';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -20,7 +21,10 @@ export async function initOpenStreetMap(dsgMap) {
 		container = document.createElement('div');
 		container.className = 'airo-wp-map__container';
 		container.setAttribute('role', 'region');
-		container.setAttribute('aria-label', 'Map');
+		container.setAttribute(
+			'aria-label',
+			dsgMap.config.label || __('Interactive map', 'airo-wp')
+		);
 		dsgMap.element.appendChild(container);
 	}
 

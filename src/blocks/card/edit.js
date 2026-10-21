@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
+import classnames from 'classnames';
 import {
 	useBlockProps,
 	useInnerBlocksProps,
@@ -9,7 +10,6 @@ import {
 	InspectorControls,
 	MediaUpload,
 	MediaUploadCheck,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
 } from '@wordpress/block-editor';
 import {
@@ -20,6 +20,7 @@ import {
 	Button,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
+import { ChildLayoutControls } from '../../extensions/layout/controls';
 import {
 	encodeColorValue,
 	decodeColorValue,
@@ -33,9 +34,15 @@ import { useBlockColors } from '../../hooks';
  * @param {Object}   props.attributes    - Block attributes
  * @param {Function} props.setAttributes - Function to set attributes
  * @param {string}   props.clientId      - Block client ID
+ * @param {boolean}  props.isSelected    - Whether the block is selected
  * @return {Element} Edit component
  */
-export default function CardEdit({ attributes, setAttributes, clientId }) {
+export default function CardEdit({
+	attributes,
+	setAttributes,
+	clientId,
+	isSelected,
+}) {
 	const {
 		layoutPreset,
 		imageUrl,
@@ -99,12 +106,22 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 	// Inner blocks props for CTA area
 	const innerBlocksProps = useInnerBlocksProps(
 		{
-			className: 'airo-wp-card__cta',
+			className: classnames('airo-wp-card__cta', {
+				'airo-wp-card__cta--hidden': !showCta,
+			}),
 		},
 		{
-			template: [
-				['airo-wp/icon-button', { text: __('Learn More', 'airo-wp') }],
-			],
+			// Only a shown CTA gets the starter button. A hidden one stays as
+			// stored, so opening an older card saved with the CTA off doesn't
+			// insert a button and mark the post as changed.
+			template: showCta
+				? [
+						[
+							'airo-wp/icon-button',
+							{ text: __('Learn More', 'airo-wp') },
+						],
+					]
+				: undefined,
 			templateLock: false,
 			allowedBlocks: ['airo-wp/icon-button'],
 		}
@@ -327,7 +344,7 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 				/>
 			)}
 
-			{showCta && <div {...innerBlocksProps} />}
+			<div {...innerBlocksProps} />
 		</div>
 	);
 
@@ -340,6 +357,7 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 					panelId={clientId}
 					resetAll={() =>
 						setAttributes({
+							dsgoLayout: undefined,
 							layoutPreset: 'standard',
 							visualStyle: 'default',
 							imageId: 0,
@@ -921,6 +939,10 @@ export default function CardEdit({ attributes, setAttributes, clientId }) {
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>
+					<ChildLayoutControls
+						name="airo-wp/card"
+						{...{ attributes, setAttributes, clientId, isSelected }}
+					/>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 

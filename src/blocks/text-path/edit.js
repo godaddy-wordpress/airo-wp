@@ -1,5 +1,4 @@
 import {
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
 	InspectorControls,
 	store as blockEditorStore,

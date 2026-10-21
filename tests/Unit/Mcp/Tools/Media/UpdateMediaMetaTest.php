@@ -74,6 +74,7 @@ final class UpdateMediaMetaTest extends TestCase {
         $post->post_name      = 'updated-title';
         $post->post_mime_type = 'image/jpeg';
 
+        Functions\when( 'current_user_can' )->justReturn( true );
         Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
         Functions\expect( 'wp_update_post' )->andReturn( 10 );
         Functions\expect( 'is_wp_error' )->andReturn( false );
@@ -88,5 +89,20 @@ final class UpdateMediaMetaTest extends TestCase {
         $this->assertStringContainsString( 'Successfully updated', $result['message'] );
         $this->assertSame( 10, $result['updated_media']['id'] );
         $this->assertSame( 'Updated Title', $result['updated_media']['title'] );
+    }
+
+    public function test_permission_denied_returns_error(): void {
+        $post            = new \stdClass();
+        $post->ID        = 10;
+        $post->post_type = 'attachment';
+        Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
+        Functions\expect( 'current_user_can' )->with( 'edit_post', 10 )->andReturn( false );
+        Functions\expect( 'wp_update_post' )->never();
+        Functions\expect( 'update_post_meta' )->never();
+
+        $result = $this->tool->execute( array( 'media_id' => 10, 'title' => 'x', 'alt_text' => 'y' ) );
+
+        $this->assertFalse( $result['success'] );
+        $this->assertStringContainsString( 'permission', $result['message'] );
     }
 }

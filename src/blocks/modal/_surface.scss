@@ -1,0 +1,4 @@
+// Shared editor/frontend surface. Keep the historical white fallback: old
+// modal content may contain explicitly dark text. Themes can opt into another
+// surface with this token; per-instance block support colors still win.
+$airo-wp-modal-background: var(--wp--custom--airo-wp--modal--background, #fff);

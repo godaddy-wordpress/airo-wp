@@ -18,6 +18,7 @@ import {
 	disconnectSentinelObservers as dsgoDisconnectSentinelObservers,
 	stampFeedPositions as dsgoStampFeedPositions,
 	announceResultCount as dsgoAnnounceResultCount,
+	swapRegionContent as dsgoSwapRegionContent,
 	collectParams as dsgoCollectParamsShared,
 	itemContainerSelector as dsgoItemContainerSelector,
 	extractRenderedItems as dsgoExtractRenderedItems,
@@ -28,6 +29,14 @@ import {
 	readRefreshSource as dsgoReadRefreshSource,
 	buildRefreshRequest as dsgoBuildRefreshRequest,
 } from './view-helpers.js';
+import {
+	pageQueryIds as dsgoPageQueryIds,
+	writeOwned as dsgoWriteOwned,
+	removeOwnedValue as dsgoRemoveOwnedValue,
+	resetOwned as dsgoResetOwned,
+	resetOwnPage as dsgoResetOwnPage,
+	normalizeListKeys as dsgoNormalizeListKeys,
+} from './url-scope.js';
 
 // Query IDs with an in-flight delegated refresh. The delegated handlers build
 // a fresh ctx object from the DOM each call, so the ctx.busy guard inside
@@ -53,8 +62,7 @@ store('airo-wp/query', {
 		// ----------------------------------------------------------------
 
 		/**
-		 * Handle change on a select or single-value input.
-		 * Sets (or clears) the param, resets paged, then refreshes.
+		 * Handle change on a select, or submit of a search form.
 		 *
 		 * @param {Event} event
 		 * @generator
@@ -62,37 +70,15 @@ store('airo-wp/query', {
 		*setFilter(event) {
 			event.preventDefault?.();
 			dsgoMarkHandledEvent(event);
-			const { ref } = getElement();
-			// ref may be the form (submit event) or the input/select (change event).
-			const form =
-				ref.closest('form') ?? (ref.tagName === 'FORM' ? ref : null);
-			const input = form?.querySelector('[name]');
-			const paramName = input?.getAttribute('name')?.replace(/\[\]$/, '');
-			if (!paramName) {
-				return;
-			}
-
-			// Read the value from the named input, not from ref — ref may be the
-			// <form> element when the directive is bound to the form's submit event.
-			const value = input?.value ?? ref.value ?? '';
 			const ctx = getContext();
-			const url = new URL(window.location.href);
-			if (value) {
-				url.searchParams.set(paramName, value);
-			} else {
-				url.searchParams.delete(paramName);
+			const url = dsgoFilterUrl(getElement().ref, ctx);
+			if (url) {
+				yield* dsgoQueryRefresh(ctx, url);
 			}
-			// Fix 3: strip both pagination params — `paged` for archives,
-			// `page` for singular post paginators — so filtering from page 2+
-			// always resets to page 1.
-			url.searchParams.delete('paged');
-			url.searchParams.delete('page');
-			yield* dsgoQueryRefresh(ctx, url);
 		},
 
 		/**
 		 * Handle checkbox toggle for multi-value taxonomy filters.
-		 * Appends or removes the checked value from the URL array param.
 		 *
 		 * @param {Event} [event] Change event (IAPI may omit in some edge cases).
 		 * @generator
@@ -101,40 +87,15 @@ store('airo-wp/query', {
 			if (event) {
 				dsgoMarkHandledEvent(event);
 			}
-			const { ref } = getElement();
-			const paramName = ref.getAttribute('name')?.replace(/\[\]$/, '');
-			if (!paramName) {
-				return;
-			}
-
 			const ctx = getContext();
-
-			const url = new URL(window.location.href);
-			const arrayKey = paramName + '[]';
-			const current = url.searchParams.getAll(arrayKey);
-			url.searchParams.delete(arrayKey);
-
-			if (ref.checked) {
-				if (!current.includes(ref.value)) {
-					current.push(ref.value);
-				}
-			} else {
-				const idx = current.indexOf(ref.value);
-				if (idx > -1) {
-					current.splice(idx, 1);
-				}
+			const url = dsgoFilterUrl(getElement().ref, ctx);
+			if (url) {
+				yield* dsgoQueryRefresh(ctx, url);
 			}
-
-			current.forEach((v) => url.searchParams.append(arrayKey, v));
-			// Fix 3: strip both pagination params.
-			url.searchParams.delete('paged');
-			url.searchParams.delete('page');
-			yield* dsgoQueryRefresh(ctx, url);
 		},
 
 		/**
 		 * Handle click on an active-filter chip.
-		 * The chip <a> href already encodes the removal URL.
 		 *
 		 * @param {Event} event
 		 * @generator
@@ -142,23 +103,15 @@ store('airo-wp/query', {
 		*removeActiveFilter(event) {
 			event.preventDefault?.();
 			dsgoMarkHandledEvent(event);
-			const { ref } = getElement();
-			const href = ref.getAttribute('href');
-			if (!href) {
-				return;
-			}
-
 			const ctx = getContext();
-			const url = new URL(href, window.location.href);
-			// Fix 3: strip both pagination params.
-			url.searchParams.delete('paged');
-			url.searchParams.delete('page');
-			yield* dsgoQueryRefresh(ctx, url);
+			const url = dsgoFilterUrl(getElement().ref, ctx);
+			if (url) {
+				yield* dsgoQueryRefresh(ctx, url);
+			}
 		},
 
 		/**
 		 * Handle click on the reset-all-filters button.
-		 * The button <a> href already encodes the clean URL.
 		 *
 		 * @param {Event} event
 		 * @generator
@@ -166,13 +119,11 @@ store('airo-wp/query', {
 		*resetAll(event) {
 			event.preventDefault?.();
 			dsgoMarkHandledEvent(event);
-			const { ref } = getElement();
-			const href = ref.getAttribute('href');
 			const ctx = getContext();
-			const url = href
-				? new URL(href, window.location.href)
-				: new URL(window.location.href);
-			yield* dsgoQueryRefresh(ctx, url);
+			const url = dsgoFilterUrl(getElement().ref, ctx);
+			if (url) {
+				yield* dsgoQueryRefresh(ctx, url);
+			}
 		},
 	},
 
@@ -241,7 +192,20 @@ function dsgoDelegatedRefresh(ctx, url) {
 }
 
 /**
+ * Parsed contexts for markup whose Interactivity directives are dead (a
+ * region swapped in by a refresh). Keyed by the `data-wp-context` element so
+ * mutable state (`page`, `busy`, `autoLoadCount`) survives between clicks
+ * instead of being re-parsed from the attribute, and lost, every time.
+ *
+ * @type {WeakMap<Element, {raw: string, ctx: Object}>}
+ */
+const dsgoDomContexts = new WeakMap();
+
+/**
  * Read the IAPI context encoded in a filter form's data-wp-context attribute.
+ *
+ * The same object is returned for the same element until its attribute
+ * changes, so callers may mutate it to carry state across events.
  *
  * @param {HTMLElement} el Descendant of the interactive form.
  * @return {Object|null}   Parsed context object, or null if missing/malformed.
@@ -251,9 +215,18 @@ function dsgoGetContextFromDom(el) {
 	if (!form) {
 		return null;
 	}
+	const raw = form.getAttribute('data-wp-context') || '';
+	const cached = dsgoDomContexts.get(form);
+	if (cached && cached.raw === raw) {
+		return cached.ctx;
+	}
 	try {
-		return JSON.parse(form.getAttribute('data-wp-context') || '');
-	} catch (err) {
+		const ctx = JSON.parse(raw);
+		if (ctx && typeof ctx === 'object') {
+			dsgoDomContexts.set(form, { raw, ctx });
+		}
+		return ctx;
+	} catch {
 		return null;
 	}
 }
@@ -273,6 +246,31 @@ function dsgoGetQueryContainer(queryId, el) {
 	// page can't collide even when another query shares the same queryId.
 	const region = el?.closest(`[data-airo-wp-query-region="${queryId}"]`);
 	return region?.querySelector(selector) || doc.querySelector(selector);
+}
+
+/**
+ * A random-order Query's shuffle seed, from its region.
+ *
+ * On first paint the Interactivity API merges the region's context (which
+ * holds the seed) into the pagination and filter contexts. After a swap the
+ * delegated handlers read only an element's own context, so fall back to the
+ * region, whose outer element and context survive every swap.
+ *
+ * @param {Object}           ctx Context of the control that was used.
+ * @param {HTMLElement|null} el  The control, to find its own region.
+ * @return {number|undefined} Seed, or undefined for a non-random Query.
+ */
+function dsgoQuerySeed(ctx, el) {
+	if (ctx?.seed) {
+		return ctx.seed;
+	}
+	const selector = `[data-airo-wp-query-region="${ctx?.queryId}"]`;
+	const region = el?.closest?.(selector) || document.querySelector(selector);
+	try {
+		return JSON.parse(region?.getAttribute('data-wp-context') || '{}').seed;
+	} catch {
+		return undefined;
+	}
 }
 
 async function dsgoLoadMorePlain(ctx, button) {
@@ -317,6 +315,9 @@ async function dsgoLoadMorePlain(ctx, button) {
 			page: nextPage,
 			params: dsgoCollectParams(new URL(window.location.href)),
 			currentUrl: window.location.href,
+			multiQuery: dsgoPageQueryIds(document).length > 1,
+			// Continue a random-order Query's shuffle rather than re-rolling it.
+			seed: dsgoQuerySeed(ctx, button),
 		});
 		const res = await fetch(request.url, request.init);
 
@@ -483,11 +484,91 @@ function dsgoInitInfiniteObservers(root = document) {
 }
 
 /**
+ * The URL a filter interaction leads to, built from the CURRENT URL.
+ *
+ * Every control, chip and Reset goes through here, so each one sees what the
+ * others already changed (a chip's server-rendered href is only a no-JS
+ * fallback and goes stale after the first in-place refresh). See
+ * url-scope.js for the per-Query key rules.
+ *
+ * @param {HTMLElement} el  The control, chip or reset link.
+ * @param {Object}      ctx Context with .queryId.
+ * @return {URL|null} The new URL, or null when nothing applies.
+ */
+function dsgoFilterUrl(el, ctx) {
+	const root = el?.closest?.('.airo-wp-query-filter');
+	const queryId = ctx?.queryId || root?.getAttribute('data-airo-wp-query-id');
+	if (!root || !queryId) {
+		return null;
+	}
+	const knownIds = dsgoPageQueryIds(document);
+	// Only write scoped keys when another Query could read ours; the server
+	// omits data-airo-wp-scoped when a site turns scoping off.
+	const multi =
+		root.hasAttribute('data-airo-wp-scoped') && knownIds.length > 1;
+	const kind = root.getAttribute('data-airo-wp-filter-kind');
+	const url = new URL(window.location.href);
+	const params = url.searchParams;
+	dsgoNormalizeListKeys(params);
+
+	if (kind === 'reset') {
+		dsgoResetOwned(params, queryId, multi, knownIds);
+	} else if (kind === 'active') {
+		const chip = el.closest('.airo-wp-query-filter__chip');
+		const bare = chip?.getAttribute('data-airo-wp-filter-param');
+		if (!bare) {
+			return null;
+		}
+		dsgoRemoveOwnedValue(params, {
+			bare,
+			value: chip.getAttribute('data-airo-wp-filter-value') || '',
+			queryId,
+			multi,
+		});
+	} else {
+		const bare = root.getAttribute('data-airo-wp-param');
+		if (!bare) {
+			return null;
+		}
+		if (kind === 'checkbox') {
+			// The boxes are the source of truth: they were rendered from what
+			// this Query reads, including a bare value it inherited.
+			const values = Array.from(
+				root.querySelectorAll('input[type="checkbox"]')
+			)
+				.filter((box) => box.checked)
+				.map((box) => box.value);
+			dsgoWriteOwned(params, {
+				bare,
+				queryId,
+				values,
+				multi,
+				isArray: true,
+			});
+		} else {
+			const input = root.querySelector(
+				'select[name], input[name]:not([type="hidden"])'
+			);
+			dsgoWriteOwned(params, {
+				bare,
+				queryId,
+				values: [input?.value ?? ''],
+				multi,
+				isArray: false,
+			});
+		}
+	}
+
+	dsgoResetOwnPage(params, queryId, multi, url.pathname);
+	return url;
+}
+
+/**
  * Delegated change handler for filter inputs and selects.
  *
- * Covers three filterKinds: checkbox (multi-value array param), select, sort,
- * and search-on-change. IAPI's actions.toggleFilter / actions.setFilter run
- * first when alive; this handler only takes over when they don't.
+ * Covers checkbox, select and sort. IAPI's actions.toggleFilter /
+ * actions.setFilter run first when alive; this handler only takes over when
+ * they don't.
  *
  * @param {Event} event Native change event.
  */
@@ -496,11 +577,13 @@ function dsgoDelegatedChange(event) {
 		return;
 	}
 	const target = event.target;
-	if (!(target instanceof HTMLElement)) {
+	if (
+		!(target instanceof HTMLInputElement) &&
+		!(target instanceof HTMLSelectElement)
+	) {
 		return;
 	}
-	const filterRoot = target.closest('.airo-wp-query-filter');
-	if (!filterRoot) {
+	if (!target.closest('.airo-wp-query-filter')) {
 		return;
 	}
 	// A search filter submits, and blurring its input to click Submit fires
@@ -511,64 +594,17 @@ function dsgoDelegatedChange(event) {
 	if (target.closest('form[data-wp-on--submit]')) {
 		return;
 	}
-	const rawName =
-		target instanceof HTMLInputElement ||
-		target instanceof HTMLSelectElement
-			? target.getAttribute('name') || ''
-			: '';
-	const paramName = rawName.replace(/\[\]$/, '');
-	if (!paramName) {
-		return;
-	}
 	const ctx = dsgoGetContextFromDom(target);
-	if (!ctx) {
-		return;
+	const url = dsgoFilterUrl(target, ctx);
+	if (url) {
+		dsgoDelegatedRefresh(ctx, url);
 	}
-	const kind = filterRoot.getAttribute('data-airo-wp-filter-kind');
-	const url = new URL(window.location.href);
-
-	if (kind === 'checkbox') {
-		const arrayKey = `${paramName}[]`;
-		const current = url.searchParams.getAll(arrayKey);
-		url.searchParams.delete(arrayKey);
-		const value = target instanceof HTMLInputElement ? target.value : '';
-		const checked =
-			target instanceof HTMLInputElement ? target.checked : false;
-		if (checked) {
-			if (!current.includes(value)) {
-				current.push(value);
-			}
-		} else {
-			const idx = current.indexOf(value);
-			if (idx > -1) {
-				current.splice(idx, 1);
-			}
-		}
-		current.forEach((v) => url.searchParams.append(arrayKey, v));
-	} else {
-		// select / sort / search-on-change: single value.
-		const value =
-			target instanceof HTMLInputElement ||
-			target instanceof HTMLSelectElement
-				? target.value
-				: '';
-		if (value) {
-			url.searchParams.set(paramName, value);
-		} else {
-			url.searchParams.delete(paramName);
-		}
-	}
-
-	url.searchParams.delete('paged');
-	url.searchParams.delete('page');
-	dsgoDelegatedRefresh(ctx, url);
 }
 
 /**
  * Delegated submit handler for search filter forms.
  *
  * Covers the post-swap DOM where IAPI directives are no longer live.
- * Mirrors the IAPI setFilter logic but reads the form's named input directly.
  *
  * @param {Event} event Native submit event.
  */
@@ -580,36 +616,19 @@ function dsgoDelegatedSubmit(event) {
 	if (!(target instanceof HTMLElement)) {
 		return;
 	}
-	const filterRoot = target.closest('.airo-wp-query-filter--search');
-	if (!filterRoot) {
+	if (!target.closest('.airo-wp-query-filter--search')) {
 		return;
 	}
 	event.preventDefault();
-	const input = target.querySelector('[name]');
-	const paramName = (input?.getAttribute('name') || '').replace(/\[\]$/, '');
-	if (!paramName) {
-		return;
-	}
 	const ctx = dsgoGetContextFromDom(target);
-	if (!ctx) {
-		return;
+	const url = dsgoFilterUrl(target, ctx);
+	if (url) {
+		dsgoDelegatedRefresh(ctx, url);
 	}
-	const url = new URL(window.location.href);
-	if (input?.value) {
-		url.searchParams.set(paramName, input.value);
-	} else {
-		url.searchParams.delete(paramName);
-	}
-	url.searchParams.delete('paged');
-	url.searchParams.delete('page');
-	dsgoDelegatedRefresh(ctx, url);
 }
 
 /**
- * Delegated click handler for active-filter chips and reset-all buttons.
- *
- * Chips and reset buttons are <a href="…"> elements whose href encodes the
- * post-action URL; we just drive an AJAX refresh to that URL.
+ * Delegated click handler for load more, active-filter chips and Reset.
  *
  * @param {Event} event Native click event.
  */
@@ -640,19 +659,12 @@ function dsgoDelegatedClick(event) {
 	if (!chip) {
 		return;
 	}
-	const href = chip.getAttribute('href');
-	if (!href) {
-		return;
-	}
 	const ctx = dsgoGetContextFromDom(chip);
-	if (!ctx) {
+	const url = dsgoFilterUrl(chip, ctx);
+	if (!url) {
 		return;
 	}
-
 	event.preventDefault();
-	const url = new URL(href, window.location.href);
-	url.searchParams.delete('paged');
-	url.searchParams.delete('page');
 	dsgoDelegatedRefresh(ctx, url);
 }
 
@@ -715,6 +727,11 @@ function* dsgoQueryRefresh(ctx, url) {
 		return;
 	}
 
+	// Sync the URL now, not when the response lands: another Query's control
+	// used meanwhile builds its URL from this one, and a late write would
+	// drop whichever change came first.
+	window.history.replaceState({}, '', url.toString());
+
 	// Also find the list container (role="container") so we can aria-busy it
 	// during the fetch. The region wrapper contains filter/pagination children
 	// too; scoping with data-airo-wp-query-results-role avoids aria-busy on those.
@@ -739,6 +756,10 @@ function* dsgoQueryRefresh(ctx, url) {
 			page: 1,
 			params: dsgoCollectParams(url),
 			currentUrl: url.toString(),
+			multiQuery: dsgoPageQueryIds(document).length > 1,
+			// The region's context (and its seed) outlives this swap, so keep
+			// the shuffle Load more will continue.
+			seed: dsgoQuerySeed(ctx, null),
 		});
 		const res = yield fetch(request.url, request.init);
 
@@ -777,7 +798,7 @@ function* dsgoQueryRefresh(ctx, url) {
 			dsgoDisconnectSentinelObservers(region);
 			// Server-rendered HTML assembled from esc_attr / esc_html /
 			// block-render output in airowp_query_render_region().
-			region.innerHTML = newRegion.innerHTML;
+			dsgoSwapRegionContent(region, newRegion, queryId);
 			dsgoInitInfiniteObservers(region);
 			// The swap replaced every element inside the region, including any
 			// block with a frontend runtime (a slider host, counters, maps).
@@ -785,8 +806,6 @@ function* dsgoQueryRefresh(ctx, url) {
 			dsgoNotifyContentUpdated(region, 'query-refresh');
 		}
 
-		// Sync the browser URL without a page reload.
-		window.history.replaceState({}, '', url.toString());
 		ctx.page = 1;
 
 		// Announce the new result count + re-stamp feed positions if the
@@ -838,6 +857,11 @@ async function dsgoQueryRefreshPlain(ctx, url) {
 		return;
 	}
 
+	// Sync the URL now, not when the response lands: another Query's control
+	// used meanwhile builds its URL from this one, and a late write would
+	// drop whichever change came first.
+	window.history.replaceState({}, '', url.toString());
+
 	const listContainer = region.querySelector(
 		`[data-airo-wp-query-id="${queryId}"][data-airo-wp-query-results-role="container"]`
 	);
@@ -857,6 +881,10 @@ async function dsgoQueryRefreshPlain(ctx, url) {
 			page: 1,
 			params: dsgoCollectParams(url),
 			currentUrl: url.toString(),
+			multiQuery: dsgoPageQueryIds(document).length > 1,
+			// The region's context (and its seed) outlives this swap, so keep
+			// the shuffle Load more will continue.
+			seed: dsgoQuerySeed(ctx, null),
 		});
 		const res = await fetch(request.url, request.init);
 
@@ -890,7 +918,7 @@ async function dsgoQueryRefreshPlain(ctx, url) {
 			dsgoDisconnectSentinelObservers(region);
 			// Server-rendered HTML assembled from esc_attr / esc_html /
 			// block-render output in airowp_query_render_region().
-			region.innerHTML = newRegion.innerHTML;
+			dsgoSwapRegionContent(region, newRegion, queryId);
 			dsgoInitInfiniteObservers(region);
 			// The swap replaced every element inside the region, including any
 			// block with a frontend runtime (a slider host, counters, maps).
@@ -898,7 +926,6 @@ async function dsgoQueryRefreshPlain(ctx, url) {
 			dsgoNotifyContentUpdated(region, 'query-refresh');
 		}
 
-		window.history.replaceState({}, '', url.toString());
 		ctx.page = 1;
 
 		if (Number.isFinite(data.totalItems)) {

@@ -14,9 +14,12 @@ import {
 	SelectControl,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
+import FieldConditionsItem from '../form-builder/components/FieldConditionsItem';
+import ConditionalBadge from '../form-builder/components/ConditionalBadge';
 import { useEffect } from '@wordpress/element';
 import classnames from 'classnames';
 import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+import { getFormFieldWidthStyle } from '../form-builder/utils/field-width';
 
 const FIELD_WIDTH_OPTIONS = [
 	{ label: __('Full Width (100%)', 'airo-wp'), value: '100' },
@@ -71,14 +74,7 @@ export default function FormTextareaEdit({
 		className: fieldClasses,
 		style: {
 			...fieldStyles,
-			flexBasis:
-				fieldWidth === '100'
-					? '100%'
-					: `calc(${fieldWidth}% - var(--airo-wp-form-field-spacing, 1.5rem) / 2)`,
-			maxWidth:
-				fieldWidth === '100'
-					? '100%'
-					: `calc(${fieldWidth}% - var(--airo-wp-form-field-spacing, 1.5rem) / 2)`,
+			...getFormFieldWidthStyle(fieldWidth),
 		},
 	});
 
@@ -92,6 +88,7 @@ export default function FormTextareaEdit({
 					resetAll={() =>
 						setAttributes({
 							fieldName: '',
+							dsgoConditions: null,
 							label: 'Message',
 							placeholder: '',
 							helpText: '',
@@ -264,10 +261,19 @@ export default function FormTextareaEdit({
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>
+					<FieldConditionsItem
+						attributes={attributes}
+						setAttributes={setAttributes}
+						clientId={clientId}
+					/>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 
 			<div {...blockProps}>
+				<ConditionalBadge
+					conditions={attributes.dsgoConditions}
+					clientId={clientId}
+				/>
 				<label
 					htmlFor={`field-${clientId}`}
 					className="airo-wp-form-field__label"

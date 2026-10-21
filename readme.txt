@@ -4,7 +4,7 @@ Tags: airo, godaddy, mcp, ai, block-patterns
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.1
+Stable tag: 0.4.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -112,6 +112,15 @@ PHP 7.4 is the minimum. PHP 8.3 is the recommended version for local development
 Runtime Composer packages are namespace-prefixed with Strauss into `dependencies/` so they do not clash with other plugins' autoloaders.
 
 == Changelog ==
+
+= 0.4.2 =
+* Security: Google Fonts used in global styles are now only downloaded from Google's own font servers, and only saved as WOFF2 font files; `http://` and protocol-relative Google Fonts links are upgraded to HTTPS and localised too
+* Fixed: malformed font or style values in global styles, such as a numeric font weight or a font families value that is not a list, no longer cause a fatal error when updating global styles
+* Fixed: Google Fonts saved locally now load on multisite subsites and on sites with a custom uploads location; previously the font file was saved in the right folder but linked from the wrong address, so it silently failed to load
+* Fixed: updating global styles with Google Fonts no longer causes a fatal error on hosts where WordPress writes files over FTP or SSH, and fonts are now saved locally on hosts where only the uploads folder is writable
+* Images can now be uploaded from addresses that do not end in a file extension, such as CDN and image-proxy links; previously these were refused before the image was even downloaded
+* Updated development and build dependencies to clear security advisories in the toolchain; the compiled block bundle is rebuilt as a result
+* Security: the post, page and media tools now check permission on each individual item, so users can only read or change content their WordPress role allows
 
 = 0.4.1 =
 * The download no longer carries test-only helper classes that were never used at runtime, making the plugin slightly smaller

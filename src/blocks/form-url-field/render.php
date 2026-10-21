@@ -27,6 +27,8 @@ if ( ! function_exists( 'airowp_render_form_url_field' ) ) {
 	 * @return void
 	 */
 	function airowp_render_form_url_field( $attributes, $content, $block ) {
+		unset( $content, $block );
+
 		$field_name  = isset( $attributes['fieldName'] ) ? (string) $attributes['fieldName'] : '';
 		$label       = isset( $attributes['label'] ) ? (string) $attributes['label'] : '';
 		$placeholder = isset( $attributes['placeholder'] ) ? (string) $attributes['placeholder'] : 'https://example.com';
@@ -59,12 +61,7 @@ if ( ! function_exists( 'airowp_render_form_url_field' ) ) {
 		$inner .= $input;
 		$inner .= airowp_form_field_help_html( $field_id, $help_text );
 
-		$wrapper = get_block_wrapper_attributes(
-			array(
-				'class' => 'airo-wp-form-field airo-wp-form-field--url',
-				'style' => airowp_form_field_width_style( $field_width ),
-			)
-		);
+		$wrapper = airowp_form_field_wrapper_attributes( $attributes, 'url', airowp_form_field_width_style( $field_width ) );
 
 		echo '<div ' . $wrapper . '>' . $inner . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}

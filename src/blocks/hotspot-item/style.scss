@@ -1,9 +1,13 @@
+@use '../../styles/variables' as *;
+
 .wp-block-airo-wp-hotspot-item {
 	--airo-wp-hotspot-translate-x: -50%;
 	--airo-wp-hotspot-translate-y: -50%;
 
 	position: absolute;
-	width: 2.5rem;
+	// Sized by the marker, so a text label stays centred on its point.
+	width: max-content;
+	min-width: 2.5rem;
 	height: 2.5rem;
 	left: var(--airo-wp-hotspot-x);
 	top: var(--airo-wp-hotspot-y);
@@ -32,13 +36,19 @@
 	:where(.airo-wp-hotspot-item__marker) {
 		display: inline-grid;
 		place-items: center;
-		width: 2.5rem;
+		// A circle for "+", an icon or a short number; a pill that fits the
+		// text for a longer label instead of overflowing the circle.
+		min-width: 2.5rem;
 		height: 2.5rem;
-		padding: 0;
+		padding: 0 .5rem;
 		color: var(--airo-wp-hotspot-marker-color);
 		background: var(--airo-wp-hotspot-marker-background);
 		border: 0;
-		border-radius: 50%;
+		border-radius: 1.25rem;
+		font-family: inherit;
+		font-size: .875rem;
+		line-height: 1;
+		white-space: nowrap;
 		text-decoration: none;
 		cursor: pointer;
 	}
@@ -50,7 +60,7 @@
 		padding: .75rem 1rem;
 		color: var(--airo-wp-hotspot-tooltip-color);
 		background: var(--airo-wp-hotspot-tooltip-background);
-		border-radius: .25rem;
+		border-radius: $airo-wp-radius-small;
 		font-size: .875rem;
 		line-height: 1.4;
 		opacity: 0;

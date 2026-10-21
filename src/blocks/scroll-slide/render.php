@@ -41,6 +41,8 @@ if ( ! function_exists( 'airowp_render_scroll_slide' ) ) {
 	 * @return void
 	 */
 	function airowp_render_scroll_slide( $attributes, $content, $block ) {
+		unset( $block );
+
 		if ( empty( $GLOBALS['airowp_parent_stack'] ) || ! is_array( $GLOBALS['airowp_parent_stack'] ) ) {
 			echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- pre-rendered save.js output.
 			return;

@@ -29,6 +29,35 @@ if (window.location.hash) {
 	window.scrollTo(0, 0);
 }
 
+/**
+ * Undo the early hash hijack above when the TOC can't take over scrolling
+ * (no headings found, or scanning threw): hand scroll restoration back to the
+ * browser and jump to the hash target ourselves, since the browser's own
+ * attempt already happened and was cancelled by the scrollTo(0, 0).
+ */
+function restoreNativeHash() {
+	const hash = window.dsgoInitialHash;
+	if (!hash || window.dsgoHashRestored) {
+		return;
+	}
+	window.dsgoHashRestored = true;
+
+	if ('scrollRestoration' in history) {
+		history.scrollRestoration = 'auto';
+	}
+
+	try {
+		const target = document.getElementById(
+			decodeURIComponent(hash.substring(1))
+		);
+		if (target) {
+			target.scrollIntoView();
+		}
+	} catch {
+		// Malformed hash: nothing to scroll to.
+	}
+}
+
 document.addEventListener('DOMContentLoaded', function () {
 	initTableOfContents();
 });
@@ -79,6 +108,7 @@ class DSGTableOfContents {
 
 			if (headings.length === 0) {
 				this.showEmptyMessage();
+				restoreNativeHash();
 				return;
 			}
 
@@ -88,16 +118,16 @@ class DSGTableOfContents {
 			// Setup link click handlers
 			this.setupLinkHandlers();
 
-			// Setup scroll spy
-			if (this.scrollSmooth) {
-				this.setupScrollSpy(headings);
-			}
+			// Scroll spy highlights the current section whether or not link
+			// clicks animate — the two settings are independent.
+			this.setupScrollSpy(headings);
 
 			// Handle URL hash on page load
 			this.handleInitialHash();
-		} catch (error) {
+		} catch {
 			// Silently fail - show empty message to user
 			this.showEmptyMessage();
+			restoreNativeHash();
 		}
 	}
 
@@ -135,13 +165,24 @@ class DSGTableOfContents {
 				return;
 			}
 
-			// Skip headings in excluded areas (comments, sidebars, footers, headers)
+			// Skip headings in comments, sidebars and site chrome. Only the
+			// site's own header/footer are excluded; a header, footer or
+			// aside element used inside the content (e.g. a Group's HTML
+			// element setting) is still part of the page's outline.
 			const excludedAreas = [
 				'.site-header',
-				'header',
 				'.site-footer',
-				'footer',
-				'aside',
+				'.wp-site-blocks > header',
+				'.wp-site-blocks > footer',
+				'body > header',
+				'body > footer',
+				'header.wp-block-template-part',
+				'footer.wp-block-template-part',
+				'aside.wp-block-template-part',
+				'[role="banner"]',
+				'[role="contentinfo"]',
+				'[role="complementary"]',
+				'nav',
 				'.sidebar',
 				'.widget',
 				'.comments-area',
@@ -235,7 +276,6 @@ class DSGTableOfContents {
 		a.href = `#${heading.id}`;
 		a.className = 'airo-wp-table-of-contents__link';
 		a.textContent = heading.text;
-		a.setAttribute('aria-label', `Jump to section: ${heading.text}`);
 
 		li.appendChild(a);
 		return li;
@@ -272,17 +312,23 @@ class DSGTableOfContents {
 							target.setAttribute('tabindex', '-1');
 							target.focus();
 						}
-					} catch (error) {
+					} catch {
 						// Silently fail on scroll errors
 					}
 				});
 			});
-		} catch (error) {
+		} catch {
 			// Silently fail on link handler setup errors
 		}
 	}
 
 	scrollToTarget(target) {
+		// Let a closed Accordion (or anything else that hides content) reveal
+		// the target first; a hidden element has no position to scroll to.
+		target.dispatchEvent(
+			new CustomEvent('airo-wp-reveal', { bubbles: true })
+		);
+
 		const rect = target.getBoundingClientRect();
 		const targetPosition = window.scrollY + rect.top - this.scrollOffset;
 
@@ -359,8 +405,11 @@ class DSGTableOfContents {
 					if (link) {
 						this.updateActiveLink(link);
 						// Update URL hash when scrolling through sections
-						// (but not during initial hash navigation to prevent override)
+						// (but not during initial hash navigation to prevent override).
+						// Highlighting runs for every TOC; rewriting the URL as the
+						// reader scrolls stays tied to Smooth Scroll, as it always was.
 						if (
+							this.scrollSmooth &&
 							!this.isInitialHashNavigation &&
 							!this.isManualNavigation &&
 							window.history.replaceState
@@ -393,6 +442,7 @@ class DSGTableOfContents {
 				link.classList.remove(
 					'airo-wp-table-of-contents__link--active'
 				);
+				link.removeAttribute('aria-current');
 				const li = link.closest('li');
 				if (li) {
 					li.classList.remove(
@@ -404,6 +454,8 @@ class DSGTableOfContents {
 		// Add active class to current link
 		if (activeLink) {
 			activeLink.classList.add('airo-wp-table-of-contents__link--active');
+			// Expose the highlight to assistive tech, not just visually.
+			activeLink.setAttribute('aria-current', 'location');
 			const li = activeLink.closest('li');
 			if (li) {
 				li.classList.add('airo-wp-table-of-contents__item--active');
@@ -424,6 +476,9 @@ class DSGTableOfContents {
 			const target = document.getElementById(targetId);
 
 			if (!target) {
+				if ('scrollRestoration' in history) {
+					history.scrollRestoration = 'auto';
+				}
 				return;
 			}
 
@@ -453,9 +508,10 @@ class DSGTableOfContents {
 					this.isInitialHashNavigation = false;
 				}, 1000);
 			}, 300);
-		} catch (error) {
+		} catch {
 			// Ensure flag is reset even if there's an error
 			this.isInitialHashNavigation = false;
+			restoreNativeHash();
 		}
 	}
 

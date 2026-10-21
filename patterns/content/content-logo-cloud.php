@@ -20,23 +20,23 @@ return array(
 
 <!-- wp:airo-wp/row {"style":{"spacing":{"blockGap":"var:preset|spacing|40","padding":{"top":"var:preset|spacing|40","bottom":"0","left":"0","right":"0"}}},"className":"airo-wp-grid-cols-6","layout":{"type":"flex","orientation":"horizontal","justifyContent":"center","flexWrap":"wrap"}} -->
 <div class="wp-block-airo-wp-row alignfull airo-wp-flex airo-wp-no-width-constraint airo-wp-grid-cols-6" style="padding-top:var(--wp--preset--spacing--40);padding-right:0;padding-bottom:0;padding-left:0"><div class="airo-wp-flex__inner" style="display:flex;justify-content:center;flex-wrap:wrap;gap:var(--wp--preset--spacing--40)"><!-- wp:image {"width":"120px","height":"40px","scale":"contain","sizeSlug":"medium","style":{"color":{"duotone":"unset"}}} -->
-<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Google" style="object-fit:contain;width:120px;height:40px"/></figure>
+<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Northwind" style="object-fit:contain;width:120px;height:40px"/></figure>
 <!-- /wp:image -->
 
 <!-- wp:image {"width":"120px","height":"40px","scale":"contain","sizeSlug":"medium","style":{"color":{"duotone":"unset"}}} -->
-<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Amazon" style="object-fit:contain;width:120px;height:40px"/></figure>
+<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Riverbend" style="object-fit:contain;width:120px;height:40px"/></figure>
 <!-- /wp:image -->
 
 <!-- wp:image {"width":"120px","height":"40px","scale":"contain","sizeSlug":"medium","style":{"color":{"duotone":"unset"}}} -->
-<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Microsoft" style="object-fit:contain;width:120px;height:40px"/></figure>
+<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Cobalt Labs" style="object-fit:contain;width:120px;height:40px"/></figure>
 <!-- /wp:image -->
 
 <!-- wp:image {"width":"120px","height":"40px","scale":"contain","sizeSlug":"medium","style":{"color":{"duotone":"unset"}}} -->
-<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Netflix" style="object-fit:contain;width:120px;height:40px"/></figure>
+<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Streamline" style="object-fit:contain;width:120px;height:40px"/></figure>
 <!-- /wp:image -->
 
 <!-- wp:image {"width":"120px","height":"40px","scale":"contain","sizeSlug":"medium","style":{"color":{"duotone":"unset"}}} -->
-<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Apple" style="object-fit:contain;width:120px;height:40px"/></figure>
+<figure class="wp-block-image size-medium is-resized"><img src="{{dsgo:placeholder-logo}}" alt="Orchard" style="object-fit:contain;width:120px;height:40px"/></figure>
 <!-- /wp:image --></div></div>
 <!-- /wp:airo-wp/row --></div></div>
 <!-- /wp:airo-wp/section -->',

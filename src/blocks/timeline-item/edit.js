@@ -6,11 +6,8 @@ import {
 	InspectorControls,
 	MediaUpload,
 	MediaUploadCheck,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalLinkControl as LinkControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import {
@@ -31,14 +28,8 @@ import { DsgoInspectorPanel } from '../../components/shared';
 
 // Marker shape SVGs
 const MarkerShapes = {
-	circle: ({ size, fillColor, borderColor }) => (
-		<svg
-			width={size}
-			height={size}
-			viewBox="0 0 24 24"
-			fill="none"
-			xmlns="http://www.w3.org/2000/svg"
-		>
+	circle: ({ fillColor, borderColor }) => (
+		<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 			<circle
 				cx="12"
 				cy="12"
@@ -49,14 +40,8 @@ const MarkerShapes = {
 			/>
 		</svg>
 	),
-	square: ({ size, fillColor, borderColor }) => (
-		<svg
-			width={size}
-			height={size}
-			viewBox="0 0 24 24"
-			fill="none"
-			xmlns="http://www.w3.org/2000/svg"
-		>
+	square: ({ fillColor, borderColor }) => (
+		<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 			<rect
 				x="2"
 				y="2"
@@ -69,14 +54,8 @@ const MarkerShapes = {
 			/>
 		</svg>
 	),
-	diamond: ({ size, fillColor, borderColor }) => (
-		<svg
-			width={size}
-			height={size}
-			viewBox="0 0 24 24"
-			fill="none"
-			xmlns="http://www.w3.org/2000/svg"
-		>
+	diamond: ({ fillColor, borderColor }) => (
+		<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 			<rect
 				x="12"
 				y="2"
@@ -113,7 +92,6 @@ export default function TimelineItemEdit({
 
 	// Get context from parent timeline
 	const markerStyle = context['airo-wp/timeline/markerStyle'] || 'circle';
-	const markerSize = context['airo-wp/timeline/markerSize'] || 16;
 	const markerColor = context['airo-wp/timeline/markerColor'] || '';
 	const markerBorderColor =
 		context['airo-wp/timeline/markerBorderColor'] || '';
@@ -414,8 +392,6 @@ export default function TimelineItemEdit({
 							alt=""
 							className="airo-wp-timeline-item__marker-image"
 							style={{
-								width: markerSize,
-								height: markerSize,
 								borderRadius:
 									markerStyle === 'circle' ? '50%' : '4px',
 								objectFit: 'cover',
@@ -423,7 +399,6 @@ export default function TimelineItemEdit({
 						/>
 					) : (
 						<MarkerShape
-							size={markerSize}
 							fillColor={effectiveMarkerColor}
 							borderColor={effectiveBorderColor}
 						/>

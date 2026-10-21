@@ -14,12 +14,15 @@
 
 /* global requestAnimationFrame, ResizeObserver */
 
+import { __, sprintf } from '@wordpress/i18n';
+
 import { parseSliderConfig, slidesPerViewFor } from './view/config';
 import {
 	buildArrows,
 	buildDots,
 	updateDots,
 	buildAnnouncer,
+	buildAutoplayToggle,
 } from './view/chrome';
 import { initSwipe, initDrag } from './view/gestures';
 import AutoplayController from './view/autoplay';
@@ -42,7 +45,18 @@ class DSGSlider {
 			return;
 		}
 
-		this.config = parseSliderConfig(element);
+		// Scroll-driven mode pins the slider and maps scroll onto the track, so
+		// under reduced motion the visitor would scroll a long spacer and only
+		// ever see slide one. Fall back to a normal paged slider instead.
+		const prefersReduced =
+			window.matchMedia?.(REDUCED_MOTION_QUERY)?.matches === true;
+		this.config = parseSliderConfig(element, {
+			ignoreScrollDriven: prefersReduced,
+		});
+		if (prefersReduced && element.dataset.scrollDriven === 'true') {
+			element.classList.remove('airo-wp-slider--scroll-driven');
+		}
+		this.isRtl = this.detectRtl();
 		this.baseTransitionDuration = this.config.transitionDuration;
 		this.baseTransitionDurationMs = this.config.transitionDurationMs;
 
@@ -64,6 +78,25 @@ class DSGSlider {
 		this.slides = this.readSlides();
 
 		this.init();
+	}
+
+	/** @return {boolean} Whether the slider lays out right to left. */
+	detectRtl() {
+		return window.getComputedStyle(this.slider).direction === 'rtl';
+	}
+
+	/**
+	 * Track translation that brings a slide into view.
+	 *
+	 * The track starts at the inline-start edge, which is the right in RTL, so
+	 * later slides sit to the left and the translation runs the other way.
+	 *
+	 * @param {number} index Slide index.
+	 * @return {number} Translation in pixels.
+	 */
+	offsetFor(index) {
+		const distance = index * (this.cachedSlideWidth + this.cachedGap);
+		return this.isRtl ? distance : -distance;
 	}
 
 	/** @return {HTMLElement[]} Slides currently in the track, clones included. */
@@ -128,8 +161,12 @@ class DSGSlider {
 				`airo-wp-slide--clone-${position}`
 			);
 			clone.setAttribute('aria-hidden', 'true');
+			// aria-hidden alone leaves focusable descendants in the tab order, so
+			// a link or button in a slide would get a focusable copy inside a
+			// hidden subtree. `inert` removes the clone from focus for good.
+			clone.setAttribute('inert', '');
 			clone.removeAttribute('id');
-			// Duplicated anchors would otherwise appear twice in the tab order.
+			// Duplicate ids are invalid and would break in-page anchors.
 			clone
 				.querySelectorAll('[id]')
 				.forEach((node) => node.removeAttribute('id'));
@@ -156,6 +193,13 @@ class DSGSlider {
 			this.buildDotChrome();
 		}
 		this.announcer = buildAnnouncer(this.slider);
+		// save.js / render.php ship "slider", which collides with the ARIA slider
+		// role; "carousel" is the APG term. Set at runtime so stored markup (and
+		// block validation) is untouched.
+		this.slider.setAttribute(
+			'aria-roledescription',
+			__('carousel', 'airo-wp')
+		);
 
 		if (!this.config.scrollDriven) {
 			if (this.config.swipeable) {
@@ -163,6 +207,7 @@ class DSGSlider {
 					initSwipe(this.track, {
 						onNext: () => this.userNext(),
 						onPrev: () => this.userPrev(),
+						isRtl: () => this.isRtl,
 					})
 				);
 			}
@@ -174,6 +219,7 @@ class DSGSlider {
 						onNext: () => this.userNext(),
 						onPrev: () => this.userPrev(),
 						onCancel: () => this.goToSlide(this.currentIndex),
+						isRtl: () => this.isRtl,
 					})
 				);
 			}
@@ -181,8 +227,9 @@ class DSGSlider {
 				this.autoplay = new AutoplayController(this.slider, {
 					interval: this.config.autoplayInterval,
 					pauseOnHover: this.config.pauseOnHover,
-					advance: () => this.next(),
+					advance: () => this.autoplayTick(),
 				});
+				this.buildAutoplayChrome();
 			}
 			this.initKeyboard();
 			// A Loop Carousel's track is the query's item container: load-more
@@ -236,14 +283,55 @@ class DSGSlider {
 	}
 
 	buildArrowChrome() {
-		const { container, prev, next } = buildArrows(this.slider, {
-			onPrev: () => this.userPrev(),
-			onNext: () => this.userNext(),
-		});
+		const { container, prev, next } = buildArrows(
+			this.slider,
+			{
+				onPrev: () => this.userPrev(),
+				onNext: () => this.userNext(),
+			},
+			this.isRtl
+		);
 		this.arrowsContainer = container;
 		this.prevArrow = prev;
 		this.nextArrow = next;
 		this.updateArrows();
+	}
+
+	/**
+	 * One autoplay step. Without looping there is nowhere to go after the last
+	 * slide, so stop there instead of ticking forever against a disabled Next
+	 * arrow. (Rewinding would repeat the carousel without the author asking for
+	 * `loop`; the reader can restart with the play button.)
+	 */
+	autoplayTick() {
+		if (!this.config.loop && this.currentIndex >= this.navBounds().max) {
+			this.autoplay?.stop();
+			return;
+		}
+		this.next();
+	}
+
+	/** Pause / play button, so autoplay can always be stopped (WCAG 2.2.2). */
+	buildAutoplayChrome() {
+		const { setPaused } = buildAutoplayToggle(this.slider, {
+			onToggle: () => {
+				if (this.autoplay.isPausedByUser()) {
+					// Resuming from the last slide of a non-looping slider
+					// would stop again on the next tick; start over instead.
+					if (
+						!this.config.loop &&
+						this.currentIndex >= this.navBounds().max
+					) {
+						this.goToSlide(this.navBounds().min);
+					}
+					this.autoplay.resume();
+				} else {
+					this.autoplay.pause();
+				}
+			},
+		});
+		const sync = () => setPaused(this.autoplay.isPausedByUser());
+		this.autoplay.onStateChange = sync;
 	}
 
 	buildDotChrome() {
@@ -306,6 +394,7 @@ class DSGSlider {
 			return;
 		}
 		// Batch the layout reads together so we thrash at most once.
+		this.isRtl = this.detectRtl();
 		this.cachedSlideWidth = this.slides[0].offsetWidth;
 		this.cachedGap =
 			parseFloat(window.getComputedStyle(this.track).gap) || 0;
@@ -481,10 +570,7 @@ class DSGSlider {
 	}
 
 	applySlideTransition(animate = true) {
-		const offset = -(
-			this.currentIndex *
-			(this.cachedSlideWidth + this.cachedGap)
-		);
+		const offset = this.offsetFor(this.currentIndex);
 		this.currentOffset = offset;
 
 		if (!animate) {
@@ -508,10 +594,7 @@ class DSGSlider {
 				return;
 			}
 			this.currentIndex = jumped;
-			this.currentOffset = -(
-				jumped *
-				(this.cachedSlideWidth + this.cachedGap)
-			);
+			this.currentOffset = this.offsetFor(jumped);
 			this.track.style.transition = 'none';
 			this.track.style.transform = `translateX(${this.currentOffset}px)`;
 			void this.track.offsetHeight;
@@ -587,9 +670,12 @@ class DSGSlider {
 		}
 		const total =
 			this.cloneCount > 0 ? this.realSlideCount : this.slides.length;
-		this.announcer.textContent = `Slide ${
-			this.getRealIndex(this.currentIndex) + 1
-		} of ${total}`;
+		this.announcer.textContent = sprintf(
+			/* translators: 1: current slide number, 2: total number of slides */
+			__('Slide %1$d of %2$d', 'airo-wp'),
+			this.getRealIndex(this.currentIndex) + 1,
+			total
+		);
 	}
 
 	updateArrows() {
@@ -661,13 +747,22 @@ class DSGSlider {
 
 			const bounds = this.navBounds();
 			switch (event.key) {
+				// Arrows follow the screen: in RTL, Left moves forward.
 				case 'ArrowLeft':
 					event.preventDefault();
-					this.userPrev();
+					if (this.isRtl) {
+						this.userNext();
+					} else {
+						this.userPrev();
+					}
 					break;
 				case 'ArrowRight':
 					event.preventDefault();
-					this.userNext();
+					if (this.isRtl) {
+						this.userPrev();
+					} else {
+						this.userNext();
+					}
 					break;
 				case 'Home':
 					event.preventDefault();

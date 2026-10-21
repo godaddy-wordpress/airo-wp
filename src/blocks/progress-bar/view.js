@@ -6,10 +6,107 @@
  * @since 1.0.0
  */
 
+import { __ } from '@wordpress/i18n';
+import {
+	LABEL_CLIPPED_CLASS,
+	MEASURED_CLASS,
+	insideLabelFits,
+} from './utils/label-fit';
+
+/**
+ * Resolve the target fill width (0–100) for a progress bar.
+ *
+ * A `dsgoStyleBinding` on `--airo-wp-progress` (and optionally
+ * `--airo-wp-progress-max`) is applied server-side as an inline custom property
+ * on the block's root element, so by the time this runs it is available via
+ * `getComputedStyle` — custom properties inherit, so reading it off the fill
+ * element itself picks up the ancestor's bound value. When neither var is
+ * set anywhere in the cascade, fall back to the block's static `percentage`
+ * attribute (carried in `data-percentage`), unscaled by any
+ * `--airo-wp-progress-max`, matching the CSS formula save.js writes for the
+ * non-animated case.
+ *
+ * `--airo-wp-progress-max` is floored at 1 (never 0 or negative) — it can itself
+ * be bound and resolve to 0, and dividing by it would otherwise produce
+ * `Infinity`/`NaN`. This mirrors the `max(1, var(--airo-wp-progress-max, 100))`
+ * guard in save.js's STATIC_WIDTH_FORMULA and the PHP save mirror
+ * (Progress_Bar_Serializer), so the animated and static paths always agree.
+ *
+ * @param {Element} fill               The `.airo-wp-progress-bar__fill` element.
+ * @param {number}  fallbackPercentage The static `percentage` attribute value.
+ * @return {number} Target width, clamped 0–100.
+ */
+export function resolveTargetPercent(fill, fallbackPercentage) {
+	// eslint-disable-next-line no-undef
+	const computed = getComputedStyle(fill);
+	const rawValue = computed.getPropertyValue('--airo-wp-progress').trim();
+
+	// No bound value: the static percentage is already a percentage, so it
+	// is not scaled by `--airo-wp-progress-max` (see save.js's fallback).
+	if (rawValue === '' || Number.isNaN(parseFloat(rawValue))) {
+		return Math.min(Math.max(fallbackPercentage, 0), 100);
+	}
+	const value = parseFloat(rawValue);
+	const rawMax = computed.getPropertyValue('--airo-wp-progress-max').trim();
+	const parsedMax =
+		rawMax !== '' && !Number.isNaN(parseFloat(rawMax))
+			? parseFloat(rawMax)
+			: 100;
+	const max = Math.max(1, parsedMax);
+
+	return Math.min(Math.max((value / max) * 100, 0), 100);
+}
+
+/**
+ * Announce the value the bar actually shows.
+ *
+ * save() writes aria-valuenow from the static `percentage` attribute, but a
+ * `dsgoStyleBinding` on `--airo-wp-progress` can drive the fill to another value
+ * (a stock bar reading 12 of 20). Resolve it the same way the fill does so
+ * the announced value matches what sighted visitors see.
+ *
+ * @param {Element} track The `[role="progressbar"]` track element.
+ */
+export function syncAriaValue(track) {
+	const fill = track.querySelector('.airo-wp-progress-bar__fill');
+	const saved = parseFloat(track.getAttribute('aria-valuenow'));
+	if (!fill || Number.isNaN(saved)) {
+		return;
+	}
+	track.setAttribute(
+		'aria-valuenow',
+		String(Math.round(resolveTargetPercent(fill, saved)))
+	);
+}
+
+/**
+ * Whether the visitor asked for reduced motion. The CSS drops the width
+ * transition in that case; this drops the staged start delay.
+ *
+ * @return {boolean} True when prefers-reduced-motion: reduce matches.
+ */
+function prefersReducedMotion() {
+	return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
+
 /**
  * Initialize progress bars with scroll animations
  */
 function initProgressBars() {
+	document
+		.querySelectorAll(
+			'.airo-wp-progress-bar__container[role="progressbar"]'
+		)
+		.forEach((track) => {
+			syncAriaValue(track);
+			// A progressbar needs an accessible name. save() writes the
+			// author's labelText; without one, name it here so the fallback
+			// is translated at runtime rather than baked into post content.
+			if (!track.hasAttribute('aria-label')) {
+				track.setAttribute('aria-label', __('Progress', 'airo-wp'));
+			}
+		});
+
 	const progressBars = document.querySelectorAll(
 		'.airo-wp-progress-bar--animate'
 	);
@@ -38,15 +135,24 @@ function initProgressBars() {
 					return;
 				}
 
-				// Get target percentage from data attribute
-				const targetPercentage =
-					progressBar.getAttribute('data-percentage');
+				// Static fallback percentage from the block's own attribute.
+				const fallbackPercentage = parseFloat(
+					progressBar.getAttribute('data-percentage')
+				);
 
-				if (targetPercentage) {
-					// Animate to target percentage
-					setTimeout(() => {
-						fill.style.width = `${targetPercentage}%`;
-					}, 100); // Small delay for better visual effect
+				if (!Number.isNaN(fallbackPercentage)) {
+					// Animate to the bound value (if any) or the static
+					// percentage, resolved fresh at animation time.
+					setTimeout(
+						() => {
+							const targetPercent = resolveTargetPercent(
+								fill,
+								fallbackPercentage
+							);
+							fill.style.width = `${targetPercent}%`;
+						},
+						prefersReducedMotion() ? 0 : 100
+					); // Small delay for better visual effect
 				}
 
 				// Unobserve after animation starts (only animate once)
@@ -64,13 +170,57 @@ function initProgressBars() {
 	});
 }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-	document.addEventListener('DOMContentLoaded', initProgressBars);
-} else {
+/**
+ * Hide inside labels that do not fit their fill (see utils/label-fit.js).
+ *
+ * Runs for every bar, animated or not. A ResizeObserver on each fill keeps it
+ * current as an animated fill grows, the layout changes width, or a web font
+ * finishes loading and changes the label's width.
+ */
+function fitInsideLabels() {
+	document.querySelectorAll('.airo-wp-progress-bar').forEach((bar) => {
+		const fill = bar.querySelector('.airo-wp-progress-bar__fill');
+		const label = fill?.querySelector(
+			'.airo-wp-progress-bar__label--inside'
+		);
+		if (!label) {
+			return;
+		}
+
+		const update = () =>
+			label.classList.toggle(
+				LABEL_CLIPPED_CLASS,
+				!insideLabelFits(fill, label)
+			);
+		update();
+		bar.classList.add(MEASURED_CLASS);
+
+		if (
+			typeof ResizeObserver !== 'undefined' &&
+			!bar.hasAttribute('data-airo-wp-label-observed')
+		) {
+			bar.setAttribute('data-airo-wp-label-observed', 'true');
+			// eslint-disable-next-line no-undef
+			new ResizeObserver(update).observe(fill);
+		}
+	});
+}
+
+function init() {
+	fitInsideLabels();
 	initProgressBars();
 }
 
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', init);
+} else {
+	init();
+}
+
+// A web font can change the label's width without resizing the fill.
+document.fonts?.ready?.then(fitInsideLabels);
+
 // Re-initialize after dynamic content loads (e.g., AJAX, soft navigation)
-document.addEventListener('wp-blocks-post-content-loaded', initProgressBars);
-document.addEventListener('airo-wp-content-loaded', initProgressBars);
+document.addEventListener('wp-blocks-post-content-loaded', init);
+document.addEventListener('airo-wp-content-loaded', init);

@@ -6,7 +6,9 @@
  * @package airo-wp
  */
 
+@use '../../styles/variables' as *;
 @use './styles/shape-divider';
+@use './styles/box-width';
 
 .airo-wp-stack {
 	// CRITICAL: Ensure width includes padding to prevent overflow
@@ -29,13 +31,20 @@
 	// Hover background overlay - works with both gradients and solid colors
 	// Using ::after pseudo-element allows smooth opacity transition
 	// z-index: 0 (below overlay ::before and content).
-	// The layer is always present but transparent until --airo-wp-hover-bg-color is
-	// set, so fading it in on hover is a no-op when there is no hover color. This
-	// (rather than an inline-`[style*=…]` gate) lets the color come from EITHER
-	// the block's inline attribute OR a section style variation's stylesheet
-	// (`.is-style-*{ --airo-wp-hover-bg-color: … }`). Additive overlay — no base
-	// value is clobbered — so no class-based activation is needed.
-	&::after {
+	// Gated on the `--airo-wp-hover-bg-color` inline var actually being present —
+	// this is the ONLY source DSG emits it from today (see save.js/edit.js;
+	// there is no `is-style-hover-bg-*` variation family, unlike hover text/
+	// icon/button). An always-on `::after` here would otherwise claim the
+	// `opacity` property outright: a theme/style-kit's OWN decorative overlay
+	// painted on `.wp-block-airo-wp-section.has-background::after` usually
+	// sets `background` but not `opacity`, so with no gate this rule's
+	// `opacity: 0` is the only declaration for that property and wins by
+	// default — making the kit's overlay invisible until :hover regardless of
+	// selector specificity. Mirrors the `[style*=…]` gate already used by the
+	// Row and Grid blocks for the same variable (see their style.scss); those
+	// blocks paint the color directly instead of through a pseudo-element, so
+	// they never had this always-on-layer problem.
+	&[style*="--airo-wp-hover-bg-color"]::after {
 		content: '';
 		position: absolute;
 		top: 0;
@@ -44,7 +53,7 @@
 		bottom: 0;
 		background: var(--airo-wp-hover-bg-color, transparent);
 		opacity: 0;
-		transition: opacity 0.3s ease;
+		transition: opacity $airo-wp-duration-normal $airo-wp-easing;
 		pointer-events: none;
 		z-index: 0;
 		border-radius: inherit;
@@ -52,8 +61,11 @@
 
 	// Ensure content is above all overlays
 	// NOTE: This is overridden for overlay blocks (z-index: 2 on .airo-wp-stack__inner)
-	// IMPORTANT: Exclude shape dividers - they need position: absolute to stay at edges
-	> *:not(.airo-wp-stack__inner):not(.airo-wp-shape-divider) {
+	// IMPORTANT: Exclude shape dividers - they need position: absolute to stay at edges.
+	// Same for the background-video play/pause button, which sits in a corner:
+	// this rule outranks the extension's own, and made it a flow element that
+	// its right/bottom offsets pushed half off the page.
+	> *:not(.airo-wp-stack__inner):not(.airo-wp-shape-divider):not(.airo-wp-video-background__toggle) {
 		position: relative;
 		z-index: 3;
 	}
@@ -100,17 +112,16 @@
 		z-index: 2;
 	}
 
-	// CRITICAL: When Section is nested inside another container, force full width
+	// Nested Sections fill their parent unless the author sets a width
 	// WordPress applies constrained layout which can limit width
 	// This ensures nested Sections take full width of their parent container
-	.airo-wp-stack__inner > &,
-	.airo-wp-flex__inner > &,
-	.airo-wp-grid__inner > & {
-		width: 100% !important;
+	:where(.airo-wp-stack__inner, .airo-wp-flex__inner, .airo-wp-grid__inner) > & {
+		// Fill the parent by default; authored classes and inline controls can override it.
+		width: 100%;
 
 		// Only strip inner constraints when the nested section itself has no width constraint
 		// Sections with constrainWidth enabled need their max-width + margin:auto preserved
-		&.airo-wp-no-width-constraint > .airo-wp-stack__inner {
+		&.airo-wp-no-width-constraint:where(:not([class*="airo-wp-layout-"])) > .airo-wp-stack__inner {
 			max-width: none !important;
 			margin-left: 0 !important;
 			margin-right: 0 !important;
@@ -183,39 +194,44 @@
 		> :where(
 			.wp-block-airo-wp-icon-button,
 			.wp-block-airo-wp-counter
-		).aligncenter {
+		).aligncenter:where(:not([class*="airo-wp-layout-"])) {
 			align-self: center !important;
 		}
 
 		> :where(
 			.wp-block-airo-wp-icon-button,
 			.wp-block-airo-wp-counter
-		).alignleft {
+		).alignleft:where(:not([class*="airo-wp-layout-"])) {
 			align-self: flex-start !important;
 		}
 
 		> :where(
 			.wp-block-airo-wp-icon-button,
 			.wp-block-airo-wp-counter
-		).alignright {
+		).alignright:where(:not([class*="airo-wp-layout-"])) {
 			align-self: flex-end !important;
 		}
 
 		// Block-level elements WITH explicit alignment
-		> .aligncenter:not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-counter) {
+		> .aligncenter:not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-counter):where(:not([class*="airo-wp-layout-"])) {
 			align-self: center !important;
 		}
 
-		> .alignright:not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-counter) {
+		> .alignright:not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-counter):where(:not([class*="airo-wp-layout-"])) {
 			align-self: flex-end !important;
 		}
 
-		> .alignleft:not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-counter) {
+		> .alignleft:not(.wp-block-airo-wp-icon-button):not(.wp-block-airo-wp-counter):where(:not([class*="airo-wp-layout-"])) {
 			align-self: flex-start !important;
 		}
 
-		> .alignwide,
-		> .alignfull {
+		// A capped box (`.airo-wp-stack--has-box-width`) is excluded: it cannot
+		// stretch by definition, and `align-self: stretch` would pin it to the
+		// start of the cross axis, silently defeating the justification the
+		// author set on THIS parent. Its own `width: 100%` is inline, so
+		// nothing is lost by opting it out of both declarations here.
+		> .alignwide:not(.airo-wp-stack--has-box-width):where(:not([class*="airo-wp-layout-"])),
+		> .alignfull:not(.airo-wp-stack--has-box-width):where(:not([class*="airo-wp-layout-"])) {
 			align-self: stretch !important;
 			width: 100% !important;
 		}
@@ -235,6 +251,8 @@
 		}
 	}
 
+	// Authored layout roots opt out of legacy forced sizing; unchanged children
+	// retain the same selectors and specificity.
 	// ONLY apply full-width forcing when section has NO width constraints
 	&.airo-wp-no-width-constraint .airo-wp-stack__inner.is-layout-flex {
 
@@ -252,14 +270,18 @@
 		// core/button are untouched (unaffected by that refactor).
 		> .airo-wp-counter,
 		> .wp-block-airo-wp-counter,
-		> .wp-block-button {
+		> .wp-block-button:where(:not([class*="airo-wp-layout-"])) {
 			align-self: flex-start; // Override to allow alignment
 			width: auto !important; // Shrink to content
 			max-width: none !important; // Remove WordPress's 1200px contentSize constraint
 		}
 
-		// CRITICAL: Block-level elements take full width by default
-		// Text blocks, groups, and most WordPress blocks
+		// CRITICAL: Block-level elements take full width by default, overriding
+		// WordPress's generated `wp-container-*` max-width constraint. The four
+		// selectors below cover the same override across four DOM shapes a nested
+		// block can take (a plain block; the pre-6.0 group inner container; the
+		// is-layout-constrained group variant; the modern 6.0+ group with no inner
+		// container) and share one declaration block instead of repeating it.
 		// NOTE: .wp-block-buttons is a layout container (not inline) — it needs full width
 		// so its internal justify-content can position child buttons correctly
 		> :where(
@@ -285,40 +307,26 @@
 			.wp-block-airo-wp-accordion,
 			.airo-wp-scroll-marquee,
 			.wp-block-airo-wp-scroll-marquee
-		):not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide) {
-			width: 100% !important;
-			max-width: none !important;
-			margin-left: 0 !important;
-			margin-right: 0 !important;
-		}
-
+		):not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide):not(.airo-wp-stack--has-box-width):where(:not([class*="airo-wp-layout-"])),
 		// Old group structure (pre-6.0) with __inner-container
 		> :where(.wp-block-group, .wp-block-airo-wp-stack, .airo-wp-stack)
-			:not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide)
-			> .wp-block-group__inner-container {
-			width: 100% !important;
-			max-width: none !important;
-			margin-left: 0 !important;
-			margin-right: 0 !important;
-		}
-
+			:not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide):where(:not([class*="airo-wp-layout-"]))
+			> .wp-block-group__inner-container,
+		// is-layout-constrained group variant, pre-6.0 shape
 		> :where(.wp-block-group, .airo-wp-stack, .wp-block-airo-wp-stack)
-			:is(.is-layout-constrained, .wp-block-group-is-layout-constrained)
-			> .wp-block-group__inner-container {
+			:is(.is-layout-constrained, .wp-block-group-is-layout-constrained):where(:not([class*="airo-wp-layout-"]))
+			> .wp-block-group__inner-container,
+		// Modern group structure (6.0+) without __inner-container
+		> .wp-block-group:not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide):where(:not([class*="airo-wp-layout-"])) {
 			width: 100% !important;
 			max-width: none !important;
 			margin-left: 0 !important;
 			margin-right: 0 !important;
 		}
 
-		// Modern group structure (6.0+) without __inner-container
-		// Ensure nested groups take full width regardless of their layout type
-		> .wp-block-group:not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide) {
-			width: 100% !important;
-			max-width: none !important;
-			margin-left: 0 !important;
-			margin-right: 0 !important;
-			// Ensure the block takes full width regardless of content
+		// Modern groups also need min-width forced — a plain group can otherwise
+		// shrink to its content's intrinsic width inside the flex column.
+		> .wp-block-group:not(.alignleft):not(.alignright):not(.alignfull):not(.alignwide):where(:not([class*="airo-wp-layout-"])) {
 			min-width: 100% !important;
 		}
 
@@ -335,7 +343,7 @@
 		// `justify-content` can position the visible element inside it.
 		> .airo-wp-counter,
 		> .wp-block-airo-wp-counter,
-		> .wp-block-button {
+		> .wp-block-button:where(:not([class*="airo-wp-layout-"])) {
 			align-self: flex-start;
 			width: auto !important;
 		}
@@ -437,10 +445,11 @@
 		}
 	}
 
-	// Fade in the hover background overlay (::after pseudo-element). Safe when no
-	// hover color is set — the layer is transparent, so this is a visual no-op.
-	// Works with an inline attribute or a style variation.
-	&:hover::after {
+	// Fade in the hover background overlay (::after pseudo-element). Gated the
+	// same as the base rule above so this never claims `opacity` on hover for a
+	// plain `.has-background` section with no hover color configured — that
+	// would fight a theme/style-kit's own ::after opacity on hover too.
+	&[style*="--airo-wp-hover-bg-color"]:hover::after {
 		opacity: 1;
 	}
 
@@ -478,7 +487,7 @@
 
 	> .airo-wp-counter,
 	> .wp-block-airo-wp-counter,
-	> .wp-block-button {
+	> .wp-block-button:where(:not([class*="airo-wp-layout-"])) {
 		width: auto !important;
 		max-width: none !important;
 	}
@@ -493,8 +502,11 @@
 .airo-wp-stack.alignfull.airo-wp-no-width-constraint > .airo-wp-stack__inner[class*="wp-container-"] {
 
 	// Target all direct children that aren't explicitly aligned
-	// Exclude blocks with explicit max-width set via our extension
-	> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width) {
+	// Exclude blocks with explicit max-width set via our extension, and nested
+	// sections that set their OWN box width (`.airo-wp-stack--has-box-width`) —
+	// their inline cap/centering is the author's explicit intent and an
+	// `!important` declaration here would silently defeat it.
+	> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width):not(.airo-wp-stack--has-box-width):where(:not([class*="airo-wp-layout-"])) {
 		max-width: none !important;
 		margin-left: 0 !important;
 		margin-right: 0 !important;

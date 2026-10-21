@@ -2,7 +2,6 @@ import { __, sprintf } from '@wordpress/i18n';
 import {
 	Button,
 	SelectControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export in @wordpress/components
 	__experimentalVStack as VStack,
 } from '@wordpress/components';
 

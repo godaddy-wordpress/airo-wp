@@ -4,6 +4,9 @@
  * Individual counter item with icon, number, and label
  */
 
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
 .airo-wp-counter {
 	display: flex;
 	flex-direction: column;
@@ -26,8 +29,18 @@
 		color: currentcolor;
 		opacity: 0.9;
 
+		// The SVG carries no width/height attributes. Size resolves from:
+		//   1. --airo-wp-counter-icon-size — an explicit iconSize, written inline
+		//      on this element by save() only when the author sets one.
+		//   2. --wp--custom--airo-wp--counter--default-size — theme.json
+		//      settings.custom.airowp.counter.defaultSize (unitless).
+		//   3. 48 — literal fallback.
+		// height: auto follows the square viewBox.
 		svg {
-			width: 48px;
+			width: var(
+				--airo-wp-counter-icon-size,
+				calc(var(--wp--custom--airo-wp--counter--default-size, 48) * 1px)
+			);
 			max-width: 100%;
 			height: auto;
 		}
@@ -71,7 +84,7 @@
 		// This prevents inheriting from grandparent containers (like Container blocks)
 		color: currentcolor;
 		margin: 0;
-		transition: color 0.3s ease;
+		transition: color $airo-wp-duration-normal $airo-wp-easing;
 
 		.airo-wp-counter__value {
 			font-variant-numeric: tabular-nums;
@@ -87,7 +100,7 @@
 		margin-top: 0.5rem;
 		margin-bottom: 0;
 		line-height: 1.5;
-		transition: color 0.3s ease, opacity 0.3s ease;
+		transition: color $airo-wp-duration-normal $airo-wp-easing, opacity $airo-wp-duration-normal $airo-wp-easing;
 	}
 
 	// Hover state
@@ -118,7 +131,7 @@
 	}
 
 	// Responsive: Smaller number on mobile
-	@media (max-width: 767px) {
+	@include below($breakpoint-mobile) {
 		padding: 1rem;
 
 		&__number {
@@ -126,9 +139,13 @@
 			font-size: 2.5em;
 		}
 
+		// The inherited size shrinks to three quarters on phones (48 → 36 by
+		// default). An explicit iconSize is the author's call and is kept.
 		&__icon svg {
-			width: 36px;
-			height: 36px;
+			width: var(
+				--airo-wp-counter-icon-size,
+				calc(var(--wp--custom--airo-wp--counter--default-size, 48) * 0.75px)
+			);
 		}
 	}
 }

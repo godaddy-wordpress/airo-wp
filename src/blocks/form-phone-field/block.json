@@ -14,7 +14,8 @@
 		"mobile"
 	],
 	"parent": [
-		"airo-wp/form-builder"
+		"airo-wp/form-builder",
+		"airo-wp/form-step"
 	],
 	"textdomain": "airo-wp",
 	"icon": "phone",
@@ -32,6 +33,10 @@
 		"airo-wp/form/formId"
 	],
 	"attributes": {
+		"dsgoConditions": {
+			"type": "object",
+			"default": null
+		},
 		"fieldName": {
 			"type": "string",
 			"default": ""

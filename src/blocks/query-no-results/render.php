@@ -38,7 +38,7 @@ if ( ! function_exists( 'airowp_render_query_no_results' ) ) {
 		if ( ! file_exists( $helpers ) ) {
 			return;
 		}
-		require_once $helpers;
+		require_once $helpers; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable -- build artifact; path resolved from plugin directory
 
 		$state = airowp_query_get_last_state( $query_id );
 

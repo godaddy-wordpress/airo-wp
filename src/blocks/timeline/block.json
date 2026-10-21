@@ -62,8 +62,7 @@
 			]
 		},
 		"markerSize": {
-			"type": "number",
-			"default": 16
+			"type": "number"
 		},
 		"markerColor": {
 			"type": "string",
@@ -95,7 +94,6 @@
 		"airo-wp/timeline/layout": "layout",
 		"airo-wp/timeline/lineColor": "lineColor",
 		"airo-wp/timeline/markerStyle": "markerStyle",
-		"airo-wp/timeline/markerSize": "markerSize",
 		"airo-wp/timeline/markerColor": "markerColor",
 		"airo-wp/timeline/markerBorderColor": "markerBorderColor",
 		"airo-wp/timeline/animateOnScroll": "animateOnScroll"
@@ -205,5 +203,5 @@
 	"viewScript": "file:./view.js",
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
-	"style": "file:./index.css"
+	"style": "file:./style-index.css"
 }

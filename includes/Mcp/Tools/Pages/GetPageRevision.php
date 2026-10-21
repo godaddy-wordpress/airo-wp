@@ -87,6 +87,13 @@ class GetPageRevision extends BaseTool {
 			);
 		}
 
+		if ( ! current_user_can( 'edit_post', $parent_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to view revisions of this page', 'airo-wp' ),
+			);
+		}
+
 		// Get the revision.
 		$revision = wp_get_post_revision( $revision_id );
 		if ( ! $revision ) {

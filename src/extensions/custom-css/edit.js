@@ -1,48 +1,80 @@
 /**
  * Custom CSS Extension - Editor Controls
  *
- * Inspector panel and editor style injection for custom CSS.
- * Lazy-loaded to reduce initial bundle size.
+ * Inspector panel for custom CSS. Lazy-loaded to reduce initial bundle size.
+ * Editor style injection lives in styles.js, which is not lazy.
  *
  * @since 1.0.0
  */
 
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { InspectorControls } from '@wordpress/block-editor';
-import { PanelBody, TextareaControl } from '@wordpress/components';
-import { useEffect } from '@wordpress/element';
+import {
+	Notice,
+	PanelBody,
+	TabPanel,
+	TextareaControl,
+} from '@wordpress/components';
+import {
+	breakpointWidth,
+	joinResponsiveCSS,
+	splitResponsiveCSS,
+} from './responsive';
+
+const DEVICE_TABS = [
+	{ name: 'desktop', title: __('Desktop', 'airo-wp') },
+	{ name: 'tablet', title: __('Tablet', 'airo-wp') },
+	{ name: 'mobile', title: __('Mobile', 'airo-wp') },
+];
 
 /**
- * Dangerous CSS patterns that could be used for injection
- */
-const DANGEROUS_CSS_PATTERNS =
-	/javascript\s*:|expression\s*\(|behavior\s*:|@import|url\s*\(\s*['"]?\s*data:/i;
-
-/**
- * Sanitize CSS by removing dangerous patterns
+ * Help text for one screen size's CSS field.
  *
- * @param {string} css - Raw CSS string
- * @return {string} Sanitized CSS
+ * @param {string} device `desktop`, `tablet` or `mobile`.
+ * @return {string} Help text.
  */
-function sanitizeCSS(css) {
-	if (!css) {
-		return '';
+function deviceHelp(device) {
+	if ('desktop' === device) {
+		return __(
+			'Applies at every screen size. Use "selector" to target this block, and nested selectors like "selector h3" to target elements inside.',
+			'airo-wp'
+		);
 	}
-	return css.replace(DANGEROUS_CSS_PATTERNS, '/* removed */');
+	return sprintf(
+		/* translators: %d: maximum screen width in pixels. */
+		__(
+			'Applies at %dpx wide and below, after the Desktop CSS. Use "selector" to target this block.',
+			'airo-wp'
+		),
+		breakpointWidth(device)
+	);
 }
 
 /**
- * Replace "selector" keyword with actual CSS class
+ * Says which other screen sizes already have CSS, since only one tab's
+ * field is visible at a time.
  *
- * @param {string} css       - User's CSS code
- * @param {string} className - Actual CSS class to use
- * @return {string} Processed CSS with selector replaced
+ * @param {Object} props         Component props.
+ * @param {Object} props.parts   CSS per device.
+ * @param {string} props.current Device whose tab is open.
+ * @return {JSX.Element|null} Note, or null when no other tab has CSS.
  */
-function replaceSelector(css, className) {
-	if (!css) {
-		return '';
+function OtherDevicesNote({ parts, current }) {
+	const others = DEVICE_TABS.filter(
+		(tab) => tab.name !== current && parts[tab.name].trim()
+	).map((tab) => tab.title);
+	if (!others.length) {
+		return null;
 	}
-	return sanitizeCSS(css).replace(/\bselector\b/g, `.${className}`);
+	return (
+		<p className="components-base-control__help">
+			{sprintf(
+				/* translators: %s: list of screen sizes, e.g. "Tablet, Mobile". */
+				__('Also has CSS for: %s', 'airo-wp'),
+				others.join(', ')
+			)}
+		</p>
+	);
 }
 
 /**
@@ -53,29 +85,65 @@ function replaceSelector(css, className) {
 export function CustomCSSPanel(props) {
 	const { attributes, setAttributes } = props;
 	const { dsgoCustomCSS } = attributes;
+	const parts = splitResponsiveCSS(dsgoCustomCSS);
+	// Mirrors the server's edit_css gate (Custom_CSS_Kses), which strips this
+	// attribute on save for anyone without it. wp_localize_script() sends the
+	// flag as "1" or "", never a boolean, so test truthiness. Absent means an
+	// older payload: fall back to editable rather than locking out the people
+	// who can.
+	const canEditFlag = window.dsgoSettings?.canEditCustomCSS;
+	const canEdit = undefined === canEditFlag || !!canEditFlag;
 
 	return (
 		<InspectorControls>
 			<PanelBody title={__('Custom CSS', 'airo-wp')} initialOpen={false}>
-				<TextareaControl
-					label={__('CSS Code', 'airo-wp')}
-					value={dsgoCustomCSS || ''}
-					onChange={(value) =>
-						setAttributes({ dsgoCustomCSS: value || '' })
-					}
-					placeholder={`selector {\n  background: linear-gradient(45deg, #f00, #00f);\n  padding: 2rem;\n}\n\nselector h3 {\n  color: white;\n  font-size: 2rem;\n}`}
-					rows={15}
-					help={__(
-						'Use "selector" to target this block. Write nested selectors like "selector h3" to target elements inside.',
-						'airo-wp'
+				{!canEdit && (
+					<Notice status="warning" isDismissible={false}>
+						{__(
+							'Your role cannot add custom CSS. Any CSS on this block is removed when you save. Ask an administrator to make CSS changes.',
+							'airo-wp'
+						)}
+					</Notice>
+				)}
+				<TabPanel
+					className="airo-wp-custom-css-tabs"
+					tabs={DEVICE_TABS}
+				>
+					{(tab) => (
+						<>
+							<TextareaControl
+								label={__('CSS Code', 'airo-wp')}
+								value={parts[tab.name]}
+								onChange={(value) =>
+									setAttributes({
+										dsgoCustomCSS: joinResponsiveCSS({
+											...parts,
+											[tab.name]: value || '',
+										}),
+									})
+								}
+								readOnly={!canEdit}
+								placeholder={
+									'desktop' === tab.name
+										? `selector {\n  background: linear-gradient(45deg, #f00, #00f);\n  padding: 2rem;\n}\n\nselector h3 {\n  color: white;\n  font-size: 2rem;\n}`
+										: `selector {\n  padding: 1rem;\n}`
+								}
+								rows={15}
+								help={deviceHelp(tab.name)}
+								className="airo-wp-custom-css-textarea"
+								style={{
+									fontFamily: 'monospace',
+									fontSize: '13px',
+									lineHeight: '1.6',
+								}}
+							/>
+							<OtherDevicesNote
+								parts={parts}
+								current={tab.name}
+							/>
+						</>
 					)}
-					className="airo-wp-custom-css-textarea"
-					style={{
-						fontFamily: 'monospace',
-						fontSize: '13px',
-						lineHeight: '1.6',
-					}}
-				/>
+				</TabPanel>
 				<p className="components-base-control__help">
 					<strong>{__('Examples:', 'airo-wp')}</strong>
 					<br />
@@ -96,55 +164,5 @@ export function CustomCSSPanel(props) {
 				</p>
 			</PanelBody>
 		</InspectorControls>
-	);
-}
-
-/**
- * Custom CSS editor style injection wrapper
- *
- * @param {Object} props                Block list block props
- * @param {Object} props.BlockListBlock Original BlockListBlock component
- */
-export function CustomCSSStyles({ BlockListBlock, ...props }) {
-	const { attributes, clientId } = props;
-	const { dsgoCustomCSS } = attributes;
-
-	const customClassName = `airo-wp-custom-css-${clientId}`;
-	const styleId = `airo-wp-custom-css-style-${clientId}`;
-
-	// Inject styles into editor with "selector" replaced by actual class
-	useEffect(() => {
-		const editorDocument =
-			document.querySelector('iframe[name="editor-canvas"]')
-				?.contentDocument || document;
-
-		const existingStyle = editorDocument.getElementById(styleId);
-		if (existingStyle) {
-			existingStyle.remove();
-		}
-
-		if (dsgoCustomCSS) {
-			const styleElement = editorDocument.createElement('style');
-			styleElement.id = styleId;
-			styleElement.textContent = replaceSelector(
-				dsgoCustomCSS,
-				customClassName
-			);
-			editorDocument.head.appendChild(styleElement);
-		}
-
-		return () => {
-			const styleToRemove = editorDocument.getElementById(styleId);
-			if (styleToRemove) {
-				styleToRemove.remove();
-			}
-		};
-	}, [dsgoCustomCSS, clientId, styleId, customClassName]);
-
-	return (
-		<BlockListBlock
-			{...props}
-			className={`${props.className || ''} ${customClassName}`.trim()}
-		/>
 	);
 }

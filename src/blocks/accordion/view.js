@@ -4,6 +4,8 @@
  * Following WordPress best practices - NO layout manipulation
  */
 
+import { __ } from '@wordpress/i18n';
+
 document.addEventListener('DOMContentLoaded', function () {
 	initAccordions();
 });
@@ -29,13 +31,13 @@ function initAccordions() {
 
 		const allowMultiple =
 			accordion.getAttribute('data-allow-multiple') === 'true';
-		const items = accordion.querySelectorAll('.airo-wp-accordion-item');
+		const items = getOwnItems(accordion);
 
 		// Add skip link for keyboard accessibility
 		const skipLink = document.createElement('a');
 		skipLink.href = '#end-of-accordion';
 		skipLink.className = 'airo-wp-accordion__skip-link';
-		skipLink.textContent = 'Skip accordion';
+		skipLink.textContent = __('Skip accordion', 'airo-wp');
 		skipLink.addEventListener('click', (e) => {
 			e.preventDefault();
 			// Focus on the element after the accordion
@@ -51,11 +53,13 @@ function initAccordions() {
 		});
 		accordion.insertBefore(skipLink, accordion.firstChild);
 
+		// In single-open mode only the first "Open by default" item may start
+		// open, however many the saved markup marks.
+		let openedInitially = false;
+
 		items.forEach((item) => {
-			const trigger = item.querySelector(
-				'.airo-wp-accordion-item__trigger'
-			);
-			const panel = item.querySelector('.airo-wp-accordion-item__panel');
+			const trigger = getTrigger(item);
+			const panel = getPanel(item);
 
 			if (!trigger || !panel) {
 				return;
@@ -63,8 +67,10 @@ function initAccordions() {
 
 			// Set initial state based on data attribute
 			const initiallyOpen =
-				item.getAttribute('data-initially-open') === 'true';
+				item.getAttribute('data-initially-open') === 'true' &&
+				(allowMultiple || !openedInitially);
 			if (initiallyOpen) {
+				openedInitially = true;
 				openPanel(item, panel, false); // No animation on initial load
 			} else {
 				closePanel(item, panel, false); // No animation on initial load
@@ -103,9 +109,7 @@ function initAccordions() {
 					e.preventDefault();
 					const prevItem = getPreviousItem(item, items);
 					if (prevItem) {
-						prevItem
-							.querySelector('.airo-wp-accordion-item__trigger')
-							?.focus();
+						getTrigger(prevItem)?.focus();
 					}
 				}
 
@@ -114,39 +118,158 @@ function initAccordions() {
 					e.preventDefault();
 					const nextItem = getNextItem(item, items);
 					if (nextItem) {
-						nextItem
-							.querySelector('.airo-wp-accordion-item__trigger')
-							?.focus();
+						getTrigger(nextItem)?.focus();
 					}
 				}
 
 				// Home - focus first item
 				if (e.key === 'Home') {
 					e.preventDefault();
-					items[0]
-						?.querySelector('.airo-wp-accordion-item__trigger')
-						?.focus();
+					getTrigger(items[0])?.focus();
 				}
 
 				// End - focus last item
 				if (e.key === 'End') {
 					e.preventDefault();
-					items[items.length - 1]
-						?.querySelector('.airo-wp-accordion-item__trigger')
-						?.focus();
+					getTrigger(items[items.length - 1])?.focus();
 				}
 			});
 		});
 	});
+
+	openFromHash(false);
+}
+
+/**
+ * Items that belong to this accordion, not to one nested inside it.
+ *
+ * @param {HTMLElement} accordion Accordion element.
+ * @return {HTMLElement[]} Accordion items.
+ */
+function getOwnItems(accordion) {
+	return Array.from(
+		accordion.querySelectorAll('.airo-wp-accordion-item')
+	).filter((item) => item.closest('.airo-wp-accordion') === accordion);
+}
+
+// An item's own trigger and panel come before any nested accordion's in
+// document order, so querySelector() always finds the item's own.
+function getTrigger(item) {
+	return item.querySelector('.airo-wp-accordion-item__trigger');
+}
+
+function getPanel(item) {
+	return item.querySelector('.airo-wp-accordion-item__panel');
+}
+
+/**
+ * Open every accordion item around an element, outermost first, so the
+ * element can be seen. Nested accordions work too.
+ *
+ * @param {Element} target  Element to reveal.
+ * @param {boolean} animate Whether to animate the panels opening.
+ * @return {boolean} Whether any item had to open.
+ */
+function openItemsAround(target, animate) {
+	let item = target?.closest('.airo-wp-accordion-item');
+	const toOpen = [];
+	while (item) {
+		toOpen.unshift(item);
+		item = item.parentElement?.closest('.airo-wp-accordion-item');
+	}
+
+	let opened = false;
+	toOpen.forEach((accordionItem) => {
+		const accordion = accordionItem.closest('.airo-wp-accordion');
+		const panel = getPanel(accordionItem);
+		if (
+			!accordion?.hasAttribute('data-airo-wp-initialized') ||
+			!panel ||
+			accordionItem.classList.contains('airo-wp-accordion-item--open')
+		) {
+			return;
+		}
+
+		if (accordion.getAttribute('data-allow-multiple') !== 'true') {
+			closeAllPanels(accordion, animate);
+		}
+		openPanel(accordionItem, panel, animate);
+		opened = true;
+	});
+
+	return opened;
+}
+
+/**
+ * Open the item a URL hash points at.
+ *
+ * The hash may name an item's anchor, its trigger or panel, or anything
+ * inside its panel — a heading a Table of Contents links to, say.
+ *
+ * @param {boolean} animate Whether to animate and scroll the target into view.
+ */
+function openFromHash(animate) {
+	let target = null;
+	try {
+		const id = decodeURIComponent(window.location.hash.slice(1));
+		target = id ? document.getElementById(id) : null;
+	} catch {
+		return;
+	}
+
+	// The browser's own jump found nothing to scroll to: the target was
+	// inside a hidden panel.
+	if (target && openItemsAround(target, animate)) {
+		target.scrollIntoView({
+			behavior: animate && !prefersReducedMotion ? 'smooth' : 'auto',
+			block: 'start',
+		});
+	}
+}
+
+window.addEventListener('hashchange', () => openFromHash(true));
+
+// Another script is about to scroll to an element — a Table of Contents
+// link, which moves by itself and updates the URL with replaceState, so no
+// hashchange fires. Open the panels around it first, without animation, so
+// the element has a position to scroll to. The caller does the scrolling.
+document.addEventListener('airo-wp-reveal', (event) => {
+	openItemsAround(event.target, false);
+});
+
+// Pending animation work per panel (rAF id + timeout ids), so a rapid
+// open/close can cancel a stale "hide"/"clear height" from the previous run.
+const pendingAnimations = new WeakMap();
+
+function cancelPendingAnimation(panel) {
+	const pending = pendingAnimations.get(panel);
+	if (!pending) {
+		return;
+	}
+	/* eslint-disable no-undef */
+	if (pending.raf) {
+		cancelAnimationFrame(pending.raf);
+	}
+	/* eslint-enable no-undef */
+	pending.timers.forEach((id) => clearTimeout(id));
+	pendingAnimations.delete(panel);
+}
+
+function trackAnimation(panel) {
+	const pending = pendingAnimations.get(panel) || { raf: 0, timers: [] };
+	pendingAnimations.set(panel, pending);
+	return pending;
 }
 
 function openPanel(item, panel, animate = true, scrollIntoView = false) {
+	cancelPendingAnimation(panel);
+
 	// Update classes
 	item.classList.remove('airo-wp-accordion-item--closed');
 	item.classList.add('airo-wp-accordion-item--open');
 
 	// Update ARIA
-	const trigger = item.querySelector('.airo-wp-accordion-item__trigger');
+	const trigger = getTrigger(item);
 	if (trigger) {
 		trigger.setAttribute('aria-expanded', 'true');
 	}
@@ -166,25 +289,34 @@ function openPanel(item, panel, animate = true, scrollIntoView = false) {
 
 	// Animate height
 	panel.style.height = '0px';
+	const pending = trackAnimation(panel);
 	// eslint-disable-next-line no-undef
-	requestAnimationFrame(() => {
+	pending.raf = requestAnimationFrame(() => {
+		pending.raf = 0;
 		panel.style.height = `${contentHeight}px`;
 
 		// Smooth scroll into view after opening
 		if (scrollIntoView) {
-			setTimeout(() => {
-				scrollItemIntoView(item);
-			}, ANIMATION_DURATION / 2); // Scroll halfway through animation
+			pending.timers.push(
+				setTimeout(() => {
+					scrollItemIntoView(item);
+				}, ANIMATION_DURATION / 2) // Scroll halfway through animation
+			);
 		}
 
 		// Remove inline height after animation completes
-		setTimeout(() => {
-			panel.style.height = '';
-		}, ANIMATION_DURATION);
+		pending.timers.push(
+			setTimeout(() => {
+				panel.style.height = '';
+				pendingAnimations.delete(panel);
+			}, ANIMATION_DURATION)
+		);
 	});
 }
 
 function closePanel(item, panel, animate = true) {
+	cancelPendingAnimation(panel);
+
 	// Get current height for animation
 	const currentHeight = panel.scrollHeight;
 
@@ -193,7 +325,7 @@ function closePanel(item, panel, animate = true) {
 	item.classList.add('airo-wp-accordion-item--closed');
 
 	// Update ARIA
-	const trigger = item.querySelector('.airo-wp-accordion-item__trigger');
+	const trigger = getTrigger(item);
 	if (trigger) {
 		trigger.setAttribute('aria-expanded', 'false');
 	}
@@ -209,25 +341,28 @@ function closePanel(item, panel, animate = true) {
 	panel.style.height = `${currentHeight}px`;
 
 	// Force reflow
+	const pending = trackAnimation(panel);
 	// eslint-disable-next-line no-undef
-	requestAnimationFrame(() => {
+	pending.raf = requestAnimationFrame(() => {
+		pending.raf = 0;
 		panel.style.height = '0px';
 
 		// Hide after animation completes
-		setTimeout(() => {
-			panel.hidden = true;
-			panel.style.height = '';
-		}, ANIMATION_DURATION);
+		pending.timers.push(
+			setTimeout(() => {
+				panel.hidden = true;
+				panel.style.height = '';
+				pendingAnimations.delete(panel);
+			}, ANIMATION_DURATION)
+		);
 	});
 }
 
-function closeAllPanels(accordion) {
-	const items = accordion.querySelectorAll('.airo-wp-accordion-item');
-
-	items.forEach((item) => {
-		const panel = item.querySelector('.airo-wp-accordion-item__panel');
+function closeAllPanels(accordion, animate = true) {
+	getOwnItems(accordion).forEach((item) => {
+		const panel = getPanel(item);
 		if (panel && item.classList.contains('airo-wp-accordion-item--open')) {
-			closePanel(item, panel, true);
+			closePanel(item, panel, animate);
 		}
 	});
 }

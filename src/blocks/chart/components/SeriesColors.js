@@ -7,9 +7,7 @@
 import { __, sprintf } from '@wordpress/i18n';
 import {
 	InspectorControls,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export; the canonical colour control across this plugin.
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export.
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import {

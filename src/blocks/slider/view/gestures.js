@@ -30,9 +30,10 @@ const CLICK_SLOP = 5;
  * @param {Object}      handlers        Callbacks.
  * @param {Function}    handlers.onNext Advance one slide.
  * @param {Function}    handlers.onPrev Go back one slide.
+ * @param {Function}    handlers.isRtl  Whether the slider currently reads right to left.
  * @return {Function} Teardown that removes the listeners.
  */
-export function initSwipe(track, { onNext, onPrev }) {
+export function initSwipe(track, { onNext, onPrev, isRtl = () => false }) {
 	let startX = 0;
 	let startY = 0;
 
@@ -50,7 +51,8 @@ export function initSwipe(track, { onNext, onPrev }) {
 		if (Math.abs(dx) <= THRESHOLD || Math.abs(dx) <= Math.abs(dy)) {
 			return;
 		}
-		if (dx > 0) {
+		// A finger moving left (dx > 0) advances in LTR; RTL mirrors it.
+		if (dx > 0 !== isRtl()) {
 			onNext();
 		} else {
 			onPrev();
@@ -81,11 +83,12 @@ export function initSwipe(track, { onNext, onPrev }) {
  * @param {Function}    handlers.onNext    Advance one slide.
  * @param {Function}    handlers.onPrev    Go back one slide.
  * @param {Function}    handlers.onCancel  Settle back on the current slide.
+ * @param {Function}    handlers.isRtl     Whether the slider currently reads right to left.
  * @return {Function} Teardown that removes the listeners.
  */
 export function initDrag(
 	track,
-	{ getOffset, setOffset, onNext, onPrev, onCancel }
+	{ getOffset, setOffset, onNext, onPrev, onCancel, isRtl = () => false }
 ) {
 	let isDragging = false;
 	let startX = 0;
@@ -100,6 +103,10 @@ export function initDrag(
 		delta = 0;
 		suppressClick = false;
 		track.style.cursor = 'grabbing';
+		// Bound only for the life of a drag, so an idle slider costs the page
+		// nothing on every mouse movement.
+		document.addEventListener('mousemove', onMouseMove);
+		document.addEventListener('mouseup', onMouseUp);
 	};
 
 	const onMouseMove = (event) => {
@@ -115,6 +122,8 @@ export function initDrag(
 			return;
 		}
 		isDragging = false;
+		document.removeEventListener('mousemove', onMouseMove);
+		document.removeEventListener('mouseup', onMouseUp);
 		track.style.cursor = 'grab';
 		// The browser still fires a click on the common ancestor of mousedown
 		// and mouseup after a drag. Inside a slide that ancestor is usually
@@ -123,7 +132,8 @@ export function initDrag(
 
 		if (Math.abs(delta) <= THRESHOLD) {
 			onCancel();
-		} else if (delta < 0) {
+		} else if (delta < 0 !== isRtl()) {
+			// Dragging content left advances in LTR; RTL mirrors it.
 			onNext();
 		} else {
 			onPrev();
@@ -153,8 +163,6 @@ export function initDrag(
 	track.addEventListener('mousedown', onMouseDown);
 	track.addEventListener('dragstart', onDragStart);
 	track.addEventListener('click', onClickCapture, true);
-	document.addEventListener('mousemove', onMouseMove);
-	document.addEventListener('mouseup', onMouseUp);
 	track.style.cursor = 'grab';
 
 	return () => {

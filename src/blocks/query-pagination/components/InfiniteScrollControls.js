@@ -8,7 +8,6 @@
  */
 import { __ } from '@wordpress/i18n';
 import {
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- NumberControl is stable in practice
 	__experimentalNumberControl as NumberControl,
 	TextControl,
 } from '@wordpress/components';

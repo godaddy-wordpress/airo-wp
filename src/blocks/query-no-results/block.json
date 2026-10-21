@@ -7,6 +7,7 @@
   "category": "airo-wp",
   "ancestor": ["airo-wp/query"],
   "description": "Content shown when the Dynamic Query returns no items.",
+  "keywords": ["empty", "no results", "not found", "query", "loop"],
   "textdomain": "airo-wp",
   "icon": "no",
   "supports": {

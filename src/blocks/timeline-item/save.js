@@ -31,12 +31,13 @@ const getSafeUrl = (url) => {
 	}
 };
 
-// Marker shape SVGs - same as edit.js
+// Marker shape SVGs - same as edit.js. No width/height: style.scss sizes the
+// marker from --airo-wp-timeline-marker-size, which the parent timeline sets.
+// (save() gets no block context, so a size here could only ever be the 16px
+// fallback.) Changing this markup needs a deprecation.
 const MarkerShapes = {
-	circle: ({ size, fillColor, borderColor }) => (
+	circle: ({ fillColor, borderColor }) => (
 		<svg
-			width={size}
-			height={size}
 			viewBox="0 0 24 24"
 			fill="none"
 			xmlns="http://www.w3.org/2000/svg"
@@ -52,10 +53,8 @@ const MarkerShapes = {
 			/>
 		</svg>
 	),
-	square: ({ size, fillColor, borderColor }) => (
+	square: ({ fillColor, borderColor }) => (
 		<svg
-			width={size}
-			height={size}
 			viewBox="0 0 24 24"
 			fill="none"
 			xmlns="http://www.w3.org/2000/svg"
@@ -73,10 +72,8 @@ const MarkerShapes = {
 			/>
 		</svg>
 	),
-	diamond: ({ size, fillColor, borderColor }) => (
+	diamond: ({ fillColor, borderColor }) => (
 		<svg
-			width={size}
-			height={size}
 			viewBox="0 0 24 24"
 			fill="none"
 			xmlns="http://www.w3.org/2000/svg"
@@ -110,7 +107,6 @@ export default function TimelineItemSave({ attributes, context }) {
 
 	// Get context from parent timeline
 	const markerStyle = context?.['airo-wp/timeline/markerStyle'] || 'circle';
-	const markerSize = context?.['airo-wp/timeline/markerSize'] || 16;
 	const markerColor = context?.['airo-wp/timeline/markerColor'] || '';
 	const markerBorderColor =
 		context?.['airo-wp/timeline/markerBorderColor'] || '';
@@ -161,15 +157,12 @@ export default function TimelineItemSave({ attributes, context }) {
 					alt=""
 					className="airo-wp-timeline-item__marker-image"
 					style={{
-						width: markerSize,
-						height: markerSize,
 						borderRadius: markerStyle === 'circle' ? '50%' : '4px',
 						objectFit: 'cover',
 					}}
 				/>
 			) : (
 				<MarkerShape
-					size={markerSize}
 					fillColor={effectiveMarkerColor}
 					borderColor={effectiveBorderColor}
 				/>

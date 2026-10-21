@@ -3,16 +3,14 @@
  *
  * Shows a preview of breadcrumbs in the editor based on current page context.
  */
-/* eslint-disable no-nested-ternary, jsx-a11y/anchor-is-valid */
-import { __ } from '@wordpress/i18n';
+/* eslint-disable jsx-a11y/anchor-is-valid */
+import { __, isRTL } from '@wordpress/i18n';
 import {
 	useBlockProps,
 	InspectorControls,
 	BlockControls,
 	JustifyContentControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import { Notice } from '@wordpress/components';
@@ -29,12 +27,13 @@ import { useBreadcrumbData } from './hooks/useBreadcrumbData';
  * @return {string} Separator character
  */
 function getSeparatorChar(separator) {
+	const rtl = isRTL();
 	const separators = {
 		slash: '/',
-		chevron: '›',
-		greater: '>',
+		chevron: rtl ? '‹' : '›',
+		greater: rtl ? '<' : '>',
 		bullet: '•',
-		'arrow-right': '→',
+		'arrow-right': rtl ? '←' : '→',
 	};
 	return separators[separator] || '/';
 }

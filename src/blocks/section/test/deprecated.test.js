@@ -25,15 +25,21 @@ import {
 	createBlock,
 	serialize,
 	getBlockContent,
-	// eslint-disable-next-line import/no-unresolved
 } from '@wordpress/block-editor/node_modules/@wordpress/blocks';
 import metadata from '../block.json';
 import save from '../save';
-import deprecated from '../deprecated';
+import deprecatedWithLayout from '../deprecated';
+
+// Keep historical-version positional assertions independent of the new snapshot.
+const deprecated = deprecatedWithLayout.slice(1);
 
 setCategories([{ slug: 'airo-wp', title: 'airo-wp' }]);
 
-registerBlockType(metadata.name, { ...metadata, save, deprecated });
+registerBlockType(metadata.name, {
+	...metadata,
+	save,
+	deprecated: deprecatedWithLayout,
+});
 
 /**
  * Builds a serialized `<!-- wp:airo-wp/section {...} -->` fixture from a
@@ -72,8 +78,8 @@ const OLD_SVG_MARKUP = `<!-- wp:airo-wp/section {"shapeDividerTop":"wave","shape
 // background color (no explicit shapeDividerBottomColor set), matching
 // V4ShapeDivider's inheritance behavior used by deprecations v4/v5/v6.
 // Built from v4's own save() so the fixture is byte-exact.
-// deprecated.js exports deprecations newest-first: [v10, v9, v8, v7, v6, v5, v4, v3, v2, v1].
-const [, , , , , , v4Deprecation] = deprecated;
+// deprecated.js exports deprecations newest-first: [v11, v11Unconstrained, v10, v9, v8, v7, v6, v5, v4, v3, v2, v1].
+const [, , , , , , , , v4Deprecation] = deprecated;
 const OLD_SVG_MARKUP_BOTTOM_INHERITED = buildOldMarkup(
 	{
 		shapeDividerBottom: 'tilt',
@@ -124,7 +130,7 @@ describe('section deprecations - shape divider SVG to class-based migration', ()
 	// wave/tilt, which were NOT redesigned, so they can't catch this.
 	test('deprecations reproduce frozen legacy geometry for redesigned shapes (drops)', () => {
 		// deprecated.js exports newest-first: [v9, v8, v7, v6, v5, v4, v3, v2, v1].
-		const [, , , , , , v4Dep, v3Dep] = deprecated;
+		const [, , , , , , , , v4Dep, v3Dep] = deprecated;
 
 		[v3Dep, v4Dep].forEach((deprecation) => {
 			const markup = buildOldMarkup(
@@ -141,7 +147,7 @@ describe('section deprecations - shape divider SVG to class-based migration', ()
 
 describe('section deprecations - style-kit overlay variation migration (v7)', () => {
 	// deprecated.js exports newest-first: [v9, v8, v7, v6, v5, v4, v3, v2, v1].
-	const [, , , v7Deprecation] = deprecated;
+	const [, , , , , v7Deprecation] = deprecated;
 
 	// Reproduce content saved BEFORE this change by taking what the block
 	// ACTUALLY serializes today (carrying block.json defaults such as the
@@ -265,7 +271,7 @@ describe('section deprecations - style-kit overlay variation migration (v7)', ()
 
 describe('section deprecations - style-kit hover variation migration (v8)', () => {
 	// deprecated.js exports newest-first: [v9, v8, v7, v6, v5, v4, v3, v2, v1].
-	const [, , v8Deprecation] = deprecated;
+	const [, , , , v8Deprecation] = deprecated;
 
 	// Reproduce content saved BEFORE hover-variation classes existed by taking
 	// the block's REAL current serialization and stripping the hover-text
@@ -424,7 +430,7 @@ describe('section deprecations - style-kit hover variation migration (v8)', () =
 
 describe('section deprecations - height-derived px clearance migration (v9)', () => {
 	// deprecated.js exports newest-first: [v9, v8, v7, v6, v5, v4, v3, v2, v1].
-	const [, v9Deprecation] = deprecated;
+	const [, , , v9Deprecation] = deprecated;
 
 	// v9's own save() reproduces the pre-change output: the inner container's
 	// shape-divider clearance is derived from the divider height and emitted as
@@ -707,5 +713,38 @@ describe('section deprecations - unconstrained markup without the attribute (v10
 
 		expect(block.isValid).toBe(true);
 		expect(block.attributes.constrainWidth).toBe(true);
+	});
+});
+
+describe('section - content column position on stored content', () => {
+	// Sections stored before `contentPosition` existed, including ones using
+	// `justifyContent: left` to left-align blocks inside a centered column. The
+	// new attribute must not reinterpret either: the column stays centered and
+	// the block parses valid with no migration.
+	const STORED_LEFT_JUSTIFIED = `<!-- wp:airo-wp/section {"contentWidth":"500px","style":{"spacing":{"padding":{"top":"0","right":"0","bottom":"0","left":"0"}}},"layout":{"type":"flex","orientation":"vertical","justifyContent":"left"}} -->
+<div class="wp-block-airo-wp-section alignfull airo-wp-stack" style="padding-top:0;padding-right:0;padding-bottom:0;padding-left:0"><div class="airo-wp-stack__inner" style="max-width:500px;margin-left:auto;margin-right:auto"></div></div>
+<!-- /wp:airo-wp/section -->`;
+
+	test('stays valid and keeps the column centered', () => {
+		const [block] = parse(STORED_LEFT_JUSTIFIED);
+
+		expect(block.isValid).toBe(true);
+		expect(block.attributes.contentPosition).toBe('center');
+		expect(getBlockContent(block)).toContain(
+			'style="max-width:500px;margin-left:auto;margin-right:auto"'
+		);
+	});
+
+	test('a left content position round-trips', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				contentWidth: '500px',
+				contentPosition: 'left',
+			})
+		);
+		const [block] = parse(html);
+
+		expect(block.isValid).toBe(true);
+		expect(block.attributes.contentPosition).toBe('left');
 	});
 });

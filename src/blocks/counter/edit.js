@@ -13,17 +13,15 @@ import { __ } from '@wordpress/i18n';
 import {
 	useBlockProps,
 	InspectorControls,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 	// WordPress 6.5+ - useSettings (plural) replaces useSetting (singular)
 	useSettings,
 } from '@wordpress/block-editor';
-import { useEffect } from '@wordpress/element';
 
 // Extracted Inspector Panel Components
 import { DsgoInspectorPanel } from '../../components/shared';
+import { useIconDefaults, useUniqueBlockId } from '../../hooks';
 import { CounterSettingsPanel } from './components/inspector/CounterSettingsPanel';
 import { LabelSettingsPanel } from './components/inspector/LabelSettingsPanel';
 import { IconSettingsPanel } from './components/inspector/IconSettingsPanel';
@@ -65,12 +63,27 @@ export default function CounterEdit({
 		showIcon,
 		icon,
 		iconPosition,
+		iconSize,
 		overrideAnimation,
 		customDuration,
 		customDelay,
 		customEasing,
 		hoverColor,
 	} = attributes;
+
+	// Inherited icon size (theme.json settings.custom.airowp.counter.defaultSize),
+	// shown in the inspector while iconSize is unset. The canvas needs no
+	// resolving: style.scss falls through to the same token.
+	const { size: inheritedIconSize } = useIconDefaults({
+		sizeKey: 'counter',
+		sizeFallback: 48,
+	});
+
+	// Must match save.js: size is inline only for an explicit iconSize.
+	const iconSizeStyle =
+		typeof iconSize === 'number'
+			? { '--airo-wp-counter-icon-size': `${iconSize}px` }
+			: undefined;
 
 	// Get theme color palette and gradient settings
 	const colorGradientSettings = useMultipleOriginColorsAndGradients();
@@ -94,14 +107,13 @@ export default function CounterEdit({
 	const effectiveHoverColor =
 		hoverColor || parentHoverColor || defaultHoverColor;
 
-	// Generate unique ID on mount (acceptable use of useEffect for ID generation)
-	useEffect(() => {
-		if (!uniqueId) {
-			setAttributes({
-				uniqueId: `counter-${Math.random().toString(36).substr(2, 9)}`,
-			});
-		}
-	}, [uniqueId, setAttributes]);
+	useUniqueBlockId({
+		clientId,
+		attributeName: 'uniqueId',
+		value: uniqueId,
+		setAttributes,
+		prefix: 'counter-',
+	});
 
 	// Calculate display value using extracted utility
 	const displayValue = formatCounterValue(endValue, {
@@ -174,6 +186,7 @@ export default function CounterEdit({
 							showIcon: false,
 							icon: 'star',
 							iconPosition: 'top',
+							iconSize: undefined,
 							overrideAnimation: false,
 							customDuration: 2,
 							customDelay: 0,
@@ -199,6 +212,8 @@ export default function CounterEdit({
 						showIcon={showIcon}
 						icon={icon}
 						iconPosition={iconPosition}
+						iconSize={iconSize}
+						inheritedIconSize={inheritedIconSize}
 						setAttributes={setAttributes}
 					/>
 
@@ -219,7 +234,10 @@ export default function CounterEdit({
 			<div {...blockProps}>
 				{/* Icon (if enabled and position is top) */}
 				{showIcon && iconPosition === 'top' && (
-					<div className="airo-wp-counter__icon airo-wp-counter__icon--top">
+					<div
+						className="airo-wp-counter__icon airo-wp-counter__icon--top"
+						style={iconSizeStyle}
+					>
 						{getIconSvg(icon)}
 					</div>
 				)}
@@ -229,7 +247,10 @@ export default function CounterEdit({
 				>
 					{/* Icon (if enabled and position is left) */}
 					{showIcon && iconPosition === 'left' && (
-						<div className="airo-wp-counter__icon airo-wp-counter__icon--left">
+						<div
+							className="airo-wp-counter__icon airo-wp-counter__icon--left"
+							style={iconSizeStyle}
+						>
 							{getIconSvg(icon)}
 						</div>
 					)}
@@ -241,7 +262,10 @@ export default function CounterEdit({
 
 					{/* Icon (if enabled and position is right) */}
 					{showIcon && iconPosition === 'right' && (
-						<div className="airo-wp-counter__icon airo-wp-counter__icon--right">
+						<div
+							className="airo-wp-counter__icon airo-wp-counter__icon--right"
+							style={iconSizeStyle}
+						>
 							{getIconSvg(icon)}
 						</div>
 					)}

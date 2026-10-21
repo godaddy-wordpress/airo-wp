@@ -18,6 +18,9 @@
 // Pill, Icon, Icon Button, and Modal Trigger (see src/styles/_justification.scss).
 @use 'justification' as *;
 
+// Same `transparent` preset fallback as the frontend (src/style.scss).
+@use 'preset-fallbacks';
+
 // Shared components
 @use '../components/shared/DsgoBlockPlaceholder/style' as airo-wp-block-placeholder;
 
@@ -32,6 +35,7 @@
 // canvas so an author previewing a hidden state sees the same result.
 @use '../extensions/interactions/style' as interactions;
 @use '../extensions/interactions/editor' as interactions-editor;
+@use '../extensions/layout/editor' as layout-editor;
 
 // Rich text formats (editor)
 @use '../formats/text-style/editor' as text-style;

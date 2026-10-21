@@ -6,11 +6,8 @@ import { __ } from '@wordpress/i18n';
 import {
 	useBlockProps,
 	RichText,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseColorProps as useColorProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseBorderProps as useBorderProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalGetSpacingClassesAndStyles as getSpacingClassesAndStyles,
 } from '@wordpress/block-editor';
 import DsgoJustificationToolbar from '../../components/shared/DsgoJustificationToolbar';

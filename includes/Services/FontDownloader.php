@@ -31,6 +31,20 @@ class FontDownloader {
 	const INITIAL_RETRY_DELAY = 1;
 
 	/**
+	 * Host serving Google Fonts CSS.
+	 *
+	 * @var string
+	 */
+	const CSS_HOST = 'fonts.googleapis.com';
+
+	/**
+	 * Host serving Google Fonts font files.
+	 *
+	 * @var string
+	 */
+	const FONT_FILE_HOST = 'fonts.gstatic.com';
+
+	/**
 	 * Download fonts from Google Fonts URLs and update font families array.
 	 *
 	 * @param array $font_families Font families array from global styles.
@@ -51,39 +65,51 @@ class FontDownloader {
 				continue;
 			}
 
-			$font_slug = $font_family['slug'] ?? 'unknown';
-			$font_name = $font_family['name'] ?? 'Unknown';
+			$font_slug = $this->to_string( $font_family['slug'] ?? null, 'unknown' );
+			$font_name = $this->to_string( $font_family['name'] ?? null, 'Unknown' );
 
 			foreach ( $font_family['fontFace'] as &$font_face ) {
-				if ( empty( $font_face['src'] ) || ! is_array( $font_face['src'] ) ) {
+				// theme.json allows src to be a single string as well as a list.
+				$sources = is_string( $font_face['src'] ?? null ) ? array( $font_face['src'] ) : ( $font_face['src'] ?? null );
+
+				if ( empty( $sources ) || ! is_array( $sources ) ) {
 					continue;
 				}
 
-				$src_url = $font_face['src'][0] ?? '';
+				$src_url = $sources[0] ?? '';
+
+				if ( ! is_string( $src_url ) ) {
+					continue;
+				}
+
+				$weight = $this->to_string( $font_face['fontWeight'] ?? null, '400' );
+				$style  = $this->to_string( $font_face['fontStyle'] ?? null, 'normal' );
+
+				$css_url = $this->normalise_google_fonts_url( $src_url );
 
 				// Skip if not a Google Fonts URL.
-				if ( ! $this->is_google_fonts_url( $src_url ) ) {
+				if ( null === $css_url ) {
 					continue;
 				}
 
 				// Download the font and get local path.
 				$local_path = $this->download_google_font(
-					$src_url,
+					$css_url,
 					$font_slug,
-					$font_face['fontWeight'] ?? '400',
-					$font_face['fontStyle'] ?? 'normal'
+					$weight,
+					$style
 				);
 
 				if ( $local_path ) {
 					// Update src to use local file path.
 					$font_face['src'] = array( $local_path );
 				} else {
-					error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					$this->log(
 						sprintf(
-							'[Font Downloader] Failed to download %s (%s %s) from %s',
+							'Failed to download %s (%s %s) from %s',
 							$font_name,
-							$font_face['fontWeight'] ?? '400',
-							$font_face['fontStyle'] ?? 'normal',
+							$weight,
+							$style,
 							$src_url
 						)
 					);
@@ -95,13 +121,83 @@ class FontDownloader {
 	}
 
 	/**
-	 * Check if URL is a Google Fonts URL.
+	 * Coerce a value from the (untyped) settings schema to a string.
+	 *
+	 * @param mixed  $value    Raw value.
+	 * @param string $fallback Used when the value is not a non-empty scalar.
+	 * @return string
+	 */
+	private function to_string( $value, string $fallback ): string {
+		return is_scalar( $value ) && '' !== (string) $value ? (string) $value : $fallback;
+	}
+
+	/**
+	 * Write a diagnostic line to the error log.
+	 *
+	 * Control characters are replaced so a URL or font name taken from tool input
+	 * cannot forge extra log lines.
+	 *
+	 * @param string $message Message, without the "[Font Downloader]" prefix.
+	 * @return void
+	 */
+	private function log( string $message ): void {
+		error_log( '[Font Downloader] ' . (string) preg_replace( '/[\x00-\x1F\x7F]/', ' ', $message ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+	}
+
+	/**
+	 * Return the HTTPS form of a Google Fonts CSS URL, or null if it is not one.
+	 *
+	 * Sources using http:// or a protocol-relative form are upgraded rather than rejected:
+	 * skipping them would leave the site loading fonts from Google at runtime,
+	 * which is what localising them is meant to prevent.
 	 *
 	 * @param string $url URL to check.
-	 * @return bool True if Google Fonts URL.
+	 * @return string|null HTTPS Google Fonts CSS URL, or null.
 	 */
-	private function is_google_fonts_url( string $url ): bool {
-		return strpos( $url, 'fonts.googleapis.com' ) !== false;
+	private function normalise_google_fonts_url( string $url ): ?string {
+		if ( ! $this->url_has_host( $url, self::CSS_HOST, array( 'https', 'http', '' ) ) ) {
+			return null;
+		}
+
+		$parts = wp_parse_url( $url );
+
+		return 'https://' . self::CSS_HOST . ( $parts['path'] ?? '' ) . ( isset( $parts['query'] ) ? '?' . $parts['query'] : '' );
+	}
+
+	/**
+	 * Check that a URL uses an allowed scheme and its host is exactly the given host.
+	 *
+	 * Parsed rather than substring-matched, so a host that only appears in the
+	 * path, query, userinfo or a look-alike domain does not pass.
+	 *
+	 * @param string   $url     URL to check.
+	 * @param string   $host    Expected host.
+	 * @param string[] $schemes Allowed schemes; '' means no scheme (protocol-relative).
+	 * @return bool True if the URL has an allowed scheme and is on that host.
+	 */
+	private function url_has_host( string $url, string $host, array $schemes = array( 'https' ) ): bool {
+		$parts = wp_parse_url( $url );
+
+		if ( ! is_array( $parts ) || empty( $parts['host'] ) ) {
+			return false;
+		}
+
+		if ( isset( $parts['user'] ) || isset( $parts['pass'] ) ) {
+			return false;
+		}
+
+		$scheme = isset( $parts['scheme'] ) ? strtolower( $parts['scheme'] ) : '';
+
+		if ( ! in_array( $scheme, $schemes, true ) ) {
+			return false;
+		}
+
+		// An explicit port must be the scheme's default; anything else is a different service.
+		if ( isset( $parts['port'] ) && ( 'http' === $scheme ? 80 : 443 ) !== (int) $parts['port'] ) {
+			return false;
+		}
+
+		return strtolower( $parts['host'] ) === $host;
 	}
 
 	/**
@@ -111,35 +207,36 @@ class FontDownloader {
 	 * @param string $font_slug            Font slug for filename.
 	 * @param string $weight               Font weight.
 	 * @param string $style                Font style.
-	 * @return string|null Local file path or null on failure.
+	 * @return string|null URL of the local font file, or null on failure.
 	 */
 	private function download_google_font( string $google_fonts_css_url, string $font_slug, string $weight, string $style ): ?string {
 		// Parse Google Fonts CSS to get actual font file URL.
 		$font_file_url = $this->parse_google_fonts_css( $google_fonts_css_url );
 
 		if ( ! $font_file_url ) {
-			error_log( '[Font Downloader] Failed to parse Google Fonts CSS: ' . $google_fonts_css_url ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			$this->log( 'Failed to parse Google Fonts CSS: ' . $google_fonts_css_url );
 			return null;
 		}
 
 		// Generate filename.
-		$filename = $this->generate_filename( $font_slug, $weight, $style, $font_file_url );
+		$filename = $this->generate_filename( $font_file_url, $font_slug, $weight, $style );
 
 		// Get WordPress fonts directory.
 		$font_dir = wp_font_dir();
-		if ( ! $font_dir || ! isset( $font_dir['path'] ) ) {
-			error_log( '[Font Downloader] Could not get WordPress font directory' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		if ( ! $font_dir || empty( $font_dir['path'] ) || empty( $font_dir['url'] ) ) {
+			$this->log( 'Could not get WordPress font directory' );
 			return null;
 		}
 
 		$font_dir_path  = $font_dir['path'];
 		$font_file_path = trailingslashit( $font_dir_path ) . $filename;
 
+		// wp_font_dir() varies per multisite subsite and is filterable, so the src is its URL rather than a theme-relative path.
+		$font_file_src = trailingslashit( $font_dir['url'] ) . $filename;
+
 		// Check if font already exists.
 		if ( file_exists( $font_file_path ) ) {
-			// Return relative path using file:./ prefix (WordPress standard for portability).
-			// This path is relative to theme directory and resolved dynamically on page load.
-			return 'file:./../../uploads/fonts/' . $filename;
+			return $font_file_src;
 		}
 
 		// Download the font file with retry logic.
@@ -149,47 +246,74 @@ class FontDownloader {
 			return null;
 		}
 
+		try {
+			if ( ! $this->store_font_file( $downloaded_file, $font_dir_path, $font_file_path ) ) {
+				return null;
+			}
+		} finally {
+			// On every exit path, including a throw from the filesystem, the temp download must not outlive this call.
+			if ( file_exists( $downloaded_file ) ) {
+				wp_delete_file( $downloaded_file );
+			}
+		}
+
+		return $font_file_src;
+	}
+
+	/**
+	 * Validate a downloaded font and move it into the fonts directory.
+	 *
+	 * Leaves the temp download in place on failure; the caller removes it.
+	 *
+	 * @param string $downloaded_file Path to the temp download.
+	 * @param string $font_dir_path   Fonts directory.
+	 * @param string $font_file_path  Destination path inside the fonts directory.
+	 * @return bool True if the font now lives at $font_file_path.
+	 */
+	private function store_font_file( string $downloaded_file, string $font_dir_path, string $font_file_path ): bool {
+		// Validate before the file reaches the public fonts directory.
+		if ( ! $this->validate_font_file( $downloaded_file ) ) {
+			$this->log( 'Font file validation failed: ' . basename( $font_file_path ) );
+			return false;
+		}
+
 		// Ensure fonts directory exists.
-		if ( ! file_exists( $font_dir_path ) ) {
-			wp_mkdir_p( $font_dir_path );
+		if ( ! file_exists( $font_dir_path ) && ! wp_mkdir_p( $font_dir_path ) ) {
+			$this->log( 'Could not create font directory: ' . $font_dir_path );
+			return false;
 		}
 
 		// Move downloaded file to fonts directory using WP_Filesystem.
 		if ( ! function_exists( 'WP_Filesystem' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
-		WP_Filesystem();
+
+		// Test writability in the fonts directory, not wp-content: uploads is writable on hosts where wp-content is not.
+		// False means an FTP/SSH method could not connect; $wp_filesystem is then set but unusable.
+		if ( ! WP_Filesystem( false, $font_dir_path, true ) ) {
+			$this->log( 'Could not initialise the filesystem to store: ' . $font_file_path );
+			return false;
+		}
+
 		global $wp_filesystem;
 
-		$moved = $wp_filesystem->move( $downloaded_file, $font_file_path, true );
-
-		if ( ! $moved ) {
-			error_log( '[Font Downloader] Failed to move font file to: ' . $font_file_path ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			$wp_filesystem->delete( $downloaded_file );
-			return null;
+		if ( ! $wp_filesystem->move( $downloaded_file, $font_file_path, true ) ) {
+			$this->log( 'Failed to move font file to: ' . $font_file_path );
+			return false;
 		}
 
-		// Validate the downloaded file.
-		if ( ! $this->validate_font_file( $font_file_path ) ) {
-			error_log( '[Font Downloader] Font file validation failed: ' . $filename ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			$wp_filesystem->delete( $font_file_path );
-			return null;
-		}
-
-		// Return relative path using file:./ prefix (WordPress standard for portability).
-		// This path is relative to theme directory and resolved dynamically on page load.
-		return 'file:./../../uploads/fonts/' . $filename;
+		return true;
 	}
 
 	/**
 	 * Parse Google Fonts CSS to extract actual font file URL.
 	 *
 	 * @param string $css_url Google Fonts CSS URL.
-	 * @return string|null Font file URL or null on failure.
+	 * @return string|null Font file URL on fonts.gstatic.com, or null on failure.
 	 */
 	private function parse_google_fonts_css( string $css_url ): ?string {
 		// Fetch the CSS content.
-		$response = wp_remote_get( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.wp_remote_get_wp_remote_get
+		$response = wp_safe_remote_get(
 			$css_url,
 			array(
 				'timeout'    => 3,
@@ -198,7 +322,13 @@ class FontDownloader {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			error_log( '[Font Downloader] Failed to fetch Google Fonts CSS: ' . $response->get_error_message() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			$this->log( 'Failed to fetch Google Fonts CSS: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		if ( 200 !== $status ) {
+			$this->log( sprintf( 'Google Fonts CSS returned HTTP %d: %s', $status, $css_url ) );
 			return null;
 		}
 
@@ -214,22 +344,22 @@ class FontDownloader {
 		// This is typically the last @font-face rule in the response.
 
 		// Try to find the Latin subset specifically (look for comment or unicode-range).
-		if ( preg_match( '/\/\*\s*latin\s*\*\/.*?url\((https:\/\/fonts\.gstatic\.com\/[^)]+\.woff2)\)/s', $css_content, $matches ) ) {
-			return $matches[1];
+		if ( preg_match( '/\/\*\s*latin\s*\*\/.*?url\(([^)]+\.woff2)\)/s', $css_content, $matches ) ) {
+			$font_file_url = $matches[1];
+		} elseif ( preg_match_all( '/url\(([^)]+\.woff2)\)/', $css_content, $matches ) ) {
+			// Fallback: the last woff2 URL (Latin subset is typically last).
+			$font_file_url = end( $matches[1] );
+		} else {
+			return null;
 		}
 
-		// Fallback: Get all woff2 URLs and return the last one (usually Latin subset).
-		if ( preg_match_all( '/url\((https:\/\/fonts\.gstatic\.com\/[^)]+\.woff2)\)/', $css_content, $matches ) ) {
-			// Return the last match (Latin subset is typically last).
-			return end( $matches[1] );
+		// The CSS body is remote input; never hand back a URL on any other host.
+		if ( ! $this->url_has_host( $font_file_url, self::FONT_FILE_HOST ) ) {
+			$this->log( 'Refusing font file from unexpected host: ' . $font_file_url );
+			return null;
 		}
 
-		// Final fallback: try to find any woff2 URL.
-		if ( preg_match( '/url\((https:\/\/[^)]+\.woff2)\)/', $css_content, $matches ) ) {
-			return $matches[1];
-		}
-
-		return null;
+		return $font_file_url;
 	}
 
 	/**
@@ -270,25 +400,27 @@ class FontDownloader {
 	/**
 	 * Generate filename for font file.
 	 *
-	 * @param string $font_slug Font slug.
-	 * @param string $weight    Font weight.
-	 * @param string $style     Font style.
-	 * @param string $url       Font file URL (to extract extension).
+	 * @param string $font_file_url Font file URL on fonts.gstatic.com.
+	 * @param string $font_slug     Font slug.
+	 * @param string $weight        Font weight.
+	 * @param string $style         Font style.
 	 * @return string Filename.
 	 */
-	private function generate_filename( string $font_slug, string $weight, string $style, string $url ): string {
-		// Extract extension from URL.
-		$extension = 'woff2'; // Default.
-		if ( preg_match( '/\.([a-z0-9]+)(\?|$)/i', $url, $matches ) ) {
-			$extension = $matches[1];
-		}
-
+	private function generate_filename( string $font_file_url, string $font_slug, string $weight, string $style ): string {
 		// Sanitize components.
 		$font_slug = sanitize_file_name( $font_slug );
 		$weight    = sanitize_file_name( $weight );
 		$style     = sanitize_file_name( $style );
 
-		return sprintf( '%s-%s-%s.%s', $font_slug, $weight, $style, $extension );
+		// The slug is a theme.json role ("heading", "body") that can be pointed at another family,
+		// so the name also carries the font file's identity. The gstatic URL encodes family and
+		// version, so a changed family or a new upstream version is a cache miss, not a stale hit.
+		// Superseded files are left in place on purpose: global-styles revisions and other
+		// themes' global-styles posts keep the old src URL, and deleting it would 404 them.
+		$font_id = substr( md5( $font_file_url ), 0, 12 );
+
+		// Always .woff2: only .woff2 URLs are extracted and validate_font_file() only accepts WOFF2.
+		return sprintf( '%s-%s-%s-%s.woff2', $font_slug, $weight, $style, $font_id );
 	}
 
 	/**
@@ -309,7 +441,7 @@ class FontDownloader {
 			return false;
 		}
 
-		// Check file signature for WOFF2 format.
+		// Check file signature.
 		$handle = fopen( $file_path, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 		if ( ! $handle ) {
 			return false;
@@ -318,22 +450,7 @@ class FontDownloader {
 		$signature = fread( $handle, 4 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
 		fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 
-		// WOFF2 signature: "wOF2" (0x774F4632).
-		if ( 'wOF2' === $signature ) {
-			return true;
-		}
-
-		// WOFF signature: "wOFF" (0x774F4646).
-		if ( 'wOFF' === $signature ) {
-			return true;
-		}
-
-		// TTF/OTF signatures.
-		$first_bytes = unpack( 'N', $signature );
-		if ( $first_bytes && in_array( $first_bytes[1], array( 0x00010000, 0x4F54544F ), true ) ) {
-			return true;
-		}
-
-		return false;
+		// WOFF2 signature: "wOF2" — the only format Google Fonts serves to the request's user agent.
+		return 'wOF2' === $signature;
 	}
 }

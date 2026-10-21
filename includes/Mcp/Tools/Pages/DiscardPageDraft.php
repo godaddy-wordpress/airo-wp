@@ -92,14 +92,14 @@ class DiscardPageDraft extends BaseTool {
 		if ( 'page' !== $draft->post_type ) {
 			return array(
 				'success' => false,
-				'message' => __( 'Only page drafts can be published.', 'airo-wp' ),
+				'message' => __( 'Only page drafts can be discarded.', 'airo-wp' ),
 			);
 		}
 
 		if ( 'draft' !== $draft->post_status ) {
 			return array(
 				'success' => false,
-				'message' => __( 'Only posts in draft status can be published as a Site Designer draft.', 'airo-wp' ),
+				'message' => __( 'Only posts in draft status can be discarded as a page draft.', 'airo-wp' ),
 			);
 		}
 
@@ -108,7 +108,7 @@ class DiscardPageDraft extends BaseTool {
 		if ( empty( $original_meta ) ) {
 			return array(
 				'success' => false,
-				'message' => __( 'The page is not a Site Designer draft copy.', 'airo-wp' ),
+				'message' => __( 'The page is not a draft copy of a published page.', 'airo-wp' ),
 			);
 		}
 
@@ -118,6 +118,13 @@ class DiscardPageDraft extends BaseTool {
 			return array(
 				'success' => false,
 				'message' => __( 'The draft is missing a valid original page reference.', 'airo-wp' ),
+			);
+		}
+
+		if ( ! current_user_can( 'edit_post', $original_id ) || ! current_user_can( 'delete_post', $draft_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to discard this draft.', 'airo-wp' ),
 			);
 		}
 
@@ -173,7 +180,7 @@ class DiscardPageDraft extends BaseTool {
 			array(
 				'original_id' => array(
 					'type'        => 'integer',
-					'description' => __( 'The ID of the original page that was updated.', 'airo-wp' ),
+					'description' => __( 'The ID of the original page the draft was created from.', 'airo-wp' ),
 				),
 			)
 		);

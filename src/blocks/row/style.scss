@@ -6,6 +6,9 @@
  * @package airo-wp
  */
 
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
 .airo-wp-flex {
 	// CRITICAL: Ensure width includes padding/border to prevent overflow
 	box-sizing: border-box;
@@ -17,7 +20,7 @@
 	overflow: visible;
 
 	// Smooth transition for hover background color
-	transition: background-color 0.3s ease;
+	transition: background-color $airo-wp-duration-normal $airo-wp-easing;
 
 	/**
 	 * Background overlay
@@ -66,9 +69,12 @@
 	.airo-wp-stack__inner > &,
 	.airo-wp-flex__inner > &,
 	.airo-wp-grid__inner > & {
-		width: 100% !important;
 
-		.airo-wp-flex__inner {
+		:where(&) {
+			width: 100%;
+		}
+
+		&:where(:not([class*="airo-wp-layout-"])) > .airo-wp-flex__inner {
 			max-width: none !important;
 			margin-left: 0 !important;
 			margin-right: 0 !important;
@@ -107,7 +113,7 @@
 	// outer-only rule no longer produced stacking.
 	&--mobile-stack {
 
-		@media (max-width: 767px) {
+		@include below($breakpoint-mobile) {
 			flex-direction: column !important;
 
 			> .airo-wp-flex__inner {
@@ -123,7 +129,7 @@
 	&.alignfull.airo-wp-no-width-constraint > .airo-wp-flex__inner[class*="wp-container-"] {
 		// Target all direct children that aren't explicitly aligned
 		// Exclude blocks with explicit max-width set via our extension
-		> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width) {
+		> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width):not(.airo-wp-stack--has-box-width):where(:not([class*="airo-wp-layout-"])) {
 			max-width: none !important;
 			margin-left: 0 !important;
 			margin-right: 0 !important;

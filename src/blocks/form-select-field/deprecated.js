@@ -67,6 +67,7 @@ const sharedAttributes = {
  * The last static markup, immediately before the block became server-rendered.
  */
 const vStatic = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: sharedAttributes,
 
@@ -160,7 +161,13 @@ const vStatic = {
 	},
 
 	migrate(attributes) {
-		return attributes;
+		// No empty-value option in static markup means the author omitted the
+		// placeholder. Preserve that opt-out instead of enabling the new default.
+		return {
+			...attributes,
+			placeholder: attributes.placeholder ?? '',
+			dsgoConditions: null,
+		};
 	},
 };
 
@@ -171,6 +178,7 @@ const vStatic = {
  * required select fields. This deprecation matches that older format.
  */
 const v2 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: {
 		fieldName: {
@@ -224,7 +232,8 @@ const v2 = {
 		);
 	},
 	migrate(attributes) {
-		return attributes;
+		// Land on the current schema (dsgoConditions postdates this version).
+		return { ...attributes, dsgoConditions: null };
 	},
 
 	save({ attributes }) {
@@ -310,6 +319,7 @@ const v2 = {
  * the browser select the first <option> naturally.
  */
 const v1 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: {
 		fieldName: {
@@ -445,7 +455,8 @@ const v1 = {
 	},
 
 	migrate(attributes) {
-		return attributes;
+		// Land on the current schema (dsgoConditions postdates this version).
+		return { ...attributes, dsgoConditions: null };
 	},
 };
 

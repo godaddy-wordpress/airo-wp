@@ -2,6 +2,7 @@
  * Tabs Block - Frontend Styles
  */
 
+@use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
 
 // Ensure WordPress block wrapper doesn't cause overflow
@@ -12,8 +13,8 @@
 	// Override WordPress alignment negative margins
 	&.alignfull,
 	&.alignwide {
-		margin-left: 0 !important;
-		margin-right: 0 !important;
+		margin-inline-start: 0 !important;
+		margin-inline-end: 0 !important;
 	}
 }
 
@@ -25,19 +26,26 @@
 	min-width: 0; // Allow shrinking in flex containers
 	box-sizing: border-box; // Include padding/border in width calculation
 	overflow: hidden; // Prevent child elements from overflowing
-	margin-left: 0 !important; // Prevent WordPress negative margins
-	margin-right: 0 !important; // Prevent WordPress negative margins
+	margin-inline-start: 0 !important; // Prevent WordPress negative margins
+	margin-inline-end: 0 !important; // Prevent WordPress negative margins
 
 	// CSS custom properties for easy customization
 	--airo-wp-tabs-gap: 8px;
 	--airo-wp-tab-padding: var(--wp--preset--spacing--30, 1rem);
+	// Colours follow the surrounding content. Naming theme presets (contrast, accent-2) meant the
+	// tabs took whatever those happened to be — on Twenty Twenty-Four accent-2 is a pale pink, which
+	// was unreadable on a coloured section — and neither preset knows what the tabs sit on.
+	// currentColor is the colour the surrounding content already reads against, so the default is
+	// legible on any surface; the active tab reads by full strength, weight and its indicator.
 	--airo-wp-tab-bg: transparent;
-	--airo-wp-tab-color: var(--wp--preset--color--contrast, #000);
-	--airo-wp-tab-bg-active: var(--wp--preset--color--accent-2, #2563eb);
-	--airo-wp-tab-color-active: var(--wp--preset--color--accent-2, #2563eb);
-	--airo-wp-tab-color-hover: var(--airo-wp-tab-color-active);
+	// Where color-mix() is unsupported the property is invalid at computed-value time, so the tab
+	// simply inherits the surrounding colour, which is still readable.
+	--airo-wp-tab-color: color-mix(in srgb, currentcolor 70%, transparent);
+	--airo-wp-tab-bg-active: transparent;
+	--airo-wp-tab-color-active: currentcolor;
+	--airo-wp-tab-color-hover: currentcolor;
 	--airo-wp-tab-bg-hover: transparent;
-	--airo-wp-tab-border-color: var(--wp--preset--color--accent-2, #2563eb);
+	--airo-wp-tab-border-color: currentcolor;
 	--airo-wp-tab-border-radius: var(--wp--custom--airo-wp--border-radius--small, 0.25rem);
 	--airo-wp-tab-content-bg: transparent;
 
@@ -47,7 +55,7 @@
 	 */
 	.airo-wp-tabs__skip-link {
 		position: absolute;
-		left: -9999px;
+		inset-inline-start: -9999px;
 		top: auto;
 		width: 1px;
 		height: 1px;
@@ -58,12 +66,13 @@
 			width: auto;
 			height: auto;
 			padding: 0.5rem 1rem;
-			background: var(--wp--preset--color--accent-2, #2563eb);
-			color: var(--wp--preset--color--base, #fff);
+			background: transparent;
+			color: currentcolor;
+			box-shadow: inset 0 0 0 2px currentcolor;
 			text-decoration: none;
-			border-radius: 4px;
+			border-radius: $airo-wp-radius-small;
 			font-weight: 600;
-			margin-right: auto;
+			margin-inline-end: auto;
 			order: -1; // Ensure it appears first in flexbox
 		}
 	}
@@ -80,7 +89,7 @@
 
 		// Hide scrollbar in most browsers but keep functionality
 		scrollbar-width: thin;
-		scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+		scrollbar-color: color-mix(in srgb, currentcolor 20%, transparent) transparent;
 
 		&::-webkit-scrollbar {
 			height: 4px;
@@ -91,8 +100,8 @@
 		}
 
 		&::-webkit-scrollbar-thumb {
-			background: rgba(0, 0, 0, 0.2);
-			border-radius: 2px;
+			background: color-mix(in srgb, currentcolor 20%, transparent);
+			border-radius: $airo-wp-radius-small;
 		}
 	}
 
@@ -101,7 +110,7 @@
 	 * Shows a divider line below the tab navigation when enabled
 	 */
 	&.airo-wp-tabs--show-nav-border .airo-wp-tabs__nav {
-		border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+		border-bottom: 1px solid color-mix(in srgb, currentcolor 18%, transparent);
 		padding-bottom: 0.5rem;
 	}
 
@@ -120,12 +129,12 @@
 		font-size: inherit;
 		font-weight: 500;
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: all $airo-wp-duration-fast $airo-wp-easing;
 		position: relative;
 		white-space: nowrap;
 
 		&:hover:not(.is-active) {
-			color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+			color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, currentColor));
 			background: var(--airo-wp-tab-bg-hover, transparent);
 		}
 
@@ -142,7 +151,7 @@
 
 		&.is-active {
 			background: var(--airo-wp-tab-bg-active, transparent);
-			color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+			color: var(--airo-wp-tab-color-active, currentColor);
 			font-weight: 600;
 		}
 
@@ -266,7 +275,7 @@
 		.airo-wp-tabs__nav {
 			flex-direction: column;
 			margin-bottom: 0;
-			padding-right: var(--wp--preset--spacing--40, 1.5rem);
+			padding-inline-end: var(--wp--preset--spacing--40, 1.5rem);
 			min-width: 200px;
 			overflow: visible; // Remove horizontal scrollbar for vertical tabs
 		}
@@ -286,12 +295,12 @@
 
 			&:hover:not(.is-active) {
 				background: var(--airo-wp-tab-bg-hover, transparent);
-				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, currentColor));
 			}
 
 			&.is-active {
 				background: transparent;
-				color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+				color: var(--airo-wp-tab-color-active, currentColor);
 			}
 		}
 	}
@@ -300,35 +309,34 @@
 	 * Tab Style: Pills
 	 */
 	&.airo-wp-tabs--pills {
-		// Override color variable for pills - white text on colored background
-		--airo-wp-tab-color-active: #fff;
-		// Hover text follows the active *background* color (the accent), not
-		// the active *text* color (white) — white hover text would be
-		// invisible on the light hover background. A user-set hover color
-		// (inline --airo-wp-tab-color-hover) still wins over this default.
-		--airo-wp-tab-color-hover: var(
-			--airo-wp-tab-bg-active,
-			var(--wp--preset--color--accent-2, #2563eb)
-		);
+		// A pill needs a fill, and a fixed accent fill with white text was readable on neither a
+		// light nor a dark section. Tinting the surrounding colour keeps the label at full strength
+		// and readable on both. A colour set in the inspector still wins: it lands inline on this
+		// same element.
+		--airo-wp-tab-bg: color-mix(in srgb, currentcolor 8%, transparent);
+		--airo-wp-tab-bg-hover: color-mix(in srgb, currentcolor 12%, transparent);
+		--airo-wp-tab-bg-active: color-mix(in srgb, currentcolor 16%, transparent);
+		--airo-wp-tab-color-active: currentcolor;
+		--airo-wp-tab-color-hover: currentcolor;
 
 		.airo-wp-tabs__nav {
 			border-bottom: none;
 		}
 
 		.airo-wp-tabs__tab {
-			background: var(--airo-wp-tab-bg, rgba(0, 0, 0, 0.05));
+			background: var(--airo-wp-tab-bg, color-mix(in srgb, currentColor 8%, transparent));
 			border-radius: var(--airo-wp-tab-border-radius);
 			border-bottom: none;
 			margin-bottom: 0;
 
 			&:hover:not(.is-active) {
-				background: var(--airo-wp-tab-bg-hover, var(--airo-wp-tab-bg, rgba(0, 0, 0, 0.1)));
-				color: var(--airo-wp-tab-color-hover, var(--wp--preset--color--accent-2, #2563eb));
+				background: var(--airo-wp-tab-bg-hover, var(--airo-wp-tab-bg, color-mix(in srgb, currentColor 12%, transparent)));
+				color: var(--airo-wp-tab-color-hover, currentColor);
 			}
 
 			&.is-active {
-				background: var(--airo-wp-tab-bg-active, var(--wp--preset--color--accent-2, #2563eb));
-				color: var(--airo-wp-tab-color-active, #fff);
+				background: var(--airo-wp-tab-bg-active, color-mix(in srgb, currentColor 16%, transparent));
+				color: var(--airo-wp-tab-color-active, currentColor);
 			}
 		}
 	}
@@ -339,7 +347,7 @@
 	&.airo-wp-tabs--underline {
 
 		.airo-wp-tabs__nav {
-			border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+			border-bottom: 1px solid color-mix(in srgb, currentcolor 18%, transparent);
 		}
 
 		.airo-wp-tabs__tab {
@@ -350,12 +358,12 @@
 
 			&:hover:not(.is-active) {
 				background: var(--airo-wp-tab-bg-hover, transparent);
-				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, currentColor));
 			}
 
 			&.is-active {
-				border-bottom-color: var(--airo-wp-tab-border-color, var(--wp--preset--color--accent-2, #2563eb));
-				color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+				border-bottom-color: var(--airo-wp-tab-border-color, currentColor);
+				color: var(--airo-wp-tab-color-active, currentColor);
 				background: transparent; // Keep transparent even when active
 			}
 		}
@@ -368,16 +376,16 @@
 
 		.airo-wp-tabs__tab {
 			border-bottom: 2px solid transparent;
-			margin-right: 0;
+			margin-inline-end: 0;
 
 			&:hover:not(.is-active) {
-				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, currentColor));
 				background: var(--airo-wp-tab-bg-hover, transparent);
 			}
 
 			&.is-active {
-				border-bottom-color: var(--airo-wp-tab-border-color, var(--wp--preset--color--accent-2, #2563eb));
-				color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+				border-bottom-color: var(--airo-wp-tab-border-color, currentColor);
+				color: var(--airo-wp-tab-color-active, currentColor);
 			}
 		}
 	}
@@ -386,8 +394,8 @@
 	 * Tab Style: Minimal
 	 */
 	&.airo-wp-tabs--minimal {
-		// Override defaults for minimal style - use light gray background with blue text
-		--airo-wp-tab-bg-active: rgba(0, 0, 0, 0.03);
+		// A faint tint of the surrounding colour, so the active tab is marked on a dark section too.
+		--airo-wp-tab-bg-active: color-mix(in srgb, currentcolor 5%, transparent);
 
 		.airo-wp-tabs__nav {
 			border-bottom: none;
@@ -399,18 +407,20 @@
 			margin-bottom: 0;
 
 			&:hover:not(.is-active) {
-				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb)));
+				color: var(--airo-wp-tab-color-hover, var(--airo-wp-tab-color-active, currentColor));
 				background: var(--airo-wp-tab-bg-hover, transparent);
 			}
 
 			&.is-active {
 				background: var(--airo-wp-tab-bg-active);
-				color: var(--airo-wp-tab-color-active, var(--wp--preset--color--accent-2, #2563eb));
+				color: var(--airo-wp-tab-color-active, currentColor);
 			}
 		}
 
-		// When user customizes background to a color (via inline styles), use white text for contrast
-		&[style*="--airo-wp-tab-bg-active"] .airo-wp-tabs__tab.is-active {
+		// A background chosen in the inspector needs a label that reads against it, and the base
+		// colour is the best guess CSS can make. It is only a guess, so an explicitly chosen active
+		// colour keeps precedence rather than being overwritten with white.
+		&[style*="--airo-wp-tab-bg-active"]:not([style*="--airo-wp-tab-color-active"]) .airo-wp-tabs__tab.is-active {
 			color: var(--wp--preset--color--base, #fff);
 		}
 	}
@@ -426,7 +436,7 @@
 
 		.airo-wp-tab {
 			display: block !important; // Force all tabs visible in accordion mode
-			border: 1px solid rgba(0, 0, 0, 0.1);
+			border: 1px solid color-mix(in srgb, currentcolor 18%, transparent);
 			border-radius: var(--airo-wp-tab-border-radius);
 			margin-bottom: 0.5rem;
 			padding: 0; // Remove any padding from tab panel itself
@@ -439,19 +449,19 @@
 				align-items: center;
 				justify-content: space-between;
 				padding: var(--airo-wp-tab-padding);
-				background: rgba(0, 0, 0, 0.02);
+				background: color-mix(in srgb, currentcolor 2%, transparent);
 				border: none;
-				border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+				border-bottom: 1px solid color-mix(in srgb, currentcolor 18%, transparent);
 				font-family: inherit;
 				font-size: inherit;
 				font-weight: 600;
 				cursor: pointer;
-				text-align: left;
+				text-align: start;
 
 				&::after {
 					content: '\25BC'; // Down arrow
 					font-size: 0.75em;
-					transition: transform 0.2s ease;
+					transition: transform $airo-wp-duration-fast $airo-wp-easing;
 				}
 
 				&[aria-expanded='true']::after {
@@ -459,7 +469,7 @@
 				}
 
 				&:hover {
-					background: rgba(0, 0, 0, 0.05);
+					background: color-mix(in srgb, currentcolor 5%, transparent);
 				}
 			}
 
@@ -494,7 +504,7 @@
 			font-family: inherit;
 			font-size: inherit;
 			font-weight: 500;
-			border: 1px solid rgba(0, 0, 0, 0.2);
+			border: 1px solid color-mix(in srgb, currentcolor 20%, transparent);
 			border-radius: var(--airo-wp-tab-border-radius);
 			background: var(--airo-wp-tab-bg);
 			color: var(--airo-wp-tab-color);
@@ -551,7 +561,7 @@
 /**
  * Responsive: Mobile
  */
-@media (max-width: 767px) {
+@include below($breakpoint-mobile) {
 
 	.airo-wp-tabs {
 		// Default to accordion on mobile
@@ -566,12 +576,12 @@
 				}
 
 				&::-webkit-scrollbar-track {
-					background: rgba(0, 0, 0, 0.05);
+					background: color-mix(in srgb, currentcolor 5%, transparent);
 				}
 
 				&::-webkit-scrollbar-thumb {
-					background: rgba(0, 0, 0, 0.2);
-					border-radius: 3px;
+					background: color-mix(in srgb, currentcolor 20%, transparent);
+					border-radius: $airo-wp-radius-small;
 				}
 			}
 		}
@@ -581,9 +591,9 @@
 		flex-direction: column;
 
 		.airo-wp-tabs__nav {
-			border-right: none;
-			border-bottom: 2px solid rgba(0, 0, 0, 0.1);
-			padding-right: 0;
+			border-inline-end: none;
+			border-bottom: 2px solid color-mix(in srgb, currentcolor 18%, transparent);
+			padding-inline-end: 0;
 			margin-bottom: var(--wp--preset--spacing--40, 1.5rem);
 			min-width: 0;
 		}

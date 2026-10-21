@@ -7,6 +7,7 @@
  */
 
 import { createBlock } from '@wordpress/blocks';
+import { transformLayout } from '../../utils/transform-layout';
 
 const transforms = {
 	from: [
@@ -19,6 +20,8 @@ const transforms = {
 					{
 						// Transfer all attributes from legacy Stack block
 						...attributes,
+						// Orientation belongs to the target block; see transformLayout().
+						layout: transformLayout(attributes.layout, 'vertical'),
 					},
 					innerBlocks
 				);
@@ -31,8 +34,10 @@ const transforms = {
 				return createBlock(
 					'airo-wp/section',
 					{
-						// Preserve all attributes including layout
+						// Preserve all attributes
 						...attributes,
+						// Orientation belongs to the target block; see transformLayout().
+						layout: transformLayout(attributes.layout, 'vertical'),
 						// Remove mobileStack (Flex/Row-specific)
 						mobileStack: undefined,
 					},
@@ -47,8 +52,10 @@ const transforms = {
 				return createBlock(
 					'airo-wp/section',
 					{
-						// Preserve all attributes including layout
+						// Preserve all attributes
 						...attributes,
+						// Orientation belongs to the target block; see transformLayout().
+						layout: transformLayout(attributes.layout, 'vertical'),
 						// Remove Grid-specific attributes
 						desktopColumns: undefined,
 						tabletColumns: undefined,
@@ -71,10 +78,21 @@ const transforms = {
 				return createBlock(
 					'airo-wp/row',
 					{
-						// Preserve all attributes including layout
+						// Preserve all attributes
 						...attributes,
+						// Orientation belongs to the target block; see transformLayout().
+						layout: transformLayout(
+							attributes.layout,
+							'horizontal'
+						),
 						// mobileStack defaults to false
 						mobileStack: false,
+						// Row has no outer box width of its own, and is in the
+						// max-width extension's EXCLUDED_BLOCKS, so there is
+						// nothing to map `boxWidth` onto. Dropped explicitly so
+						// the loss is deliberate and greppable rather than an
+						// unregistered attribute quietly disappearing.
+						boxWidth: undefined,
 					},
 					innerBlocks
 				);
@@ -87,8 +105,13 @@ const transforms = {
 				return createBlock(
 					'airo-wp/grid',
 					{
-						// Preserve all attributes including layout
+						// Preserve all attributes
 						...attributes,
+						// Orientation belongs to the target block; see transformLayout().
+						layout: transformLayout(attributes.layout, null),
+						// See the Row transform: Grid has no outer box width
+						// and is excluded from the max-width extension too.
+						boxWidth: undefined,
 						// Set Grid-specific defaults
 						desktopColumns: 3,
 						tabletColumns: 2,
@@ -120,6 +143,7 @@ const transforms = {
 					tagName,
 					constrainWidth,
 					contentWidth,
+					boxWidth,
 					style,
 					anchor,
 					backgroundColor,
@@ -144,6 +168,14 @@ const transforms = {
 				// - hoverBackgroundColor, hoverTextColor (hover effects)
 				// - hoverIconBackgroundColor, hoverButtonBackgroundColor (child context)
 
+				// `boxWidth` caps the OUTER box. core/group has no such
+				// control, but unlike Section it is NOT in the max-width
+				// extension's EXCLUDED_BLOCKS, so `dsgoMaxWidth` is the
+				// faithful equivalent: same max-width plus auto margins on the
+				// group's own wrapper. Without this the painted box silently
+				// widens back to full on transform. If a site has excluded
+				// core/group from DSG extensions the attribute is simply
+				// dropped, which is what happens today either way.
 				return createBlock(
 					'core/group',
 					{
@@ -155,6 +187,7 @@ const transforms = {
 						...(backgroundColor && { backgroundColor }),
 						...(textColor && { textColor }),
 						...(fontSize && { fontSize }),
+						...(boxWidth && { dsgoMaxWidth: boxWidth }),
 					},
 					innerBlocks
 				);

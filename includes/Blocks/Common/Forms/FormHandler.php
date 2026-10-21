@@ -61,7 +61,7 @@ use WP_REST_Response;
  *    @param int    $submission_id   Submission post ID
  *    @param string $form_id         Form identifier
  *    @param bool   $email_sent      Whether email was sent successfully
- *    @param string $email_to        Recipient email address
+ *    @param string $email_to        Recipient email address(es), comma-separated
  *    @param string $email_subject   Email subject line
  *
  * 6. airowp_form_turnstile_failed
@@ -100,8 +100,21 @@ class FormHandler {
 
 	/**
 	 * Transient holding definitions for forms that live outside wp_posts.
+	 *
+	 * Bump the version whenever the definition shape changes, so a cached
+	 * definition missing a newer key never skips that key's checks.
 	 */
-	const EXTERNAL_DEFINITIONS_CACHE = 'airowp_form_external_definitions_v1';
+	const EXTERNAL_DEFINITIONS_CACHE = 'airowp_form_external_definitions_v4';
+
+	/**
+	 * Transient prefix for a single form definition resolved from wp_posts.
+	 *
+	 * Version 3 adds `rules`, and drops definitions v2 cached from
+	 * password-protected posts; v4 (and EXTERNAL_DEFINITIONS_CACHE v3) add
+	 * `labels`; v5 (and EXTERNAL_DEFINITIONS_CACHE v4) add `conditions`.
+	 * Bump alongside EXTERNAL_DEFINITIONS_CACHE.
+	 */
+	const DEFINITION_CACHE_PREFIX = 'airowp_form_definition_v5_';
 
 	/**
 	 * Constructor.
@@ -116,7 +129,12 @@ class FormHandler {
 		add_action( 'wp_ajax_airowp_form_submit', array( $this, 'handle_ajax_submission' ) );
 		add_action( 'wp_ajax_nopriv_airowp_form_submit', array( $this, 'handle_ajax_submission' ) );
 
-		// Non-AJAX form POST handler.
+		// Non-AJAX form POST handler. Forms post to admin-post.php?action=…
+		// (Form_No_JS_Submit::post_url()) and are caught on admin_init, before
+		// admin-post.php routes on $_REQUEST['action'], which an author's own
+		// field named `action` would override. The admin_post hooks still
+		// serve pages cached with the older hidden `action` field.
+		add_action( 'admin_init', array( $this, 'maybe_handle_post_submission' ), 0 );
 		add_action( 'admin_post_airowp_form_submit', array( $this, 'handle_post_submission' ) );
 		add_action( 'admin_post_nopriv_airowp_form_submit', array( $this, 'handle_post_submission' ) );
 
@@ -206,6 +224,17 @@ class FormHandler {
 						'type'     => 'string',
 						'default'  => '',
 					),
+					'submittedAt'     => array(
+						'required' => false,
+						'type'     => 'string',
+						'default'  => '',
+					),
+					'sourcePostId'    => array(
+						'required'          => false,
+						'type'              => 'integer',
+						'default'           => 0,
+						'sanitize_callback' => 'absint',
+					),
 					'turnstile_token' => array(
 						'type'              => 'string',
 						'default'           => '',
@@ -277,17 +306,62 @@ class FormHandler {
 		$timestamp     = $request->get_param( 'timestamp' );
 		$form_settings = $this->get_form_settings();
 
+		// Throttle by IP before anything touches the database: every attempt
+		// counts, including unknown-form and failed ones, so unique form IDs
+		// can't force a content scan per request.
+		if ( $form_settings['enable_rate_limiting'] ) {
+			$attempt_check = $this->security->reserve_attempt();
+			if ( is_wp_error( $attempt_check ) ) {
+				return $attempt_check;
+			}
+		}
+
+		// These reach string-typed checks below. A client can send any JSON
+		// type, and an array would be a TypeError (HTTP 500) rather than an
+		// answer. A non-scalar honeypot is treated as filled (a real browser
+		// only ever sends a string); a non-scalar timestamp as absent.
+		if ( ! is_scalar( $form_id ) ) {
+			return $this->invalid_submission_error();
+		}
+		$form_id   = (string) $form_id;
+		$honeypot  = is_scalar( $honeypot ) ? (string) $honeypot : '1';
+		$timestamp = is_scalar( $timestamp ) ? (string) $timestamp : '';
+
+		// Reject structurally invalid values before any validator or sanitizer
+		// sees them: they expect a scalar (or, for multi-choice fields, a flat
+		// list of scalars), and anything else would be a TypeError. Entries
+		// without a usable name are skipped further down, so leave those be.
+		foreach ( (array) $fields as $field ) {
+			if ( ! is_array( $field ) || ! isset( $field['name'], $field['value'] ) || ! is_scalar( $field['name'] ) ) {
+				continue;
+			}
+			if ( ! $this->is_valid_field_value_shape( $field['value'] ) ) {
+				return $this->invalid_submission_error();
+			}
+		}
+
 		// Resolve the complete published form definition before running checks that
 		// can consume resources. A form ID is an untrusted client value: accepting
 		// an unknown one would let callers bypass its field schema and per-form
 		// controls entirely.
-		$form_definition = $this->get_form_definition( $form_id );
+		$unknown_form_error = new WP_Error(
+			'unknown_form',
+			__( 'This form is no longer available.', 'airo-wp' ),
+			array( 'status' => 404 )
+		);
+		// Only a site-wide miss is cached. A form looked up through its source
+		// post can be hidden from one visitor (a password-protected page) and
+		// visible to the next, so that miss must not lock the form for others.
+		$source_post_id = $this->get_source_post_id( $request );
+		if ( ! $source_post_id && $this->security->is_unknown_form_cached( $form_id ) ) {
+			return $unknown_form_error;
+		}
+		$form_definition = $this->get_form_definition( $form_id, $source_post_id );
 		if ( null === $form_definition ) {
-			return new WP_Error(
-				'unknown_form',
-				__( 'This form is no longer available.', 'airo-wp' ),
-				array( 'status' => 404 )
-			);
+			if ( ! $source_post_id ) {
+				$this->security->cache_unknown_form( $form_id );
+			}
+			return $unknown_form_error;
 		}
 
 		$block_attrs        = $form_definition['attributes'];
@@ -304,7 +378,9 @@ class FormHandler {
 		}
 
 		// Time-based spam check.
-		$timing_check = $this->security->check_submission_timing( $timestamp, $form_id );
+		$submitted_at = $request->get_param( 'submittedAt' );
+		$submitted_at = is_scalar( $submitted_at ) ? (string) $submitted_at : '';
+		$timing_check = $this->security->check_submission_timing( $timestamp, $form_id, $submitted_at );
 		if ( is_wp_error( $timing_check ) ) {
 			return $timing_check;
 		}
@@ -323,17 +399,33 @@ class FormHandler {
 			}
 		}
 
-		// Turnstile verification.
-		// If the block requires Turnstile, reject submissions without a valid token.
-		$turnstile_token = $request->get_param( 'turnstile_token' );
-		if ( $turnstile_required && empty( $turnstile_token ) ) {
-			return new WP_Error(
-				'turnstile_required',
-				__( 'Security verification is required. Please complete the challenge and try again.', 'airo-wp' ),
-				array( 'status' => 403 )
-			);
-		}
-		if ( ! empty( $turnstile_token ) ) {
+		// Turnstile verification. Only a form that requires Turnstile checks a
+		// token: a stray one on any other form is ignored rather than
+		// verified, so that form never depends on Cloudflare being reachable.
+		if ( $turnstile_required ) {
+			// Without both keys the widget can't render, or the server can't
+			// check what it returns. Say so plainly instead of asking the
+			// visitor to complete a challenge that isn't there.
+			if ( ! FormSecurity::is_turnstile_configured() ) {
+				/** This action is documented below. */
+				do_action( 'airowp_form_turnstile_failed', $form_id, $this->security->get_client_ip(), 'turnstile_not_configured' );
+
+				return new WP_Error(
+					'turnstile_not_configured',
+					__( 'This form can\'t accept submissions right now. Please contact the site owner.', 'airo-wp' ),
+					array( 'status' => 503 )
+				);
+			}
+
+			$turnstile_token = (string) $request->get_param( 'turnstile_token' );
+			if ( '' === $turnstile_token ) {
+				return new WP_Error(
+					'turnstile_required',
+					__( 'Security verification is required. Please complete the challenge and try again.', 'airo-wp' ),
+					array( 'status' => 403 )
+				);
+			}
+
 			$turnstile_result = $this->security->verify_turnstile( $turnstile_token );
 			if ( is_wp_error( $turnstile_result ) ) {
 				/**
@@ -348,6 +440,26 @@ class FormHandler {
 				return $turnstile_result;
 			}
 		}
+
+		// Conditional logic: fields the visitor couldn't see neither block the
+		// submission nor carry values (a hidden field's value is dropped even if
+		// a client sends one). Rules read text-like values as the loop below
+		// will sanitize and store them, so markup or %xx octets can't make a
+		// rule see one answer while another is stored. Blank values and the
+		// number/url/email/tel types stay raw: their sanitizers rewrite blanks
+		// and formats ('' → 0, example.com → http://example.com), which would
+		// diverge from the browser's evaluation, and validate_field() already
+		// rejects malformed values of those types.
+		list( $fields, $form_definition['required_fields'] ) = Form_Conditions_Submission::filter_submission(
+			$form_definition,
+			(array) $fields,
+			function ( $value, $type ) {
+				if ( '' === trim( (string) $value ) || in_array( $type, array( 'number', 'url', 'email', 'tel' ), true ) ) {
+					return $value;
+				}
+				return $this->sanitize_field( $value, $type );
+			}
+		);
 
 		// Sanitize and validate all fields.
 		$form_field_types  = $form_definition['field_types'];
@@ -379,8 +491,13 @@ class FormHandler {
 				? $field_constraints[ $field_name ]
 				: null;
 
-			// Type-specific validation.
+			// Type-specific validation, then the constraints the field renders
+			// (minlength, pattern, min/max, step), which only the browser
+			// enforced before.
 			$validation_result = $this->validate_field( $field_value, $field_type, $allowed_values );
+			if ( true === $validation_result && isset( $form_definition['rules'][ $field_name ] ) ) {
+				$validation_result = Form_Field_Rules::check( $field_value, $form_definition['rules'][ $field_name ] );
+			}
 			if ( is_wp_error( $validation_result ) ) {
 				// Security monitoring hook for validation failures.
 				do_action( 'airowp_form_validation_failed', $form_id, $field_name, $field_type, $validation_result->get_error_code(), $this->security->get_client_ip() );
@@ -393,7 +510,10 @@ class FormHandler {
 						$field_name,
 						$validation_result->get_error_message()
 					),
-					array( 'status' => 400 )
+					array(
+						'status' => 400,
+						'field'  => $field_name,
+					)
 				);
 			}
 
@@ -411,13 +531,35 @@ class FormHandler {
 				return new WP_Error(
 					'required_field_missing',
 					__( 'Please complete all required fields.', 'airo-wp' ),
-					array( 'status' => 400 )
+					array(
+						'status' => 400,
+						'field'  => $field_name,
+					)
 				);
 			}
 		}
 
+		// Reserve the rate-limit slot before the write, not after it: parallel
+		// requests would otherwise all pass the earlier check and all store.
+		if ( $form_settings['enable_rate_limiting'] ) {
+			$rate_limit_check = $this->security->check_rate_limit( $form_id, $rate_limit_count );
+			if ( is_wp_error( $rate_limit_check ) ) {
+				return $rate_limit_check;
+			}
+			$global_rate_limit_check = $this->security->check_global_rate_limit();
+			if ( is_wp_error( $global_rate_limit_check ) ) {
+				return $global_rate_limit_check;
+			}
+			$this->security->increment_rate_limit( $form_id, $rate_limit_window );
+			$this->security->increment_global_rate_limit();
+		}
+
 		// Store submission.
-		$submission_id = $this->store_submission( $form_id, $sanitized_fields );
+		$submission_id = $this->store_submission(
+			$form_id,
+			$sanitized_fields,
+			isset( $form_definition['labels'] ) ? $form_definition['labels'] : array()
+		);
 
 		if ( is_wp_error( $submission_id ) ) {
 			return new WP_Error(
@@ -428,16 +570,11 @@ class FormHandler {
 		}
 
 		// Send email notification if enabled (settings looked up server-side from block attributes).
-		$this->send_email_notification( $form_id, $sanitized_fields, $submission_id );
-
-		// Increment rate limit counter ONLY after successful submission.
-		if ( $form_settings['enable_rate_limiting'] ) {
-			$this->security->increment_rate_limit( $form_id, $rate_limit_window );
-			$this->security->increment_global_rate_limit();
-		}
+		$this->send_email_notification( $form_id, $sanitized_fields, $submission_id, $block_attrs );
 
 		// Trigger action hook for email notifications, integrations, etc.
-		do_action( 'airowp_form_submitted', $submission_id, $form_id, $sanitized_fields );
+		// The fourth argument is the form's server-resolved block attributes.
+		do_action( 'airowp_form_submitted', $submission_id, $form_id, $sanitized_fields, $block_attrs );
 
 		return new WP_REST_Response(
 			array(
@@ -446,6 +583,40 @@ class FormHandler {
 				'submissionId' => $submission_id,
 			),
 			200
+		);
+	}
+
+	/**
+	 * Whether a submitted value is a scalar or a flat list of scalars.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 * @return bool
+	 */
+	private function is_valid_field_value_shape( $value ) {
+		if ( is_scalar( $value ) ) {
+			return true;
+		}
+		if ( ! is_array( $value ) ) {
+			return false;
+		}
+		foreach ( $value as $item ) {
+			if ( ! is_scalar( $item ) ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Error for a request whose structure is not a valid form submission.
+	 *
+	 * @return WP_Error
+	 */
+	private function invalid_submission_error() {
+		return new WP_Error(
+			'invalid_submission',
+			__( 'Invalid form submission.', 'airo-wp' ),
+			array( 'status' => 400 )
 		);
 	}
 
@@ -498,6 +669,8 @@ class FormHandler {
 		$request->set_param( 'fields', isset( $data['fields'] ) ? $data['fields'] : array() );
 		$request->set_param( 'honeypot', isset( $data['honeypot'] ) ? $data['honeypot'] : '' );
 		$request->set_param( 'timestamp', isset( $data['timestamp'] ) ? $data['timestamp'] : '' );
+		$request->set_param( 'submittedAt', isset( $data['submittedAt'] ) ? $data['submittedAt'] : '' );
+		$request->set_param( 'sourcePostId', isset( $data['sourcePostId'] ) ? absint( $data['sourcePostId'] ) : 0 );
 		$request->set_param( 'turnstile_token', isset( $data['turnstile_token'] ) ? sanitize_text_field( $data['turnstile_token'] ) : '' );
 
 		$result = $this->handle_form_submission( $request );
@@ -516,14 +689,54 @@ class FormHandler {
 	}
 
 	/**
+	 * Handle a form posted to Form_No_JS_Submit::post_url().
+	 *
+	 * Runs on admin_init, which admin-post.php fires before it routes on
+	 * $_REQUEST['action']. WordPress builds that from $_GET and $_POST with
+	 * POST winning, so an author's field named `action` would otherwise send
+	 * the request to an action nobody handles.
+	 */
+	public function maybe_handle_post_submission() {
+		global $pagenow;
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Routing only; handle_post_submission() verifies the nonce.
+		$action = isset( $_GET['action'] ) && is_string( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_key( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : '';
+
+		if ( 'admin-post.php' !== $pagenow || 'POST' !== $method || Form_No_JS_Submit::ACTION !== $action ) {
+			return;
+		}
+
+		$this->handle_post_submission();
+	}
+
+	/**
 	 * Handle non-AJAX form submission via admin_post.
 	 *
 	 * Processes standard form POST and redirects back with a status query param.
 	 */
 	public function handle_post_submission() {
-		// Verify nonce.
-		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'airowp_form_submit' ) ) {
-			wp_die( esc_html__( 'Security verification failed.', 'airo-wp' ), '', array( 'response' => 403 ) );
+		// CSRF: a logged-in visitor must send a valid nonce, so no other site
+		// can submit a form in their name.
+		//
+		// A logged-out visitor's nonce protects nothing: it is the same for
+		// every anonymous visitor and printed in public page HTML, and the
+		// REST endpoint already takes anonymous submissions with no nonce at
+		// all. It is also the one that goes stale, because full-page caches
+		// serve anonymous visitors markup that can be older than a nonce's
+		// ~24h life. Requiring it turned every submission from such a page
+		// into a dead end. Anonymous submissions still pass the honeypot,
+		// timing, rate-limit and Turnstile checks below.
+		$nonce = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
+		if ( is_user_logged_in() && ! wp_verify_nonce( $nonce, Form_No_JS_Submit::ACTION ) ) {
+			wp_die(
+				esc_html__( 'Security verification failed. Please go back, reload the page and try again.', 'airo-wp' ),
+				'',
+				array(
+					'response'  => 403,
+					'back_link' => true,
+				)
+			);
 		}
 
 		$referer = wp_get_referer();
@@ -544,20 +757,30 @@ class FormHandler {
 			}
 		}
 
-		$system_fields = array( 'dsg_website', 'dsg_form_id', 'dsg_timestamp', 'dsg_turnstile_token', 'dsg_field_types', '_wpnonce', 'action' );
+		$system_fields = array( 'dsg_website', 'dsg_form_id', 'dsg_timestamp', 'dsg_submitted_at', 'dsg_turnstile_token', 'dsg_field_types', '_wpnonce' );
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified above.
 		foreach ( $_POST as $key => $value ) {
-			// Skip system fields.
-			if ( in_array( $key, $system_fields, true ) ) {
+			// Skip system fields. `action` is ours only when it carries our
+			// value (a page cached before the action moved into the URL);
+			// otherwise it is an author's field.
+			if ( in_array( $key, $system_fields, true ) || ( 'action' === $key && Form_No_JS_Submit::ACTION === $value ) ) {
 				continue;
 			}
 
 			$field_type = isset( $field_types[ $key ] ) ? sanitize_text_field( $field_types[ $key ] ) : 'text';
 
+			// String values go through unsanitized, as they do on the REST
+			// path: handle_form_submission() checks each against the field's
+			// constraints and then sanitizes it by field type. Sanitizing here
+			// first changed what was checked (`<` grew into `&lt;`, whitespace
+			// collapsed), rejecting values the browser had accepted, and
+			// stripped a textarea's line breaks before sanitize_textarea_field()
+			// could keep them. An array (`name[]`) becomes an empty string, as
+			// sanitize_text_field() always made it.
 			$fields[] = array(
 				'name'  => $key,
-				'value' => sanitize_text_field( wp_unslash( $value ) ),
+				'value' => is_string( $value ) ? wp_unslash( $value ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validated and sanitized by type in handle_form_submission().
 				'type'  => $field_type,
 			);
 		}
@@ -567,30 +790,83 @@ class FormHandler {
 		$request->set_param( 'fields', $fields );
 		$request->set_param( 'honeypot', isset( $_POST['dsg_website'] ) ? sanitize_text_field( wp_unslash( $_POST['dsg_website'] ) ) : '' );
 		$request->set_param( 'timestamp', isset( $_POST['dsg_timestamp'] ) ? sanitize_text_field( wp_unslash( $_POST['dsg_timestamp'] ) ) : '' );
+		// Posted only by the script's native-POST fallback, on the same browser
+		// clock as its dsg_timestamp. A visitor without JavaScript has neither,
+		// and the server-rendered timestamp is measured against server time.
+		$request->set_param( 'submittedAt', isset( $_POST['dsg_submitted_at'] ) ? sanitize_text_field( wp_unslash( $_POST['dsg_submitted_at'] ) ) : '' );
 		$request->set_param( 'turnstile_token', isset( $_POST['dsg_turnstile_token'] ) ? sanitize_text_field( wp_unslash( $_POST['dsg_turnstile_token'] ) ) : '' );
 
 		$result = $this->handle_form_submission( $request );
 
+		$redirect = is_wp_error( $result ) ? '' : $this->get_success_redirect_url( $form_id, $request );
+
 		if ( is_wp_error( $result ) ) {
+			// Without JavaScript the visitor comes back to a fresh page: keep
+			// their answers, and say why it failed (Form_No_JS_Retry).
+			Form_No_JS_Retry::remember( $form_id, $fields, (string) $result->get_error_code() );
+		}
+
+		if ( '' === $redirect ) {
 			$redirect = add_query_arg(
-				array(
-					'airowp_form_status' => 'error',
-					'airowp_form_id'     => $form_id,
+				array_merge(
+					array(
+						'airowp_form_status' => is_wp_error( $result ) ? 'error' : 'success',
+						'airowp_form_id'     => $form_id,
+					),
+					is_wp_error( $result ) ? Form_No_JS_Retry::redirect_args( $result ) : array()
 				),
-				$referer
+				// A retry is posted from the previous result's URL: drop its
+				// reason, or a later result would name the earlier field.
+				remove_query_arg( array( 'airowp_form_error', 'airowp_form_field' ), $referer )
 			);
-		} else {
-			$redirect = add_query_arg(
-				array(
-					'airowp_form_status' => 'success',
-					'airowp_form_id'     => $form_id,
-				),
-				$referer
-			);
+
+			// Land on the result Form_No_JS_Submit prints, not the page top.
+			$anchor = Form_No_JS_Submit::message_anchor( $form_id );
+			if ( '' !== $anchor && false === strpos( $redirect, '#' ) ) {
+				$redirect .= '#' . $anchor;
+			}
 		}
 
 		wp_safe_redirect( $redirect );
 		exit;
+	}
+
+	/**
+	 * The form's own "Redirect URL", for a submission that did not go through AJAX.
+	 *
+	 * The AJAX path follows this URL in view.js; a plain POST — AJAX Submit
+	 * off, or the automatic fallback when a host blocks both REST and
+	 * admin-ajax — must land in the same place. The URL comes from the
+	 * published form's attributes, never from the request, and matches
+	 * view.js's rule: http(s) only, any host.
+	 *
+	 * @param string          $form_id Form ID.
+	 * @param WP_REST_Request $request Submission request, for the source post.
+	 * @return string Redirect URL, or '' when the form has none.
+	 */
+	private function get_success_redirect_url( $form_id, $request ) {
+		$definition = $this->get_form_definition( $form_id, $this->get_source_post_id( $request ) );
+		$url        = isset( $definition['attributes']['redirectUrl'] ) ? $definition['attributes']['redirectUrl'] : '';
+		$url        = is_string( $url ) ? esc_url_raw( trim( $url ), array( 'http', 'https' ) ) : '';
+
+		if ( '' === $url ) {
+			return '';
+		}
+
+		// wp_safe_redirect() only follows hosts on this list, so admit the one
+		// the author configured.
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		if ( $host ) {
+			add_filter(
+				'allowed_redirect_hosts',
+				static function ( $hosts ) use ( $host ) {
+					$hosts[] = $host;
+					return $hosts;
+				}
+			);
+		}
+
+		return $url;
 	}
 
 	/**
@@ -604,6 +880,14 @@ class FormHandler {
 	 * @return true|WP_Error True if valid, WP_Error if invalid.
 	 */
 	private function validate_field( $value, $type, $allowed = null ) {
+		// Single-value types are checked by functions that need a string.
+		if ( is_array( $value ) && in_array( $type, array( 'email', 'url', 'number', 'tel', 'country_code' ), true ) ) {
+			return new WP_Error(
+				'invalid_value',
+				__( 'Invalid value.', 'airo-wp' )
+			);
+		}
+
 		// Skip validation for empty values (optional fields).
 		// Required fields are validated by HTML5 on the frontend.
 		if ( empty( $value ) && '0' !== $value ) {
@@ -655,8 +939,8 @@ class FormHandler {
 				break;
 
 			case 'tel':
-				// Basic phone validation - numbers, spaces, dashes, parentheses, plus.
-				if ( ! preg_match( '/^[0-9\s\-\(\)\+]+$/', $value ) ) {
+				// Basic phone validation - numbers, spaces, dashes, dots, parentheses, plus.
+				if ( ! preg_match( '/^[0-9\s\-\.\(\)\+]+$/', $value ) ) {
 					return new WP_Error(
 						'invalid_phone',
 						__( 'Invalid phone number.', 'airo-wp' )
@@ -694,10 +978,14 @@ class FormHandler {
 				return esc_url_raw( $value );
 
 			case 'number':
-				return is_numeric( $value ) ? floatval( $value ) : 0;
+				// A blank stays blank so an optional number is stored empty and a
+				// required one still fails the empty check. validate_field() has
+				// already rejected non-numeric input, so '' here is never a
+				// silent coercion of bad data.
+				return ( is_scalar( $value ) && is_numeric( $value ) ) ? floatval( $value ) : '';
 
 			case 'tel':
-				return preg_replace( '/[^0-9\s\-\(\)\+]/', '', $value );
+				return preg_replace( '/[^0-9\s\-\.\(\)\+]/', '', $value );
 
 			case 'textarea':
 				return sanitize_textarea_field( $value );
@@ -713,9 +1001,16 @@ class FormHandler {
 	 *
 	 * @param string $form_id Form ID.
 	 * @param array  $fields Sanitized fields array.
+	 * @param array  $labels Field labels keyed by name.
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
 	 */
-	private function store_submission( $form_id, $fields ) {
+	private function store_submission( $form_id, $fields, array $labels = array() ) {
+		foreach ( $fields as $name => $data ) {
+			if ( isset( $labels[ $name ] ) ) {
+				$fields[ $name ]['label'] = $labels[ $name ];
+			}
+		}
+
 		$post_id = wp_insert_post(
 			array(
 				'post_type'   => 'dsgo_form_submission',
@@ -747,7 +1042,7 @@ class FormHandler {
 		update_post_meta( $post_id, '_dsg_form_fields', wp_slash( $fields ) );
 		update_post_meta( $post_id, '_dsg_submission_ip', $this->security->get_client_ip() );
 		update_post_meta( $post_id, '_dsg_submission_user_agent', wp_slash( $this->get_user_agent() ) );
-		update_post_meta( $post_id, '_dsg_submission_referer', wp_slash( wp_get_referer() ) );
+		update_post_meta( $post_id, '_dsg_submission_referer', wp_slash( $this->get_submission_source_url() ) );
 		update_post_meta( $post_id, '_dsg_submission_date', current_time( 'mysql' ) );
 
 		// Clear cached form submission count.
@@ -794,8 +1089,11 @@ class FormHandler {
 				'nonce'        => wp_create_nonce( 'wp_rest' ),
 				'restUrl'      => rest_url( 'airo-wp/v1/form/submit' ),
 				'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
-				'adminPostUrl' => admin_url( 'admin-post.php' ),
+				'adminPostUrl' => Form_No_JS_Submit::post_url(),
 				'ajaxNonce'    => wp_create_nonce( 'airowp_form_submit' ),
+				// Sent back as sourcePostId so a form ID shared by several pages
+				// resolves to the copy on this one.
+				'postId'       => is_singular() ? get_queried_object_id() : 0,
 			)
 		);
 
@@ -807,7 +1105,10 @@ class FormHandler {
 			$handle,
 			'dsgoIntegrations',
 			array(
-				'turnstileSiteKey' => ! empty( $integrations_settings['turnstile_site_key'] ) ? esc_js( $integrations_settings['turnstile_site_key'] ) : '',
+				'turnstileSiteKey'    => ! empty( $integrations_settings['turnstile_site_key'] ) ? esc_js( $integrations_settings['turnstile_site_key'] ) : '',
+				// wp_localize_script() stringifies booleans ("1" / ""), so read
+				// it as truthy in JS, never with `=== true`.
+				'turnstileConfigured' => FormSecurity::is_turnstile_configured(),
 			)
 		);
 	}
@@ -866,14 +1167,19 @@ class FormHandler {
 	 * in post content), NOT from the client request. This prevents attackers from
 	 * manipulating email recipients, sender addresses, or body content.
 	 *
-	 * @param string $form_id Form ID.
-	 * @param array  $fields Sanitized form fields.
-	 * @param int    $submission_id Submission post ID.
+	 * @param string     $form_id       Form ID.
+	 * @param array      $fields        Sanitized form fields.
+	 * @param int        $submission_id Submission post ID.
+	 * @param array|null $block_attrs   Attributes of the form the submission was
+	 *                                  validated against. Passing them keeps the
+	 *                                  email on the same copy of a shared form ID.
 	 */
-	private function send_email_notification( $form_id, $fields, $submission_id ) {
+	private function send_email_notification( $form_id, $fields, $submission_id, $block_attrs = null ) {
 		// Look up email settings from the form block attributes (server-side only).
 		// This prevents client-side manipulation of email configuration.
-		$block_attrs = $this->get_form_block_attributes( $form_id );
+		if ( null === $block_attrs ) {
+			$block_attrs = $this->get_form_block_attributes( $form_id );
+		}
 
 		if ( ! $block_attrs || empty( $block_attrs['enableEmail'] ) ) {
 			if ( ! $block_attrs && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -903,11 +1209,18 @@ class FormHandler {
 		$email_reply_to  = str_replace( $newline_chars, '', $email_reply_to );
 
 		// Validate and set defaults (single sanitization pass).
-		if ( empty( $email_to ) || ! is_email( $email_to ) ) {
-			$email_to = get_option( 'admin_email' );
-		} else {
-			$email_to = sanitize_email( $email_to );
-		}
+		// Several recipients may be listed, separated by commas or semicolons.
+		// Invalid entries are dropped rather than sinking the whole list; only
+		// a list with no valid address at all falls back to the admin email.
+		// Kept as a comma-separated string, which wp_mail() accepts and which
+		// the airowp_form_email_sent hook and stored meta already carry.
+		$recipients = array_filter(
+			array_map( 'trim', preg_split( '/[,;]/', $email_to ) ),
+			'is_email'
+		);
+		$email_to   = empty( $recipients )
+			? get_option( 'admin_email' )
+			: implode( ', ', array_unique( array_map( 'sanitize_email', $recipients ) ) );
 
 		if ( empty( $email_subject ) ) {
 			$email_subject = __( 'New Form Submission', 'airo-wp' );
@@ -952,12 +1265,9 @@ class FormHandler {
 		}
 
 		// Prepare merge tags.
-		$current_url = '';
-		if ( isset( $_SERVER['REQUEST_URI'] ) ) {
-			$current_url = esc_url_raw(
-				home_url( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) )
-			);
-		}
+		// The page the form was on, not the submit endpoint this request hit
+		// (REST, admin-ajax and admin-post all carry the page as the referer).
+		$current_url = esc_url_raw( $this->get_submission_source_url() );
 
 		/*
 		 * Merge tags land in TWO places with different rules, so they need two
@@ -1073,18 +1383,16 @@ class FormHandler {
 		update_post_meta( $submission_id, '_dsg_email_to', $email_to );
 		update_post_meta( $submission_id, '_dsg_email_sent_date', current_time( 'mysql' ) );
 
-		// Log email delivery if enabled in settings.
+		// Log delivery status only; recipients and subjects may contain personal data.
 		$form_settings        = $this->get_form_settings();
 		$enable_email_logging = isset( $form_settings['enable_email_logging'] ) ? $form_settings['enable_email_logging'] : false;
 
 		if ( $enable_email_logging ) {
 			error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional logging when enabled in settings.
 				sprintf(
-					'airo-wp Form: Email %s for submission #%d (To: %s, Subject: %s)',
+					'airo-wp Form: Email %s for submission #%d',
 					$email_sent ? 'sent successfully' : 'FAILED to send',
-					$submission_id,
-					$email_to,
-					$email_subject
+					$submission_id
 				)
 			);
 		}
@@ -1194,15 +1502,28 @@ class FormHandler {
 	 * block widgets, templates still served from theme or plugin files, and
 	 * registered patterns — are resolved from those sources instead.
 	 *
-	 * @param string $form_id Form identifier to look up.
-	 * @return array{attributes: array, field_types: array, constraints: array, required_fields: string[]}|null Form definition or null.
+	 * Form IDs are not unique in practice: DSGo patterns ship fixed IDs, and a
+	 * form copied between pages keeps its ID. When the submitting page is known
+	 * and holds the form, that copy wins over whichever one the site-wide lookup
+	 * would find first.
+	 *
+	 * @param string $form_id        Form identifier to look up.
+	 * @param int    $source_post_id Page the form was submitted from, or 0.
+	 * @return array{attributes: array, field_types: array, constraints: array, required_fields: string[], rules: array, labels?: array<string, string>, conditions?: array{fields: string[], conditions: array<string, array>}}|null Form definition or null.
 	 */
-	private function get_form_definition( $form_id ) {
+	private function get_form_definition( $form_id, $source_post_id = 0 ) {
 		if ( ! is_string( $form_id ) || '' === $form_id ) {
 			return null;
 		}
 
-		$cache_key = 'airowp_form_definition_v2_' . md5( $form_id );
+		if ( $source_post_id ) {
+			$source_definition = $this->get_source_post_form_definition( $form_id, $source_post_id );
+			if ( null !== $source_definition ) {
+				return $source_definition;
+			}
+		}
+
+		$cache_key = self::DEFINITION_CACHE_PREFIX . md5( $form_id );
 		$cached    = get_transient( $cache_key );
 
 		if ( false !== $cached && is_array( $cached ) ) {
@@ -1232,6 +1553,9 @@ class FormHandler {
 		);
 
 		foreach ( (array) $posts as $post ) {
+			if ( ! $this->is_eligible_form_host( (int) $post->ID ) ) {
+				continue;
+			}
 			$blocks     = parse_blocks( $post->post_content );
 			$form_block = $this->find_form_block( $blocks, $form_id );
 			if ( null !== $form_block ) {
@@ -1246,20 +1570,146 @@ class FormHandler {
 	}
 
 	/**
+	 * Whether a published post may serve its form to the site-wide lookup.
+	 *
+	 * This lookup ignores who is asking and its result is cached for everyone,
+	 * so it cannot honour a visitor's password cookie: a password-protected
+	 * post is never eligible. A form there is still reachable through
+	 * get_source_post_form_definition(), which checks that cookie.
+	 *
+	 * Viewability is not required. The query already limits candidates to
+	 * published posts, and this lookup is the only way to reach a form kept in
+	 * a post type that is not publicly viewable but renders into public pages:
+	 * synced patterns, templates and template parts, and theme builder or popup
+	 * post types (GeneratePress and Kadence Elements, Blocksy Content Blocks,
+	 * Spectra popups). Sites that want it narrower can use the filter.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 */
+	private function is_eligible_form_host( $post_id ) {
+		$post = get_post( $post_id );
+		if ( ! $post || '' !== $post->post_password ) {
+			return false;
+		}
+
+		/**
+		 * Filters whether a published post may serve its form to submissions
+		 * that name no source page.
+		 *
+		 * Password-protected posts never reach this filter. The result is cached
+		 * with the form definition for an hour, so return the same answer for
+		 * every visitor.
+		 *
+		 * @since 2.8.3
+		 *
+		 * @param bool     $allowed Whether the post is eligible. Default true.
+		 * @param \WP_Post $post    Candidate post.
+		 */
+		return (bool) apply_filters( 'airowp_form_lookup_allows_post', true, $post );
+	}
+
+	/**
 	 * Build the server-owned definition for a parsed form block.
 	 *
 	 * @param array $form_block Parsed airo-wp/form-builder block.
-	 * @return array{attributes: array, field_types: array, constraints: array, required_fields: string[]} Form definition.
+	 * @return array{attributes: array, field_types: array, constraints: array, required_fields: string[], rules: array, labels: array<string, string>, conditions: array{fields: string[], conditions: array<string, array>}} Form definition.
 	 */
 	private function build_form_definition( array $form_block ) {
 		$inner_blocks = isset( $form_block['innerBlocks'] ) ? $form_block['innerBlocks'] : array();
+		$field_types  = $this->extract_field_types_from_blocks( $inner_blocks );
+		$labels       = $this->extract_field_labels_from_blocks( $inner_blocks );
+
+		// The phone field's companion country-code select has no label of its own.
+		foreach ( $field_types as $name => $type ) {
+			$base = substr( $name, 0, -strlen( '_country_code' ) );
+			if ( 'country_code' === $type && isset( $labels[ $base ] ) ) {
+				/* translators: %s: phone field label */
+				$labels[ $name ] = sprintf( __( '%s (country code)', 'airo-wp' ), $labels[ $base ] );
+			}
+		}
 
 		return array(
 			'attributes'      => $this->apply_form_block_defaults( $form_block['attrs'] ),
-			'field_types'     => $this->extract_field_types_from_blocks( $inner_blocks ),
+			'field_types'     => $field_types,
 			'constraints'     => $this->extract_field_value_constraints_from_blocks( $inner_blocks ),
 			'required_fields' => $this->extract_required_field_names_from_blocks( $inner_blocks ),
+			'rules'           => Form_Field_Rules::extract( $inner_blocks ),
+			'labels'          => $labels,
+			'conditions'      => Form_Conditions::extract( $inner_blocks ),
 		);
+	}
+
+	/**
+	 * The page a submission was sent from, for the stored Source URL.
+	 *
+	 * A no-JS retry is posted from the previous result's URL, so drop the
+	 * plugin's own result args: the record should name the page, not an
+	 * earlier failure.
+	 *
+	 * @return string Referer without result args, or '' when there is none.
+	 */
+	private function get_submission_source_url() {
+		$referer = wp_get_referer();
+		if ( ! $referer ) {
+			return '';
+		}
+		return remove_query_arg( array( 'airowp_form_status', 'airowp_form_id', 'airowp_form_error', 'airowp_form_field' ), $referer );
+	}
+
+	/**
+	 * Identify the page a submission was sent from.
+	 *
+	 * The view script sends the page ID it was localized with. Requests without one —
+	 * the admin-post path, or a cached page running an older view.js — fall
+	 * back to the referer. Either value is client-supplied, which is safe here
+	 * because it only chooses between published copies of the form.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return int Post ID, or 0 when unknown.
+	 */
+	private function get_source_post_id( $request ) {
+		$source_post_id = absint( $request->get_param( 'sourcePostId' ) );
+		if ( $source_post_id ) {
+			return $source_post_id;
+		}
+
+		$referer = wp_get_referer();
+
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.url_to_postid_url_to_postid -- Not a VIP site; runs at most once per rate-limited submission, and only without sourcePostId.
+		return $referer ? url_to_postid( $referer ) : 0;
+	}
+
+	/**
+	 * Resolve a form from the page it was submitted from.
+	 *
+	 * Deliberately uncached: it parses a single post, and caching per page
+	 * would need its own invalidation for a lookup that is already cheap.
+	 *
+	 * The post ID is client-supplied, so it may only select a copy the requester
+	 * could have seen and submitted anyway: a publicly viewable post, unlocked
+	 * if it has a password. Every such copy is already a public endpoint, so
+	 * naming it grants nothing that visiting that page wouldn't.
+	 *
+	 * @param string $form_id Form identifier to look up.
+	 * @param int    $post_id Source post ID.
+	 * @return array|null Form definition, or null when that post isn't viewable to the requester or lacks the form.
+	 */
+	private function get_source_post_form_definition( $form_id, $post_id ) {
+		$post = get_post( $post_id );
+		if (
+			! $post ||
+			'publish' !== $post->post_status ||
+			! is_post_publicly_viewable( $post ) ||
+			post_password_required( $post ) ||
+			false === strpos( $post->post_content, 'airo-wp/form-builder' )
+		) {
+			return null;
+		}
+
+		$form_block = $this->find_form_block( parse_blocks( $post->post_content ), $form_id );
+
+		return null === $form_block ? null : $this->build_form_definition( $form_block );
 	}
 
 	/**
@@ -1555,6 +2005,54 @@ class FormHandler {
 	}
 
 	/**
+	 * Extract each field's visible label from a form's inner blocks.
+	 *
+	 * A label left at its block.json default is absent from the block comment,
+	 * so the registered default is used. Labels are stored as plain text.
+	 *
+	 * @param array $blocks Parsed inner blocks.
+	 * @return array<string, string> Labels keyed by field name.
+	 */
+	private function extract_field_labels_from_blocks( $blocks ) {
+		$labels = array();
+
+		foreach ( $blocks as $block ) {
+			$block_name = isset( $block['blockName'] ) ? $block['blockName'] : '';
+			$attrs      = isset( $block['attrs'] ) && is_array( $block['attrs'] ) ? $block['attrs'] : array();
+			$field_name = isset( $attrs['fieldName'] ) ? sanitize_text_field( $attrs['fieldName'] ) : '';
+
+			if ( $field_name && $this->map_block_name_to_field_type( $block_name ) ) {
+				$label = isset( $attrs['label'] ) && is_string( $attrs['label'] ) ? $attrs['label'] : $this->default_field_label( $block_name );
+				$label = trim( html_entity_decode( wp_strip_all_tags( $label ), ENT_QUOTES, 'UTF-8' ) );
+
+				if ( '' !== $label ) {
+					$labels[ $field_name ] = $label;
+				}
+			}
+
+			if ( ! empty( $block['innerBlocks'] ) ) {
+				$labels = array_merge( $labels, $this->extract_field_labels_from_blocks( $block['innerBlocks'] ) );
+			}
+		}
+
+		return $labels;
+	}
+
+	/**
+	 * Registered default label for a field block.
+	 *
+	 * @param string $block_name Block name.
+	 * @return string Default label, or '' when the block has none.
+	 */
+	private function default_field_label( $block_name ) {
+		$block_type = \WP_Block_Type_Registry::get_instance()->get_registered( $block_name );
+
+		return ( $block_type && isset( $block_type->attributes['label']['default'] ) && is_string( $block_type->attributes['label']['default'] ) )
+			? $block_type->attributes['label']['default']
+			: '';
+	}
+
+	/**
 	 * Map form field block names to server-side field types.
 	 *
 	 * @param string $block_name Block name.
@@ -1631,7 +2129,7 @@ class FormHandler {
 				'airo-wp/form-builder' === $block['blockName'] &&
 				isset( $block['attrs']['formId'] )
 			) {
-				delete_transient( 'airowp_form_definition_v2_' . md5( $block['attrs']['formId'] ) );
+				delete_transient( self::DEFINITION_CACHE_PREFIX . md5( $block['attrs']['formId'] ) );
 				delete_transient( 'airowp_form_attrs_v2_' . md5( $block['attrs']['formId'] ) );
 				delete_transient( 'airowp_form_field_types_' . md5( $block['attrs']['formId'] ) );
 				delete_transient( 'airowp_form_field_constraints_' . md5( $block['attrs']['formId'] ) );

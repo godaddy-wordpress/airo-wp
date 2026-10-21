@@ -116,7 +116,7 @@ class UpdateGlobalStyles extends BaseTool {
 				if ( $overwrite ) {
 					$new_content['styles'] = $input['styles'];
 				} else {
-					if ( ! isset( $new_content['styles'] ) ) {
+					if ( ! isset( $new_content['styles'] ) || ! is_array( $new_content['styles'] ) ) {
 						$new_content['styles'] = array();
 					}
 					$new_content['styles'] = $this->deep_merge_arrays( $new_content['styles'], $input['styles'] );
@@ -127,13 +127,13 @@ class UpdateGlobalStyles extends BaseTool {
 				if ( $overwrite ) {
 					$new_content['settings'] = $input['settings'];
 				} else {
-					if ( ! isset( $new_content['settings'] ) ) {
+					if ( ! isset( $new_content['settings'] ) || ! is_array( $new_content['settings'] ) ) {
 						$new_content['settings'] = array();
 					}
 					$new_content['settings'] = $this->deep_merge_arrays( $new_content['settings'], $input['settings'] );
 				}
 
-				if ( isset( $new_content['settings']['typography']['fontFamilies'] ) ) {
+				if ( isset( $new_content['settings']['typography']['fontFamilies'] ) && is_array( $new_content['settings']['typography']['fontFamilies'] ) ) {
 					$new_content['settings']['typography']['fontFamilies'] = $this->font_downloader->process_font_families(
 						$new_content['settings']['typography']['fontFamilies']
 					);
@@ -195,7 +195,14 @@ class UpdateGlobalStyles extends BaseTool {
 				'message' => __( 'Global styles updated successfully', 'airo-wp' ),
 			);
 
-		} catch ( \Exception $e ) {
+		} catch ( \Throwable $e ) {
+			// Throwable, not Exception: FontDownloader lets filesystem errors propagate, and
+			// WP_Filesystem's FTP/SSH backends raise TypeError when their connection is gone.
+			// Throwable also catches \Error from this tool's own bugs; log it so it is not silently lost.
+			// Control characters are replaced, as FontDownloader::log() does: the message can carry
+			// tool input (e.g. a path built from a font slug) and must not forge extra log lines.
+			$log_line = sprintf( '[Airo WP] update-global-styles: %s: %s in %s:%d', get_class( $e ), $e->getMessage(), $e->getFile(), $e->getLine() );
+			error_log( (string) preg_replace( '/[\x00-\x1F\x7F]/', ' ', $log_line ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			return array(
 				'success' => false,
 				'message' => sprintf(

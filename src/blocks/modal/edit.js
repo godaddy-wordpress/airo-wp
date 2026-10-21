@@ -9,9 +9,7 @@ import {
 	useBlockProps,
 	useInnerBlocksProps,
 	InspectorControls,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import { Notice } from '@wordpress/components';
@@ -172,10 +170,12 @@ export default function ModalEdit({ attributes, setAttributes, clientId }) {
 							overlayOpacity: 80,
 							overlayBlur: 0,
 							modalLabel: '',
+							savedModalLabel: undefined,
 							showCloseButton: true,
 							closeButtonPosition: 'inside-top-right',
 							closeButtonSize: 24,
 							closeButtonLabel: '',
+							savedCloseButtonLabel: undefined,
 							closeOnBackdrop: true,
 							closeOnEsc: true,
 							disableBodyScroll: true,

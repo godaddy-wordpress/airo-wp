@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "airo-wp/form-step",
+  "version": "1.0.0",
+  "title": "Form Step",
+  "category": "airo-wp",
+  "parent": ["airo-wp/form-builder"],
+  "description": "A step of a multi-step form.",
+  "keywords": ["form", "step", "wizard", "page"],
+  "textdomain": "airo-wp",
+  "attributes": {
+    "title": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "supports": {
+    "html": false,
+    "reusable": false,
+    "color": {
+      "text": true,
+      "background": false,
+      "link": false,
+      "__experimentalSkipSerialization": true,
+      "__experimentalDefaultControls": {
+        "text": true
+      }
+    },
+    "typography": {
+      "fontSize": true,
+      "lineHeight": true,
+      "__experimentalFontFamily": true,
+      "__experimentalFontWeight": true,
+      "__experimentalFontStyle": true,
+      "__experimentalTextTransform": true,
+      "__experimentalLetterSpacing": true,
+      "__experimentalSkipSerialization": true,
+      "__experimentalDefaultControls": {
+        "fontSize": true
+      }
+    }
+  },
+  "selectors": {
+    "root": ".wp-block-airo-wp-form-step",
+    "color": ".wp-block-airo-wp-form-step .airo-wp-form-step__title",
+    "typography": ".wp-block-airo-wp-form-step .airo-wp-form-step__title"
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "render": "file:./render.php"
+}

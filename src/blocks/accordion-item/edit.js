@@ -5,21 +5,22 @@ import {
 	RichText,
 	InspectorControls,
 } from '@wordpress/block-editor';
-import { useEffect, useMemo } from '@wordpress/element';
+import { useMemo } from '@wordpress/element';
 import { Icon, ToggleControl } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
+import { useUniqueBlockId } from '../../hooks';
 import { useSelect, useDispatch } from '@wordpress/data';
 import classnames from 'classnames';
 
 // Icon components for different styles
 const ChevronIcon = () => (
-	<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+	<svg viewBox="0 0 16 16" fill="currentColor">
 		<path d="M4.427 6.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 6H4.604a.25.25 0 00-.177.427z" />
 	</svg>
 );
 
 const PlusMinusIcon = ({ isOpen }) => (
-	<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+	<svg viewBox="0 0 16 16" fill="currentColor">
 		{isOpen ? (
 			<path d="M4 8h8v1H4z" />
 		) : (
@@ -36,7 +37,7 @@ const PlusMinusIcon = ({ isOpen }) => (
 );
 
 const CaretIcon = () => (
-	<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+	<svg viewBox="0 0 16 16" fill="currentColor">
 		<path d="M6 7l2 2 2-2z" />
 	</svg>
 );
@@ -91,16 +92,12 @@ export default function AccordionItemEdit({
 		[siblingsString]
 	);
 
-	// Handle accordion item click
-	const handleToggle = (e) => {
-		e.preventDefault();
-		e.stopPropagation();
-
-		// Toggle current item
-		const newIsOpen = !isOpen;
+	// Open or close this item. In single-open mode, opening it closes its
+	// siblings — whether from the header or the "Open by Default" toggle, so
+	// the saved markup never marks two items open.
+	const setOpen = (newIsOpen) => {
 		setAttributes({ isOpen: newIsOpen });
 
-		// If opening and single mode, close all siblings
 		if (newIsOpen && !allowMultipleOpen) {
 			siblingClientIds.forEach((siblingId) => {
 				updateBlockAttributes(siblingId, { isOpen: false });
@@ -108,14 +105,20 @@ export default function AccordionItemEdit({
 		}
 	};
 
-	// Generate unique ID for accessibility
-	useEffect(() => {
-		if (!uniqueId) {
-			setAttributes({
-				uniqueId: `accordion-item-${Math.random().toString(36).substr(2, 9)}`,
-			});
-		}
-	}, [uniqueId, setAttributes]);
+	// Handle accordion item click
+	const handleToggle = (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		setOpen(!isOpen);
+	};
+
+	useUniqueBlockId({
+		clientId,
+		attributeName: 'uniqueId',
+		value: uniqueId,
+		setAttributes,
+		prefix: 'accordion-item-',
+	});
 
 	// Declaratively calculate classes
 	const itemClasses = classnames('airo-wp-accordion-item', {
@@ -199,9 +202,7 @@ export default function AccordionItemEdit({
 										)
 							}
 							checked={isOpen}
-							onChange={(value) =>
-								setAttributes({ isOpen: value })
-							}
+							onChange={setOpen}
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>

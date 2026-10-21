@@ -10,7 +10,6 @@ import { __ } from '@wordpress/i18n';
 import {
 	PanelBody,
 	ToggleControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
 } from '@wordpress/components';
 
@@ -52,7 +51,7 @@ export function WidthPanel({
 					value={contentWidth}
 					onChange={(value) => setAttributes({ contentWidth: value })}
 					units={units}
-					// eslint-disable-next-line @wordpress/i18n-no-variables
+
 					placeholder={themeContentWidth || '1200px'}
 					// translators: %s: theme content width value
 					help={__(

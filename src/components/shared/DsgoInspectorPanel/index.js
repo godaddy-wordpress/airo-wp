@@ -32,12 +32,12 @@
  *                        adoption — existing callers that only pass title
  *                        continue to render without warning).
  */
-/* eslint-disable @wordpress/no-unsafe-wp-apis */
+
 import {
 	__experimentalToolsPanel as ToolsPanel,
 	__experimentalToolsPanelItem as ToolsPanelItem,
 } from '@wordpress/components';
-/* eslint-enable @wordpress/no-unsafe-wp-apis */
+
 import { createContext, useContext } from '@wordpress/element';
 
 const CANONICAL_PANEL_NAMES = ['settings', 'style', 'advanced'];
@@ -62,9 +62,9 @@ export function DsgoInspectorPanel({
 	// see comment on the render below. Stripping here (rather than just
 	// documenting) prevents the ~50% width regression from sneaking back
 	// in via `...rest` during the Theme 3 migration rollout.
-	// eslint-disable-next-line no-unused-vars
+
 	hasInnerWrapper: _hasInnerWrapper,
-	// eslint-disable-next-line no-unused-vars
+
 	shouldRenderPlaceholderItems: _shouldRenderPlaceholderItems,
 	...rest
 }) {

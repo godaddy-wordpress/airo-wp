@@ -39,7 +39,7 @@ if ( ! function_exists( 'airowp_render_query_pagination' ) ) {
 		if ( ! file_exists( $helpers ) ) {
 			return;
 		}
-		require_once $helpers;
+		require_once $helpers; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable -- build artifact; path resolved from plugin directory
 
 		$state = airowp_query_get_last_state( $query_id );
 
@@ -67,7 +67,7 @@ if ( ! function_exists( 'airowp_render_query_pagination' ) ) {
 		// Horizontal alignment of the pagination control. Drives the SCSS
 		// `is-align-{left|center|right}` modifier so the numbered flex list / load-more
 		// button / infinite sentinel all honour the setting with a single class.
-		$alignment = isset( $attributes['alignment'] ) && in_array( $attributes['alignment'], array( 'center', 'right' ), true )
+		$alignment   = isset( $attributes['alignment'] ) && in_array( $attributes['alignment'], array( 'center', 'right' ), true )
 			? $attributes['alignment']
 			: 'left';
 		$align_class = 'is-align-' . $alignment;
@@ -78,11 +78,16 @@ if ( ! function_exists( 'airowp_render_query_pagination' ) ) {
 			return;
 		}
 
+		// The page this Query actually rendered, so a first paint on a later
+		// page makes Load more / infinite scroll request the NEXT page, not
+		// page 2 again.
+		$rendered_page = isset( $state['page'] ) ? max( 1, (int) $state['page'] ) : airowp_query_current_page( $query_id );
+
 		// Infinite scroll: emit the sentinel + hidden fallback button.
 		if ( 'infinite' === $pagination_kind ) {
-			$auto_pause    = isset( $attributes['autoPauseAfter'] ) ? (int) $attributes['autoPauseAfter'] : 3;
+			$auto_pause      = isset( $attributes['autoPauseAfter'] ) ? (int) $attributes['autoPauseAfter'] : 3;
 			$sentinel_offset = isset( $attributes['sentinelOffsetPx'] ) ? (int) $attributes['sentinelOffsetPx'] : 200;
-			$btn_label     = ! empty( $attributes['buttonLabelWhenPaused'] )
+			$btn_label       = ! empty( $attributes['buttonLabelWhenPaused'] )
 				? (string) $attributes['buttonLabelWhenPaused']
 				: __( 'Load more', 'airo-wp' );
 
@@ -90,20 +95,20 @@ if ( ! function_exists( 'airowp_render_query_pagination' ) ) {
 				array(
 					'queryId'       => $query_id,
 					'autoLoadCount' => 0,
-					'page'          => 1,
+					'page'          => $rendered_page,
 					'busy'          => false,
 					'restUrl'       => esc_url_raw( rest_url( 'airo-wp/v1/query/render' ) ),
-					'nonce'         => wp_create_nonce( 'wp_rest' ),
+					'nonce'         => function_exists( 'airowp_query_rest_nonce' ) ? airowp_query_rest_nonce() : ( is_user_logged_in() ? wp_create_nonce( 'wp_rest' ) : '' ), // Visitors get none: a stale one on a cached page is rejected by core.
 				),
 				JSON_HEX_APOS
 			);
 
 			$wrapper = get_block_wrapper_attributes(
 				array(
-					'class'                    => 'airo-wp-query-pagination airo-wp-query-pagination--infinite ' . $align_class,
-					'data-wp-interactive'      => 'airo-wp/query',
-					'data-airo-wp-query-id'       => $query_id,
-					'data-airo-wp-pagination'     => 'infinite',
+					'class'                      => 'airo-wp-query-pagination airo-wp-query-pagination--infinite ' . $align_class,
+					'data-wp-interactive'        => 'airo-wp/query',
+					'data-airo-wp-query-id'         => $query_id,
+					'data-airo-wp-pagination'       => 'infinite',
 					'data-airo-wp-auto-pause-after' => (string) $auto_pause,
 					'data-airo-wp-sentinel-offset'  => (string) $sentinel_offset,
 				)
@@ -151,14 +156,14 @@ if ( ! function_exists( 'airowp_render_query_pagination' ) ) {
 			$lm_context = wp_json_encode(
 				array(
 					'queryId' => $query_id,
-					'page'    => 1,
+					'page'    => $rendered_page,
 					'busy'    => false,
 					'restUrl' => esc_url_raw( rest_url( 'airo-wp/v1/query/render' ) ),
-					'nonce'   => wp_create_nonce( 'wp_rest' ),
+					'nonce'   => function_exists( 'airowp_query_rest_nonce' ) ? airowp_query_rest_nonce() : ( is_user_logged_in() ? wp_create_nonce( 'wp_rest' ) : '' ), // Visitors get none: a stale one on a cached page is rejected by core.
 				),
 				JSON_HEX_APOS
 			);
-			$wrapper = get_block_wrapper_attributes(
+			$wrapper    = get_block_wrapper_attributes(
 				array(
 					'class'                => 'airo-wp-query-pagination airo-wp-query-pagination--loadmore ' . $align_class,
 					'data-wp-interactive'  => 'airo-wp/query',
@@ -177,21 +182,26 @@ if ( ! function_exists( 'airowp_render_query_pagination' ) ) {
 			return;
 		}
 
-		// Numbered pagination.
-		$current = max( 1, (int) get_query_var( 'paged' ) );
-		if ( 1 === $current ) {
-			// Singular-post paginator uses 'page' not 'paged'.
-			$current = max( 1, (int) get_query_var( 'page' ) );
+		// Numbered pagination. The page this Query actually rendered, so a
+		// REST refresh (always page 1) and first paint agree.
+		$current = isset( $state['page'] ) ? max( 1, (int) $state['page'] ) : airowp_query_current_page( $query_id );
+
+		$paginate_args = array(
+			'total'     => (int) $state['totalPages'],
+			'current'   => $current,
+			'type'      => 'array',
+			'prev_next' => $show_prev_next,
+		);
+		// With several Queries on the page, WordPress's shared `paged` would
+		// page all of them; each pages by its own `qpage__{queryId}` instead.
+		$page_param = airowp_query_page_param_name( $query_id );
+		if ( 'paged' !== $page_param ) {
+			// paginate_links() escapes each link it builds from this base.
+			$paginate_args['base']   = add_query_arg( $page_param, '%#%' );
+			$paginate_args['format'] = '';
 		}
 
-		$links = paginate_links(
-			array(
-				'total'     => (int) $state['totalPages'],
-				'current'   => $current,
-				'type'      => 'array',
-				'prev_next' => $show_prev_next,
-			)
-		);
+		$links = paginate_links( $paginate_args );
 
 		if ( empty( $links ) || ! is_array( $links ) ) {
 			return;

@@ -73,7 +73,6 @@
 		"airo-wp/timeline/layout",
 		"airo-wp/timeline/lineColor",
 		"airo-wp/timeline/markerStyle",
-		"airo-wp/timeline/markerSize",
 		"airo-wp/timeline/markerColor",
 		"airo-wp/timeline/markerBorderColor",
 		"airo-wp/timeline/animateOnScroll"
@@ -132,5 +131,5 @@
 	},
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
-	"style": "file:./index.css"
+	"style": "file:./style-index.css"
 }

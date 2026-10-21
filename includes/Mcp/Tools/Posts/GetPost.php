@@ -58,27 +58,23 @@ class GetPost extends BaseTool {
 		$post    = get_post( $post_id );
 
 		if ( ! $post ) {
-			return array(
-				'id'                => $post_id,
-				'title'             => 'Post not found',
-				'content'           => '',
-				'excerpt'           => '',
-				'status'            => 'not_found',
-				'post_type'         => 'post',
-				'author_id'         => 0,
-				'date_created'      => '',
-				'date_modified'     => '',
-				'slug'              => '',
-				'featured_media_id' => 0,
-				'meta'              => array(),
-			);
+			return $this->not_found_result( $post_id );
 		}
+
+		// Same shape as a missing post, so callers cannot probe for hidden IDs.
+		if ( ! $this->can_read_post( $post ) ) {
+			return $this->not_found_result( $post_id );
+		}
+
+		$can_edit = current_user_can( 'edit_post', $post_id );
+
+		$hide_content = $this->is_content_withheld( $post, $can_edit );
 
 		$result = array(
 			'id'                => $post->ID,
 			'title'             => $post->post_title,
-			'content'           => $post->post_content,
-			'excerpt'           => $post->post_excerpt,
+			'content'           => $hide_content ? '' : $post->post_content,
+			'excerpt'           => $hide_content ? '' : $post->post_excerpt,
 			'status'            => $post->post_status,
 			'post_type'         => $post->post_type,
 			'author_id'         => (int) $post->post_author,
@@ -89,11 +85,35 @@ class GetPost extends BaseTool {
 			'meta'              => array(),
 		);
 
-		if ( ! empty( $input['include_meta'] ) ) {
+		// Raw meta includes protected keys; core only exposes it in the edit context.
+		if ( ! empty( $input['include_meta'] ) && $can_edit ) {
 			$result['meta'] = get_post_meta( $post_id );
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Result returned for a missing or unreadable post.
+	 *
+	 * @param int $post_id Requested post ID.
+	 * @return array<string, mixed>
+	 */
+	private function not_found_result( int $post_id ): array {
+		return array(
+			'id'                => $post_id,
+			'title'             => 'Post not found',
+			'content'           => '',
+			'excerpt'           => '',
+			'status'            => 'not_found',
+			'post_type'         => 'post',
+			'author_id'         => 0,
+			'date_created'      => '',
+			'date_modified'     => '',
+			'slug'              => '',
+			'featured_media_id' => 0,
+			'meta'              => array(),
+		);
 	}
 
 	/**

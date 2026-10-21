@@ -28,6 +28,8 @@ if ( ! function_exists( 'airowp_render_form_checkbox_field' ) ) {
 	 * @return void
 	 */
 	function airowp_render_form_checkbox_field( $attributes, $content, $block ) {
+		unset( $content, $block );
+
 		$field_name         = isset( $attributes['fieldName'] ) ? (string) $attributes['fieldName'] : '';
 		$label              = isset( $attributes['label'] ) ? (string) $attributes['label'] : '';
 		$help_text          = isset( $attributes['helpText'] ) ? (string) $attributes['helpText'] : '';
@@ -54,18 +56,14 @@ if ( ! function_exists( 'airowp_render_form_checkbox_field' ) ) {
 
 		$label_html = '<label for="' . esc_attr( $field_id ) . '" class="airo-wp-form-field__checkbox-label"><span>' . wp_kses_post( $label ) . '</span>';
 		if ( $required ) {
-			$label_html .= '<span class="airo-wp-form-field__required" aria-label="required"> *</span>';
+			$label_html .= '<span class="airo-wp-form-field__required" aria-hidden="true"> *</span>';
 		}
 		$label_html .= '</label>';
 
 		$inner  = '<div class="airo-wp-form-field__checkbox-wrapper">' . $input . $label_html . '</div>';
 		$inner .= airowp_form_field_help_html( $field_id, $help_text );
 
-		$wrapper = get_block_wrapper_attributes(
-			array(
-				'class' => 'airo-wp-form-field airo-wp-form-field--checkbox',
-			)
-		);
+		$wrapper = airowp_form_field_wrapper_attributes( $attributes, 'checkbox' );
 
 		echo '<div ' . $wrapper . '>' . $inner . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}

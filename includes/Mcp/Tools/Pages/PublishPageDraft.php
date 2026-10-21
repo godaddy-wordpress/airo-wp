@@ -99,7 +99,7 @@ class PublishPageDraft extends BaseTool {
 		if ( 'draft' !== $draft->post_status ) {
 			return array(
 				'success' => false,
-				'message' => __( 'Only posts in draft status can be published as a Site Designer draft.', 'airo-wp' ),
+				'message' => __( 'Only posts in draft status can be published as a page draft.', 'airo-wp' ),
 			);
 		}
 
@@ -108,7 +108,7 @@ class PublishPageDraft extends BaseTool {
 		if ( empty( $original_meta ) ) {
 			return array(
 				'success' => false,
-				'message' => __( 'The page is not a Site Designer draft copy.', 'airo-wp' ),
+				'message' => __( 'The page is not a draft copy of a published page.', 'airo-wp' ),
 			);
 		}
 
@@ -118,6 +118,13 @@ class PublishPageDraft extends BaseTool {
 			return array(
 				'success' => false,
 				'message' => __( 'The draft is missing a valid original page reference.', 'airo-wp' ),
+			);
+		}
+
+		if ( ! current_user_can( 'edit_post', $original_id ) || ! current_user_can( 'edit_post', $draft_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to publish this draft.', 'airo-wp' ),
 			);
 		}
 

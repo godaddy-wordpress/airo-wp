@@ -5,10 +5,21 @@
  * Uses BEM naming convention with .airo-wp-comparison-table prefix.
  */
 
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
 .airo-wp-comparison-table {
 	box-sizing: border-box;
 	max-width: 100%;
 	color: var(--wp--preset--color--contrast, inherit);
+	// Text on the featured column's solid header, and the fill of its CTA.
+	// A theme.json / Style Kit token, else white. Not the base preset: the
+	// featured fill is the primary/author color, not the page background, so
+	// a dark theme's base would drop below 4.5:1 on the #2563eb fallback.
+	--airo-wp-comparison-featured-text: var(
+		--wp--custom--airo-wp--comparison-table--featured-text,
+		#fff
+	);
 
 	*,
 	*::before,
@@ -53,7 +64,7 @@
 		position: relative;
 
 		&--label {
-			text-align: left;
+			text-align: start;
 			width: 30%;
 			min-width: 140px;
 		}
@@ -63,7 +74,7 @@
 				--airo-wp-comparison-featured-color,
 				var(--wp--preset--color--primary, #2563eb)
 			);
-			color: #fff;
+			color: var(--airo-wp-comparison-featured-text);
 		}
 	}
 
@@ -81,8 +92,10 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		padding: 0.2em 0.6em;
-		border-radius: 100px;
-		background-color: rgba(255, 255, 255, 0.2);
+		border-radius: $airo-wp-radius-full;
+		// currentcolor is the featured header's text token, so the chip tints
+		// with it rather than with the page background.
+		background-color: color-mix(in srgb, currentcolor 20%, transparent);
 		margin-bottom: 0.5rem;
 	}
 
@@ -94,16 +107,25 @@
 		padding: 0.5em 1.25em;
 		font-size: 0.85em;
 		font-weight: 600;
-		border-radius: 6px;
+		border-radius: $airo-wp-radius-medium;
 		text-decoration: none;
 		cursor: pointer;
-		transition: background-color 0.2s ease, color 0.2s ease,
-			box-shadow 0.2s ease;
+		transition: background-color $airo-wp-duration-fast $airo-wp-easing, color $airo-wp-duration-fast $airo-wp-easing,
+			box-shadow $airo-wp-duration-fast $airo-wp-easing;
 		line-height: 1.4;
 
+		// Filled = the header colors inverted. `currentcolor` can't express
+		// the fill: on this element it is the label color set just below, so
+		// fill and label were always identical and the text vanished.
 		&--filled {
-			background-color: currentcolor;
-			color: var(--airo-wp-comparison-header-bg, #fff);
+			background-color: var(
+				--airo-wp-comparison-header-text,
+				var(--wp--preset--color--contrast, #111)
+			);
+			color: var(
+				--airo-wp-comparison-header-bg,
+				var(--wp--preset--color--base, #fff)
+			);
 
 			// Use a pseudo-element for text color to avoid inheriting currentcolor
 			&,
@@ -128,7 +150,7 @@
 	&__header-cell--featured &__cta {
 
 		&--filled {
-			background-color: #fff;
+			background-color: var(--airo-wp-comparison-featured-text);
 			color: var(
 				--airo-wp-comparison-featured-color,
 				var(--wp--preset--color--primary, #2563eb)
@@ -136,8 +158,8 @@
 		}
 
 		&--outlined {
-			border-color: #fff;
-			color: #fff;
+			border-color: var(--airo-wp-comparison-featured-text);
+			color: var(--airo-wp-comparison-featured-text);
 		}
 	}
 
@@ -146,25 +168,25 @@
 	&__body {
 
 		tr {
-			border-bottom: 1px solid rgba(128, 128, 128, 0.2);
-			transition: background-color 0.15s ease;
+			border-bottom: 1px solid color-mix(in srgb, currentcolor 20%, transparent);
+			transition: background-color $airo-wp-duration-fast $airo-wp-easing;
 
 			&:last-child {
 				border-bottom: none;
 			}
 
 			&:hover {
-				background-color: rgba(128, 128, 128, 0.05);
+				background-color: color-mix(in srgb, currentcolor 5%, transparent);
 			}
 		}
 	}
 
 	// Alternating row colors
 	&--alternating &__body tr:nth-child(even) {
-		background-color: rgba(128, 128, 128, 0.04);
+		background-color: color-mix(in srgb, currentcolor 4%, transparent);
 
 		&:hover {
-			background-color: rgba(128, 128, 128, 0.08);
+			background-color: color-mix(in srgb, currentcolor 8%, transparent);
 		}
 	}
 
@@ -176,7 +198,7 @@
 		vertical-align: middle;
 
 		&--label {
-			text-align: left;
+			text-align: start;
 			font-weight: 500;
 		}
 
@@ -220,16 +242,24 @@
 
 	&__icon {
 		flex-shrink: 0;
+		// The SVGs carry no width/height attributes, so no size is baked into
+		// stored markup. Themes tune it via theme.json
+		// settings.custom.airowp.comparisonTable.defaultSize (unitless).
+		width: calc(var(--wp--custom--airo-wp--comparison-table--default-size, 20) * 1px);
+		height: calc(var(--wp--custom--airo-wp--comparison-table--default-size, 20) * 1px);
 
+		// Check and cross differ by shape, so color is decoration, not meaning.
+		// Core's vivid-green-cyan (#00d084) was only 2:1 against white; the
+		// default now follows the theme's primary color, then the text color.
 		&--check {
 			color: var(
-				--wp--preset--color--vivid-green-cyan,
-				#00d084
+				--wp--custom--airo-wp--comparison-table--check-color,
+				var(--wp--preset--color--primary, currentcolor)
 			);
 		}
 
 		&--cross {
-			color: rgba(128, 128, 128, 0.6);
+			color: color-mix(in srgb, currentcolor 60%, transparent);
 		}
 	}
 
@@ -249,28 +279,33 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 18px;
-		height: 18px;
-		font-size: 11px;
+		width: 1.125em;
+		height: 1.125em;
+		font-size: 0.6875em;
 		font-weight: 700;
 		line-height: 1;
 		border-radius: 50%;
-		background-color: rgba(128, 128, 128, 0.15);
+		background-color: color-mix(in srgb, currentcolor 15%, transparent);
 		color: inherit;
 		opacity: 0.6;
 		cursor: help;
 		flex-shrink: 0;
 		position: relative;
-		transition: opacity 0.2s ease;
+		transition: opacity $airo-wp-duration-fast $airo-wp-easing;
 
 		&:hover {
 			opacity: 1;
 		}
 	}
 
-	// Frontend tooltip popup (positioned by view.js)
+	// Frontend tooltip popup (positioned by view.js). Deliberately a fixed
+	// dark bubble with light text — like a native browser tooltip — rather
+	// than themed, so it stays legible regardless of the light/dark theme
+	// variation or surrounding section color underneath it.
 	&__tooltip {
-		position: absolute;
+		// Fixed and on <body> (placed by view.js), so neither the scroll
+		// wrapper's overflow-x nor a transformed ancestor can displace it.
+		position: fixed;
 		z-index: 100;
 		max-width: 240px;
 		padding: 0.5em 0.75em;
@@ -279,11 +314,11 @@
 		line-height: 1.4;
 		color: #fff;
 		background-color: rgba(0, 0, 0, 0.85);
-		border-radius: 6px;
+		border-radius: $airo-wp-radius-medium;
 		pointer-events: none;
 		opacity: 0;
 		transform: translateY(4px);
-		transition: opacity 0.15s ease, transform 0.15s ease;
+		transition: opacity $airo-wp-duration-fast $airo-wp-easing, transform $airo-wp-duration-fast $airo-wp-easing;
 		white-space: normal;
 
 		&.is-visible {
@@ -309,7 +344,7 @@
 
 	&--responsive-stack {
 
-		@media (max-width: 767px) {
+		@include below($breakpoint-mobile) {
 
 			.airo-wp-comparison-table__table,
 			.airo-wp-comparison-table__header,
@@ -353,18 +388,18 @@
 				grid-template-columns: 1fr;
 				gap: 0;
 				padding: 0.75rem 0;
-				border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+				border-bottom: 1px solid color-mix(in srgb, currentcolor 20%, transparent);
 			}
 
 			.airo-wp-comparison-table__cell {
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
-				text-align: right;
+				text-align: end;
 				padding: 0.5rem 0.75rem;
 
 				&--label {
-					text-align: left;
+					text-align: start;
 					font-weight: 700;
 					font-size: 1.05em;
 					padding-bottom: 0.25rem;
@@ -375,8 +410,8 @@
 				&:not(.airo-wp-comparison-table__cell--label)::before {
 					content: attr(data-label);
 					font-weight: 500;
-					text-align: left;
-					margin-right: 1rem;
+					text-align: start;
+					margin-inline-end: 1rem;
 					opacity: 0.7;
 					flex-shrink: 0;
 				}
@@ -393,15 +428,15 @@
 					display: none;
 				}
 
-				background-color: rgba(128, 128, 128, 0.04);
-				border-radius: 4px;
+				background-color: color-mix(in srgb, currentcolor 4%, transparent);
+				border-radius: $airo-wp-radius-small;
 			}
 		}
 	}
 
 	// --- General Mobile Adjustments ---
 
-	@media (max-width: 767px) {
+	@include below($breakpoint-mobile) {
 
 		&__column-name {
 			font-size: 1.1em;

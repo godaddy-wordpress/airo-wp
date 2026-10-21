@@ -86,6 +86,13 @@ class DeleteMedia extends BaseTool {
 			);
 		}
 
+		if ( ! current_user_can( 'delete_post', $media_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to delete this media item', 'airo-wp' ),
+			);
+		}
+
 		$media_info = array(
 			'id'    => $post->ID,
 			'title' => $post->post_title,

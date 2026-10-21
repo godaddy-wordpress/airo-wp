@@ -42,6 +42,17 @@ body:not(.block-editor-page).admin-bar .wp-block-template-part.airo-wp-sticky-he
 		top: 46px; /* WordPress admin bar height on mobile */
 	}
 }
+
+/* Core makes the admin bar absolute at 600px and below: it scrolls away, so
+   there is nothing to clear and a 46px offset would leave a gap. */
+@media screen and (max-width: 600px) {
+
+	body:not(.block-editor-page).admin-bar.airo-wp-sticky-header-enabled .wp-block-template-part:not(footer):first-of-type,
+	body:not(.block-editor-page).admin-bar.airo-wp-sticky-header-enabled header.wp-block-template-part,
+	body:not(.block-editor-page).admin-bar .wp-block-template-part.airo-wp-sticky-header-enabled {
+		top: 0;
+	}
+}
 /* stylelint-enable selector-class-pattern */
 
 /* Remove sticky from inner block to avoid conflicts */
@@ -328,6 +339,45 @@ body:not(.block-editor-page).airo-wp-page-overlay-header header.wp-block-templat
 	background-color: transparent;
 	transition: background-color var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out,
 		box-shadow var(--airo-wp-sticky-header-transition-speed, 300ms) ease-in-out;
+
+	// The menu surface, independently of the header's scroll colors: the
+	// theme's secondary surface, else its page background, else white. base
+	// before white matters on dark palettes without base-2 (Twenty
+	// Twenty-Five's), whose text colors are light. overlay-menu-colors.js
+	// picks readable text for whichever one resolves.
+	--airo-wp-overlay-menu-surface: var(--wp--preset--color--base-2, var(--wp--preset--color--base, #fff));
+
+	.wp-block-navigation :is(.wp-block-navigation__submenu-container, .wp-block-navigation__responsive-container.is-menu-open) {
+
+		// Use automatic colors only when neither submenu/overlay color is authored.
+		&:not(.has-background):not(.has-text-color) {
+			background: var(--airo-wp-overlay-menu-bg, #fff) !important;
+			color: var(--airo-wp-overlay-menu-fg, #000) !important;
+		}
+
+		// Carry the menu color through wrappers that theme CSS may color directly.
+		.wp-block-navigation__responsive-close,
+		.wp-block-navigation__responsive-dialog,
+		.wp-block-navigation__responsive-container-content,
+		.wp-block-navigation__container,
+		.wp-block-navigation-item,
+		.wp-block-navigation-item__content,
+		.wp-block-navigation-item__label,
+		.wp-block-navigation__submenu-icon,
+		.wp-block-navigation__submenu-icon *,
+		.wp-block-navigation__responsive-container-close,
+		.wp-block-navigation__responsive-container-close * {
+			color: inherit !important;
+		}
+
+		:is(.wp-block-navigation__submenu-icon, .wp-block-navigation__responsive-container-close) svg {
+			fill: currentcolor;
+
+			&[fill="none"] {
+				fill: none;
+			}
+		}
+	}
 }
 
 /**
@@ -375,14 +425,117 @@ body:not(.block-editor-page).airo-wp-page-overlay-header.airo-wp-page-overlay-sk
 }
 
 /**
- * Overlay Content Pull-Up
- * Uses a negative margin equal to the header height (set by JS as a CSS
- * custom property) so the content slides up underneath the overlay header
- * regardless of what spacing the template applies between header and content.
+ * Overlay Content Pull-Up — REMOVED, deliberately.
+ *
+ * This used to be:
+ *
+ *   .wp-site-blocks > header.wp-block-template-part + * {
+ *       margin-top: calc(-1 * var(--airo-wp-overlay-header-height, 0px)) !important;
+ *   }
+ *
+ * The rule pulled the content block up by the header height "so the content
+ * slides up underneath the overlay header". That reasoning only holds for a
+ * header that is IN FLOW and therefore occupies that height. The overlay
+ * header is `position: fixed` (see "Overlay Header" above, and it has been
+ * since the feature shipped in 14d6a693), so it occupies NO flow space: the
+ * content block already starts at the top of the page and its background
+ * already runs behind the header. There was nothing to reclaim.
+ *
+ * What the rule actually did was push the content block a full header height
+ * ABOVE the viewport, cropping the top of the hero's background, and occlude
+ * its content behind the fixed header. `applyOverlayHeroPadding()` in
+ * sticky-header.js was then added to push the content back down by the same
+ * height — so the two terms cancelled EXACTLY and the clearance was inert:
+ *
+ *     content top = (T0 - H) + base + (H + gap) = T0 + base + gap
+ *
+ * H drops out. Measured on a live overlay site, sweeping the custom property
+ * across 0 / 50 / 116.54 / 300px moved the hero box to 32 / -18 / -84.5 /
+ * -268px while the content stayed at 52.6px every single time, 95.9px behind
+ * a header whose bottom edge was at 148.5px. Stock airo-wp is worse than
+ * that site: with no author override the clearance falls back to plain
+ * `var(--airo-wp-overlay-header-height)`, so content lands at exactly T0 + base
+ * — zero clearance on every overlay page.
+ *
+ * With the pull-up gone the geometry is what the overlay actually wants:
+ * the content block stays at T0 so its background runs behind the fixed
+ * header, and the hero clearance alone (base + H + gap) puts the content
+ * below it. Do not reintroduce a negative margin here without first making
+ * the header in-flow — the two are only correct together.
+ */
+
+/**
+ * Overlay Content Flush-To-Top
+ *
+ * The one thing the old pull-up got right: a block theme puts its top-level
+ * block gap between the header and the content, so the content starts some
+ * way down the page. Under an overlay header that gap is a strip of bare page
+ * background showing above the hero, with the fixed header floating over it.
+ *
+ * Zeroing that margin is the whole of what was needed — NOT a negative margin
+ * of the header height. Measured on Twenty Twenty-Five the gap is 57.4px
+ * against an 82.4px header, so the two are unrelated quantities that only
+ * looked interchangeable because both are "space above the content".
+ *
+ * Being a constant, this also lands at FIRST PAINT, where the old rule could
+ * not: it depends on no measurement.
  */
 body:not(.block-editor-page).airo-wp-page-overlay-header .wp-site-blocks > header.wp-block-template-part + *,
 body:not(.block-editor-page).airo-wp-page-overlay-header .wp-site-blocks > .wp-block-template-part:not(footer):first-of-type + * {
-	margin-top: calc(-1 * var(--airo-wp-overlay-header-height, 0px)) !important;
+	margin-top: 0 !important;
+}
+
+/**
+ * Overlay Hero Clearance — OPT-IN.
+ *
+ * Pushes the first content block's CONTENT below the fixed header while its
+ * background stays at the top of the page, running behind the header. That is
+ * the right behaviour ONLY when the element this rule lands on is the element
+ * that paints the hero. It frequently is not.
+ *
+ * The rule targets `header + * > :first-child`. In the shape Airo generator and
+ * the Airo patterns emit, that child is a transparent layout wrapper and the
+ * block that paints the hero is further in:
+ *
+ *     .wp-block-post-content
+ *     └─ .wp-block-airo-wp-section   padding-top:0   <- matched here
+ *        └─ .airo-wp-stack__inner
+ *           └─ .wp-block-cover                           <- paints the hero
+ *
+ * Padding a box that paints nothing does not slide content under a
+ * transparent header; it pushes the whole hero down and leaves a band of bare
+ * page background with the fixed header floating over it. Measured on two
+ * live 2.8.0 sites: the cover sat at exactly the header height (92.4px and
+ * 79.5px) instead of at 0.
+ *
+ * So the clearance defaults to `0px` and is applied only where something asks
+ * for it. That also restores the behaviour this feature actually shipped with:
+ * before the pull-up was removed, `-H` and `+H` cancelled exactly (see
+ * "Overlay Content Pull-Up" above), so the NET clearance was zero for the
+ * whole life of the feature and every hero in the wild was authored against
+ * zero.
+ *
+ * Opting in is a one-line custom property on the painting element, which is
+ * what Airo generator already does:
+ *
+ *     body.airo-wp-page-overlay-header .sd-design-overlay-clearance {
+ *         --airo-wp-overlay-hero-clearance:
+ *             calc(var(--airo-wp-overlay-header-height, 0px) + var(--wp--preset--spacing--sd-small));
+ *     }
+ *
+ * Because that opt-in reads `--airo-wp-overlay-header-height` itself, it still
+ * gets the served estimate at FIRST PAINT and the measured value once
+ * sticky-header.js runs — the anti-jump work is unaffected by this default.
+ *
+ * `!important` is required, not decorative: WordPress serializes block
+ * spacing as an INLINE style, so a normal rule here would lose to any hero
+ * that sets its own top padding. The author's value is not discarded —
+ * sticky-header.js copies it into `--airo-wp-overlay-hero-base-pad` and it is
+ * added back below, which is also why that term must come first.
+ */
+body:not(.block-editor-page).airo-wp-page-overlay-header .wp-site-blocks > header.wp-block-template-part + * > :first-child,
+body:not(.block-editor-page).airo-wp-page-overlay-header .wp-site-blocks > .wp-block-template-part:not(footer):first-of-type + * > :first-child {
+	padding-top: calc(var(--airo-wp-overlay-hero-base-pad, 0px) + var(--airo-wp-overlay-hero-clearance, 0px)) !important;
 }
 
 /**

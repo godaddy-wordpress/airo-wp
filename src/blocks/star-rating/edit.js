@@ -17,16 +17,14 @@
 import classnames from 'classnames';
 import {
 	useBlockProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseColorProps as useColorProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseBorderProps as useBorderProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalGetSpacingClassesAndStyles as getSpacingClassesAndStyles,
 } from '@wordpress/block-editor';
 import DsgoJustificationToolbar from '../../components/shared/DsgoJustificationToolbar';
 import { getJustificationClass } from '../../utils/justification';
 import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+import { useIconDefaults } from '../../hooks';
 import Inspector from './components/Inspector';
 import StarRatingPreview from './components/StarRatingPreview';
 import { getFillPercent } from './utils/rating';
@@ -47,6 +45,7 @@ export default function StarRatingEdit({
 		rating,
 		maxRating,
 		precision,
+		iconStyle,
 		iconSize,
 		iconGap,
 		ratingColor,
@@ -57,6 +56,15 @@ export default function StarRatingEdit({
 	} = attributes;
 
 	const isRatingBound = !!metadata?.bindings?.rating;
+
+	// iconStyle / iconSize are unset unless the author overrides them. The
+	// style is resolved here so the preview draws the inherited shape; the
+	// size needs no resolving — leaving the custom property unset lets
+	// style.scss fall through to the theme token, exactly as on the page.
+	const iconDefaults = useIconDefaults({
+		sizeKey: 'starRating',
+		sizeFallback: 24,
+	});
 
 	const blockProps = useBlockProps({
 		className: classnames(
@@ -76,7 +84,9 @@ export default function StarRatingEdit({
 			maxRating,
 			precision
 		)}%`,
-		'--airo-wp-star-rating-size': `${iconSize}px`,
+		...(typeof iconSize === 'number' && {
+			'--airo-wp-star-rating-size': `${iconSize}px`,
+		}),
 		'--airo-wp-star-rating-gap': `${iconGap}px`,
 		'--airo-wp-star-rating-color': convertColorToCSSVar(ratingColor),
 		'--airo-wp-star-rating-track-color': convertColorToCSSVar(trackColor),
@@ -102,7 +112,10 @@ export default function StarRatingEdit({
 			/>
 			<div {...blockProps}>
 				<StarRatingPreview
-					attributes={attributes}
+					attributes={{
+						...attributes,
+						iconStyle: iconStyle || iconDefaults.style,
+					}}
 					className={classnames(
 						colorProps.className,
 						borderProps.className

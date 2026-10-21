@@ -72,6 +72,19 @@
 			"type": "string",
 			"default": ""
 		},
+		"stepProgress": {
+			"type": "string",
+			"enum": [ "steps", "bar", "none" ],
+			"default": "steps"
+		},
+		"stepProgressColor": {
+		  "type": "string",
+		  "default": ""
+		},
+		"webhookUrl": {
+			"type": "string",
+			"default": ""
+		},
 		"fieldSpacing": {
 			"type": "string",
 			"default": ""
@@ -97,6 +110,18 @@
 			"default": ""
 		},
 		"fieldBorderRadius": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldFocusColor": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldErrorColor": {
+			"type": "string",
+			"default": ""
+		},
+		"fieldSuccessColor": {
 			"type": "string",
 			"default": ""
 		},
@@ -247,5 +272,5 @@
 	"editorScript": "file:./index.js",
 	"viewScript": "file:./view.js",
 	"editorStyle": "file:./index.css",
-	"style": "file:./index.css"
+	"style": "file:./style-index.css"
 }

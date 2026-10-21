@@ -1,4 +1,3 @@
-/* eslint-disable @wordpress/no-unsafe-wp-apis -- experimental layout/control primitives intentionally used; stable replacements not yet available */
 import { __, sprintf } from '@wordpress/i18n';
 import {
 	Button,

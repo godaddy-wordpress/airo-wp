@@ -18,11 +18,8 @@
 import {
 	useBlockProps,
 	RichText,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalGetBorderClassesAndStyles as getBorderClassesAndStyles,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalGetColorClassesAndStyles as getColorClassesAndStyles,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalGetShadowClassesAndStyles as getShadowClassesAndStyles,
 	getTypographyClassesAndStyles,
 } from '@wordpress/block-editor';
@@ -58,6 +55,7 @@ export default function IconButtonSave({ attributes }) {
 		hoverTextColor,
 		style,
 		modalCloseId,
+		ariaLabel,
 	} = attributes;
 
 	// The wrapper is the block root: a plain block-level box that core's
@@ -164,6 +162,9 @@ export default function IconButtonSave({ attributes }) {
 				{...(modalCloseId && {
 					'data-airo-wp-modal-close': modalCloseId,
 				})}
+				// Accessible name for icon-only buttons. Omitted when unset so
+				// existing buttons stay byte-identical (no migration needed).
+				{...(ariaLabel && { 'aria-label': ariaLabel })}
 			>
 				{hasIcon && (
 					<span

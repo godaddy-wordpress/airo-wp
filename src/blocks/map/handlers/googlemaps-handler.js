@@ -4,6 +4,7 @@
  * Handles Google Maps initialization and styling.
  */
 
+import { __ } from '@wordpress/i18n';
 import { loadGoogleMaps } from '../utils/script-loader';
 
 /**
@@ -136,7 +137,10 @@ export async function initGoogleMap(dsgMap) {
 		container = document.createElement('div');
 		container.className = 'airo-wp-map__container';
 		container.setAttribute('role', 'region');
-		container.setAttribute('aria-label', 'Map');
+		container.setAttribute(
+			'aria-label',
+			dsgMap.config.label || __('Interactive map', 'airo-wp')
+		);
 		dsgMap.element.appendChild(container);
 	}
 

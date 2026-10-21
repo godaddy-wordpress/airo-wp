@@ -8,10 +8,7 @@ import {
 	InspectorControls,
 	store as blockEditorStore,
 } from '@wordpress/block-editor';
-import {
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
-	__experimentalUnitControl as UnitControl,
-} from '@wordpress/components';
+import { __experimentalUnitControl as UnitControl } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
 import { useSelect } from '@wordpress/data';
 

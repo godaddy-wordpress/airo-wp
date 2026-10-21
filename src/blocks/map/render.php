@@ -42,7 +42,7 @@ if ( ! function_exists( 'airowp_map_privacy_overlay' ) ) {
 		$html  = '<div class="airo-wp-map__privacy-overlay"><div class="airo-wp-map__privacy-content">';
 		$html .= '<svg class="airo-wp-map__privacy-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
 		$html .= '<p class="airo-wp-map__privacy-text">' . esc_html( $text ) . '</p>';
-		$html .= '<button class="airo-wp-map__load-button" type="button" aria-label="' . esc_attr__( 'Load map. This will connect to external map services.', 'airo-wp' ) . '">' . esc_html__( 'Load Map', 'airo-wp' ) . '</button>';
+		$html .= '<button class="airo-wp-map__load-button wp-element-button" type="button" aria-label="' . esc_attr__( 'Load map. This will connect to external map services.', 'airo-wp' ) . '">' . esc_html__( 'Load Map', 'airo-wp' ) . '</button>';
 		$html .= '</div></div>';
 
 		return $html;
@@ -98,6 +98,13 @@ if ( ! function_exists( 'airowp_render_map' ) ) {
 		// slug is missing from the active palette.
 		$marker_color = airowp_resolve_preset_color( $marker_color, '#e74c3c' );
 
+		// No location yet (a freshly inserted map starts at 0,0 with no
+		// address, see index.js): render nothing rather than a map of the
+		// ocean off West Africa. Mirrors hasNoLocation() in MapPlaceholder.js.
+		if ( 0.0 === $latitude && 0.0 === $longitude && '' === trim( $address ) ) {
+			return;
+		}
+
 		// Clamp coordinates / zoom to valid ranges (mirrors save.js).
 		$safe_lat  = max( -90, min( 90, $latitude ) );
 		$safe_lng  = max( -180, min( 180, $longitude ) );
@@ -131,15 +138,22 @@ if ( ! function_exists( 'airowp_render_map' ) ) {
 			'data-airo-wp-privacy-mode' => $privacy_mode ? 'true' : 'false',
 			'data-airo-wp-map-style'    => $map_style,
 		);
-		$data_attr_html  = '';
-		foreach ( $data_attributes as $key => $value ) {
-			$data_attr_html .= ' ' . $key . '="' . esc_attr( $value ) . '"';
-		}
 
 		$aria_label = '' !== $address
 			/* translators: %s: The address being shown on the map */
 			? sprintf( __( 'Map showing %s', 'airo-wp' ), $address )
 			: __( 'Interactive map', 'airo-wp' );
+
+		// In privacy mode view.js builds the map container itself, after
+		// consent, so it needs the localized label handed over.
+		if ( $privacy_mode ) {
+			$data_attributes['data-airo-wp-map-label'] = $aria_label;
+		}
+
+		$data_attr_html = '';
+		foreach ( $data_attributes as $key => $value ) {
+			$data_attr_html .= ' ' . $key . '="' . esc_attr( $value ) . '"';
+		}
 
 		// The keyless Google provider is a plain iframe built server-side: no
 		// Maps JS API, no Leaflet, and no geocoding round-trip, so outside of

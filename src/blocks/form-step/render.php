@@ -1,0 +1,80 @@
+<?php
+/**
+ * Form Step — server-side render.
+ *
+ * Wraps the step's fields in a labelled group (not a region landmark per
+ * step). Without JavaScript every step shows stacked under its heading; the
+ * view script turns them into one-at-a-time steps.
+ *
+ * @package airo-wp
+ * @since 2.10.0
+ *
+ * @param array    $attributes Block attributes.
+ * @param string   $content    Inner blocks HTML.
+ * @param WP_Block $block      Block instance.
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+if ( ! function_exists( 'airowp_render_form_step' ) ) {
+	/**
+	 * Render the Form Step block.
+	 *
+	 * @param array    $attributes Block attributes.
+	 * @param string   $content    Inner blocks HTML.
+	 * @param WP_Block $block      Block instance.
+	 * @return void
+	 */
+	function airowp_render_form_step( $attributes, $content, $block ) {
+		unset( $block );
+
+		$number = class_exists( '\airo-wp\Blocks\Form_Step_Counter' ) ? \airo-wp\Blocks\Form_Step_Counter::next() : 1;
+
+		// The editor's RichText stores HTML. Tags are stripped here; the
+		// entities it stores (`Q&amp;A`) survive esc_html() below unchanged,
+		// as it does not double-encode.
+		$title = isset( $attributes['title'] ) ? trim( wp_strip_all_tags( (string) $attributes['title'] ) ) : '';
+		if ( '' === $title ) {
+			/* translators: %d: step number */
+			$title = sprintf( __( 'Step %d', 'airo-wp' ), $number );
+		}
+		// wp_unique_id() restarts every request, so a stepped form fetched
+		// later over REST (Query load more / refresh) would repeat ids already
+		// on the page. A per-request salt keeps them apart.
+		static $salt = null;
+		$salt        = $salt ?? substr( wp_hash( uniqid( '', true ) ), 0, 6 );
+		$heading_id  = wp_unique_id( 'airo-wp-form-step-' . $salt . '-' );
+
+		$wrapper = get_block_wrapper_attributes(
+			array(
+				'class'           => 'airo-wp-form-step',
+				'data-airo-wp-step'  => (string) $number,
+				'role'            => 'group',
+				'aria-labelledby' => $heading_id,
+			)
+		);
+
+		$html = sprintf(
+			'<div %1$s><h3 class="airo-wp-form-step__title" id="%2$s" tabindex="-1">%3$s</h3><div class="airo-wp-form-step__fields">%4$s</div></div>',
+			$wrapper,
+			esc_attr( $heading_id ),
+			esc_html( $title ),
+			$content
+		);
+
+		// Text colour and typography style the step title, not the fields
+		// (they skip serialization, so the wrapper never carries them).
+		if ( function_exists( 'airowp_route_visual_supports' ) ) {
+			$html = airowp_route_visual_supports(
+				$html,
+				$attributes,
+				'airo-wp-form-step__title',
+				array( 'color', 'typography' )
+			);
+		}
+
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wrapper from get_block_wrapper_attributes(), title/id escaped above, fields render their own escaped markup.
+	}
+}
+
+airowp_render_form_step( $attributes, $content, $block );

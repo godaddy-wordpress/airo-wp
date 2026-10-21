@@ -50,6 +50,12 @@
 		justify-content: flex-end;
 		padding: 0 0.5rem;
 
+		// A query container for the no-JS fallback at the end of this file.
+		// The fill always has an explicit width, so containment does not
+		// change its size.
+		container-type: inline-size;
+		container-name: airo-wp-progress-fill;
+
 		// Default fill color when the author has not chosen one (see note on
 		// the container above).
 		&:where(:not([style*="background-color"])) {
@@ -83,24 +89,41 @@
 		}
 
 		&--inside {
+			// White, not the base preset: the label sits on the fill (primary or
+			// the author's color), and a dark theme's base is ~3:1 on #2563eb.
 			color: #fff;
 			font-weight: 600;
 			white-space: nowrap;
-			padding-right: 0.5rem;
+			padding-inline-end: 0.5rem;
 		}
 	}
+}
 
-	// Hide inside label if bar is too narrow
-	&__fill[style*="width: 0%"],
-	&__fill[style*="width: 1%"],
-	&__fill[style*="width: 2%"],
-	&__fill[style*="width: 3%"],
-	&__fill[style*="width: 4%"],
-	&__fill[style*="width: 5%"] {
+// An inside label that does not fit its fill is hidden visually but kept for
+// screen readers, since it is the bar's only text value. view.js and edit.js
+// measure the label against the fill (utils/label-fit.js) and add --clipped.
+@mixin airo-wp-progress-label-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
 
-		.airo-wp-progress-bar__label--inside {
-			display: none;
-		}
+.airo-wp-progress-bar__label--inside.airo-wp-progress-bar__label--clipped {
+
+	@include airo-wp-progress-label-visually-hidden;
+}
+
+// Fallback before (or without) the script: a fill too narrow for even a short
+// "NN%" label. Measured bars skip it, so it never hides a label that fits.
+@container airo-wp-progress-fill (max-width: 3em) {
+
+	.airo-wp-progress-bar:not(.airo-wp-progress-bar--label-measured) .airo-wp-progress-bar__label--inside {
+
+		@include airo-wp-progress-label-visually-hidden;
 	}
 }
 
@@ -113,5 +136,31 @@
 
 	100% {
 		background-position: 0 0;
+	}
+}
+
+// Reduced motion: stop the striped animation and the width transition that
+// save() writes inline (hence !important). The fill still reaches its value;
+// it just doesn't travel there. view.js skips its start delay to match.
+@media (prefers-reduced-motion: reduce) {
+
+	.airo-wp-progress-bar__fill {
+		transition: none !important;
+		animation: none !important;
+	}
+}
+
+// An animate-on-scroll bar is saved at width: 0% and filled in by view.js, so
+// without JS it would stay empty. Show its saved value instead, where the
+// browser can read it from data-percentage (typed attr(), Chromium 133+; other
+// browsers keep the empty fill, and the value is still exposed through
+// aria-valuenow and the label).
+@supports (width: calc(attr(data-percentage type(#{'<number>'})) * 1%)) {
+
+	@media (scripting: none) {
+
+		.airo-wp-progress-bar--animate .airo-wp-progress-bar__fill {
+			width: calc(attr(data-percentage type(#{'<number>'})) * 1%) !important;
+		}
 	}
 }

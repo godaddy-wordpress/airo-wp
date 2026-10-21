@@ -66,6 +66,7 @@ final class GetMediaByIdTest extends TestCase {
         $post->post_name     = 'my-image';
         $post->post_mime_type = 'image/png';
 
+        Functions\when( 'current_user_can' )->justReturn( true );
         Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
         Functions\expect( 'wp_get_attachment_metadata' )->with( 10 )->andReturn(
             array( 'width' => 1024, 'height' => 768 )
@@ -81,5 +82,77 @@ final class GetMediaByIdTest extends TestCase {
         $this->assertSame( 1024, $result['dimensions']['width'] );
         $this->assertSame( 768, $result['dimensions']['height'] );
         $this->assertSame( 'Alt', $result['alt_text'] );
+    }
+
+    public function test_unreadable_attachment_returns_error(): void {
+        $post            = new \stdClass();
+        $post->ID        = 10;
+        $post->post_type = 'attachment';
+        Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
+        Functions\expect( 'current_user_can' )->with( 'read_post', 10 )->andReturn( false );
+        Functions\expect( 'wp_get_attachment_url' )->never();
+
+        $result = $this->tool->execute( array( 'media_id' => 10 ) );
+
+        $this->assertFalse( $result['success'] );
+        $this->assertStringContainsString( 'not found', $result['message'] );
+    }
+
+    public function test_meta_requires_edit_post(): void {
+        $post                 = new \stdClass();
+        $post->ID             = 10;
+        $post->post_type      = 'attachment';
+        $post->post_title     = 'My Image';
+        $post->post_content   = '';
+        $post->post_excerpt   = '';
+        $post->post_status    = 'inherit';
+        $post->post_author    = 1;
+        $post->post_date      = '2025-01-01 00:00:00';
+        $post->post_modified  = '2025-01-02 00:00:00';
+        $post->post_name      = 'my-image';
+        $post->post_mime_type = 'image/png';
+
+        Functions\when( 'current_user_can' )->alias(
+            function ( $cap ) {
+                return 'edit_post' !== $cap;
+            }
+        );
+        Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
+        Functions\expect( 'wp_get_attachment_metadata' )->with( 10 )->andReturn( false );
+        Functions\expect( 'get_attached_file' )->with( 10 )->andReturn( false );
+        Functions\expect( 'wp_get_attachment_url' )->with( 10 )->andReturn( 'https://example.com/img.png' );
+        Functions\expect( 'get_post_meta' )->once()->with( 10, '_wp_attachment_image_alt', true )->andReturn( 'Alt' );
+
+        $result = $this->tool->execute( array( 'media_id' => 10, 'include_meta' => true ) );
+
+        $this->assertSame( 10, $result['id'] );
+        $this->assertSame( array(), $result['meta'] );
+    }
+
+    public function test_meta_included_when_user_can_edit_post(): void {
+        $post                 = new \stdClass();
+        $post->ID             = 10;
+        $post->post_type      = 'attachment';
+        $post->post_title     = 'My Image';
+        $post->post_content   = '';
+        $post->post_excerpt   = '';
+        $post->post_status    = 'inherit';
+        $post->post_author    = 1;
+        $post->post_date      = '2025-01-01 00:00:00';
+        $post->post_modified  = '2025-01-02 00:00:00';
+        $post->post_name      = 'my-image';
+        $post->post_mime_type = 'image/png';
+
+        Functions\when( 'current_user_can' )->justReturn( true );
+        Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
+        Functions\expect( 'wp_get_attachment_metadata' )->with( 10 )->andReturn( false );
+        Functions\expect( 'get_attached_file' )->with( 10 )->andReturn( false );
+        Functions\expect( 'wp_get_attachment_url' )->with( 10 )->andReturn( 'https://example.com/img.png' );
+        Functions\expect( 'get_post_meta' )->once()->with( 10, '_wp_attachment_image_alt', true )->andReturn( 'Alt' );
+        Functions\expect( 'get_post_meta' )->once()->with( 10 )->andReturn( array( 'k' => array( 'v' ) ) );
+
+        $result = $this->tool->execute( array( 'media_id' => 10, 'include_meta' => true ) );
+
+        $this->assertSame( array( 'k' => array( 'v' ) ), $result['meta'] );
     }
 }

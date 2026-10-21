@@ -77,6 +77,36 @@ test.describe('airo-wp/upload-image tool', () => {
     }
   });
 
+  test('uploads an image from a URL with no file extension', async ({ requestUtils }) => {
+    // The path carries no extension, so the tool must sniff the type from the
+    // downloaded bytes and name the file from it. Served by the site itself
+    // (airo-wp-e2e-pixel mu-plugin: copied in by serve-wp.sh, mounted by the
+    // .wp-env.json mapping under wp-env), so no external host is involved.
+    // WP_BASE_URL carries the published testsPort, and the download runs inside the
+    // WordPress container; that works because wp-env (>= 11.4) makes Apache listen
+    // on the mapped port too, for in-container loopback requests (gutenberg#20569).
+    // A wp-env started before that mapping existed will not pick it up: restart it
+    // (`npm run wp-env:stop && npm run wp-env:start`), or this URL 404s.
+    const response = await callTool(requestUtils, sessionId, 'airo-wp-upload-image', {
+      url: `${process.env.WP_BASE_URL}/airo-wp-e2e/pixel`,
+      title: 'Airo WP e2e extensionless',
+    }, 8);
+
+    expect(response.status(), `tools/call failed: ${await response.text()}`).toBe(200);
+
+    const body = await response.json();
+    expect(body.error, `JSON-RPC error: ${JSON.stringify(body.error)}`).toBeUndefined();
+    expect(body.result?.isError, `isError=true: ${JSON.stringify(body.result)}`).not.toBe(true);
+
+    const content: Array<{ type: string; text: string }> = body.result?.content ?? [];
+    expect(content.length).toBeGreaterThan(0);
+    const data = JSON.parse(content[0].text);
+
+    expect(data.success, `expected success: ${JSON.stringify(data)}`).toBe(true);
+    expect(data.attachment_id, 'no attachment_id returned').toBeTruthy();
+    expect(data.url, 'stored file should keep the URL basename and carry the sniffed extension').toMatch(/\/pixel(-\d+)?\.png$/);
+  });
+
   test('returns error for invalid URL', async ({ requestUtils }) => {
     const response = await callTool(requestUtils, sessionId, 'airo-wp-upload-image', {
       url: 'not-a-valid-url',
@@ -93,7 +123,7 @@ test.describe('airo-wp/upload-image tool', () => {
     const data = JSON.parse(content[0].text);
 
     expect(data.success, `expected failure: ${JSON.stringify(data)}`).toBe(false);
-    expect(data.message).toContain('Invalid image URL');
+    expect(data.message).toContain('Invalid URL provided');
   });
 
   test('returns error for non-existent post_id', async ({ requestUtils }) => {

@@ -21,23 +21,24 @@ import {
 	InspectorControls,
 	RichText,
 	useSettings,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalLinkControl as LinkControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseBorderProps as useBorderProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseColorProps as useColorProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalGetShadowClassesAndStyles as getShadowClassesAndStyles,
 	getTypographyClassesAndStyles,
 } from '@wordpress/block-editor';
-import { ToolbarButton, Popover, ToggleControl } from '@wordpress/components';
+import {
+	ToolbarButton,
+	Popover,
+	ToggleControl,
+	TextControl,
+	Notice,
+} from '@wordpress/components';
 import clsx from 'clsx';
 import { DsgoInspectorPanel } from '../../components/shared';
+import { ChildLayoutControls } from '../../extensions/layout/controls';
 import DsgoJustificationToolbar from '../../components/shared/DsgoJustificationToolbar';
 import { link as linkIcon } from '@wordpress/icons';
 import { useSelect } from '@wordpress/data';
@@ -89,7 +90,17 @@ export default function IconButtonEdit({
 		hoverTextColor,
 		style,
 		modalCloseId,
+		ariaLabel,
 	} = attributes;
+
+	// An empty RichText value (or one that is only markup) leaves the button
+	// with no accessible name unless ariaLabel is set. DOMParser reads the
+	// text safely (no script execution, handles malformed tags), matching
+	// slider/edit.js.
+	const isIconOnly = !(
+		new window.DOMParser().parseFromString(text || '', 'text/html').body
+			.textContent || ''
+	).trim();
 
 	// Theme-level icon defaults inherited when size/style are left unset.
 	const iconDefaults = useIconDefaults({
@@ -373,6 +384,7 @@ export default function IconButtonEdit({
 					panelId={clientId}
 					resetAll={() =>
 						setAttributes({
+							dsgoLayout: undefined,
 							icon: 'lightbulb',
 							iconPosition: 'start',
 							iconStyle: undefined,
@@ -382,6 +394,7 @@ export default function IconButtonEdit({
 							hoverAnimation: 'none',
 							modalCloseId: '',
 							fullWidth: false,
+							ariaLabel: '',
 						})
 					}
 				>
@@ -414,6 +427,45 @@ export default function IconButtonEdit({
 							}
 						/>
 					</DsgoInspectorPanel.Item>
+					<DsgoInspectorPanel.Item
+						label={__('Accessible label', 'airo-wp')}
+						hasValue={() => !!ariaLabel}
+						onDeselect={() => setAttributes({ ariaLabel: '' })}
+						isShownByDefault
+					>
+						{isIconOnly && !ariaLabel && (
+							<Notice status="warning" isDismissible={false}>
+								{__(
+									'This button has no text, so screen readers cannot name it. Add an accessible label.',
+									'airo-wp'
+								)}
+							</Notice>
+						)}
+						<TextControl
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+							label={__('Accessible label', 'airo-wp')}
+							value={ariaLabel}
+							onChange={(value) =>
+								setAttributes({ ariaLabel: value })
+							}
+							help={
+								isIconOnly
+									? __(
+											'Required: this button has no visible text, so screen readers need a label, e.g. "Open menu".',
+											'airo-wp'
+										)
+									: __(
+											'Optional. Replaces the visible text for screen readers.',
+											'airo-wp'
+										)
+							}
+						/>
+					</DsgoInspectorPanel.Item>
+					<ChildLayoutControls
+						name="airo-wp/icon-button"
+						{...{ attributes, setAttributes, clientId, isSelected }}
+					/>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 

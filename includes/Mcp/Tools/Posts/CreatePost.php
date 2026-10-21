@@ -73,7 +73,10 @@ class CreatePost extends BaseTool {
 			);
 		}
 
-		if ( ! current_user_can( 'publish_posts' ) ) {
+		$post_type_object = get_post_type_object( $post_type );
+		$create_cap       = $post_type_object ? $post_type_object->cap->create_posts : 'edit_posts';
+		$publish_cap      = $post_type_object ? $post_type_object->cap->publish_posts : 'publish_posts';
+		if ( ! current_user_can( $create_cap ) || ! current_user_can( $publish_cap ) ) {
 			return array(
 				'success' => false,
 				'message' => __( 'You do not have permission to create posts', 'airo-wp' ),
@@ -83,7 +86,7 @@ class CreatePost extends BaseTool {
 		$post_data = array(
 			'post_type'    => $post_type,
 			'post_title'   => sanitize_text_field( $input['title'] ),
-			// All MCP callers are admins who have unfiltered_html; wp_insert_post() skips kses for them.
+			// Callers may be any edit_posts user; always run kses (wp_insert_post() only skips it for unfiltered_html users).
 			'post_content' => isset( $input['content'] ) ? wp_kses_post( $input['content'] ) : '',
 			'post_excerpt' => isset( $input['excerpt'] ) ? sanitize_textarea_field( $input['excerpt'] ) : '',
 			'post_status'  => isset( $input['status'] ) ? $input['status'] : 'draft',
@@ -122,15 +125,19 @@ class CreatePost extends BaseTool {
 		}
 
 		if ( ! empty( $input['date'] ) ) {
-			$scheduled_date_raw  = sanitize_text_field( $input['date'] );
-			$scheduled_timestamp = strtotime( $scheduled_date_raw );
+			$scheduled_date_raw = sanitize_text_field( $input['date'] );
 
-			if ( false === $scheduled_timestamp ) {
+			if ( false === strtotime( $scheduled_date_raw ) ) {
 				return array(
 					'success' => false,
 					'message' => __( 'Invalid date format provided for scheduling', 'airo-wp' ),
 				);
 			}
+
+			// The input is site-local (see the schema); PHP's default timezone is UTC under
+			// WordPress, so compare via GMT as UpdatePost does.
+			$post_date_gmt       = get_gmt_from_date( $scheduled_date_raw );
+			$scheduled_timestamp = (int) strtotime( $post_date_gmt . ' UTC' );
 
 			if ( isset( $input['status'] ) && 'future' === $input['status'] && $scheduled_timestamp <= time() ) {
 				return array(
@@ -139,7 +146,10 @@ class CreatePost extends BaseTool {
 				);
 			}
 
-			$post_data['post_date'] = $scheduled_date_raw;
+			// Round-trip through GMT so a relative input ("tomorrow 10:00") reaches
+			// wp_insert_post() as Y-m-d H:i:s; its wp_checkdate() rejects anything else.
+			// post_date_gmt stays unset: core derives it, and keeps it zeroed for a draft.
+			$post_data['post_date'] = get_date_from_gmt( $post_date_gmt );
 		}
 
 		$post_id = wp_insert_post( $post_data, true );
@@ -162,6 +172,8 @@ class CreatePost extends BaseTool {
 			set_post_thumbnail( $post_id, $media_id );
 		}
 
+		$skipped_meta = array();
+
 		if ( ! empty( $input['meta'] ) && is_array( $input['meta'] ) ) {
 			foreach ( $input['meta'] as $meta_item ) {
 				if ( ! is_array( $meta_item ) || empty( $meta_item['key'] ) ) {
@@ -170,6 +182,13 @@ class CreatePost extends BaseTool {
 
 				$meta_key = sanitize_text_field( $meta_item['key'] );
 				if ( empty( $meta_key ) ) {
+					continue;
+				}
+
+				// edit_post_meta is what core REST checks: map_meta_cap() denies protected
+				// (`_`-prefixed) keys and honours register_meta() auth callbacks.
+				if ( ! current_user_can( 'edit_post_meta', $post_id, $meta_key ) ) {
+					$skipped_meta[] = $meta_key;
 					continue;
 				}
 
@@ -184,10 +203,21 @@ class CreatePost extends BaseTool {
 			}
 		}
 
+		$message = __( 'Post created successfully', 'airo-wp' );
+		if ( ! empty( $skipped_meta ) ) {
+			// The caller is an LLM that reads `message`, so a refused write must not look like a completed one.
+			$message = sprintf(
+				/* translators: %s: comma-separated meta keys */
+				__( 'Post created successfully, but these meta keys were skipped because you lack permission to edit them: %s', 'airo-wp' ),
+				implode( ', ', $skipped_meta )
+			);
+		}
+
 		return array(
-			'success' => true,
-			'post_id' => $post_id,
-			'message' => __( 'Post created successfully', 'airo-wp' ),
+			'success'      => true,
+			'post_id'      => $post_id,
+			'message'      => $message,
+			'skipped_meta' => $skipped_meta,
 		);
 	}
 
@@ -265,9 +295,14 @@ class CreatePost extends BaseTool {
 		return $this->build_output_schema(
 			__( 'Post creation result', 'airo-wp' ),
 			array(
-				'post_id' => array(
+				'post_id'      => array(
 					'type'        => 'integer',
 					'description' => __( 'The new post ID', 'airo-wp' ),
+				),
+				'skipped_meta' => array(
+					'type'        => 'array',
+					'items'       => array( 'type' => 'string' ),
+					'description' => __( 'List of meta keys not written because the user may not edit them (e.g. protected keys)', 'airo-wp' ),
 				),
 			)
 		);

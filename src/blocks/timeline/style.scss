@@ -3,12 +3,17 @@
  * Professional timeline with vertical/horizontal layouts and scroll animations
  */
 
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
 .airo-wp-timeline {
 	// CSS Custom Properties with fallbacks
 	--airo-wp-timeline-line-color: var(--wp--preset--color--contrast, #e5e7eb);
 	--airo-wp-timeline-line-thickness: 2px;
 	--airo-wp-timeline-connector-style: solid;
-	--airo-wp-timeline-marker-size: 16px;
+	// save() writes this inline only for an explicit Marker Size; otherwise
+	// theme.json settings.custom.airowp.timeline.defaultSize (unitless).
+	--airo-wp-timeline-marker-size: calc(var(--wp--custom--airo-wp--timeline--default-size, 16) * 1px);
 	--airo-wp-timeline-marker-color: var(--wp--preset--color--primary, #2563eb);
 	--airo-wp-timeline-marker-border-color: var(--wp--preset--color--primary, #2563eb);
 	--airo-wp-timeline-item-spacing: 2rem;
@@ -126,7 +131,7 @@
 	// ===================
 	&.airo-wp-timeline--horizontal {
 		// Only apply horizontal styles on larger screens
-		@media (min-width: 769px) {
+		@media (min-width: #{$breakpoint-mobile + 1px}) {
 			overflow-x: auto;
 			padding-bottom: var(--wp--preset--spacing--40, 1rem);
 
@@ -156,7 +161,7 @@
 		}
 
 		// Mobile: use vertical layout styles instead
-		@media (max-width: 768px) {
+		@media (max-width: #{$breakpoint-mobile}) {
 			// Inherit vertical-right layout behavior
 			--airo-wp-timeline-edge-inset: calc(var(--airo-wp-timeline-marker-size) / 2 + 0.25rem);
 
@@ -299,7 +304,7 @@
 // ===================
 // RESPONSIVE STYLES
 // ===================
-@media (max-width: 768px) {
+@media (max-width: #{$breakpoint-mobile}) {
 
 	.airo-wp-timeline {
 		// Simplify alternating to single-side on mobile
@@ -356,7 +361,7 @@
 		.airo-wp-timeline-item {
 			opacity: 1 !important;
 			transform: none !important;
-			page-break-inside: avoid;
+			break-inside: avoid;
 		}
 	}
 }

@@ -199,4 +199,55 @@ export const formBuilderTemplates = [
 			],
 		],
 	},
+	{
+		name: 'multi-step',
+		title: __('Multi-step', 'airo-wp'),
+		description: __(
+			'Split into steps: details first, then the message',
+			'airo-wp'
+		),
+		icon: 'list-view',
+		attributes: {
+			submitButtonText: __('Send', 'airo-wp'),
+			emailReplyTo: 'email',
+		},
+		innerBlocks: [
+			[
+				'airo-wp/form-step',
+				{ title: __('Your details', 'airo-wp') },
+				[
+					[
+						'airo-wp/form-text-field',
+						{
+							label: __('Name', 'airo-wp'),
+							fieldName: 'name',
+							required: true,
+						},
+					],
+					[
+						'airo-wp/form-email-field',
+						{
+							label: __('Email', 'airo-wp'),
+							fieldName: 'email',
+							required: true,
+						},
+					],
+				],
+			],
+			[
+				'airo-wp/form-step',
+				{ title: __('Your message', 'airo-wp') },
+				[
+					[
+						'airo-wp/form-textarea-field',
+						{
+							label: __('Message', 'airo-wp'),
+							fieldName: 'message',
+							required: true,
+						},
+					],
+				],
+			],
+		],
+	},
 ];

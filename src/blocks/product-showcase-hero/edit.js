@@ -23,7 +23,6 @@ import {
 	ToolbarGroup,
 	Spinner,
 	Notice,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseCustomUnits as useCustomUnits,
 } from '@wordpress/components';
 import apiFetch from '@wordpress/api-fetch';

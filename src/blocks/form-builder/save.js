@@ -31,6 +31,10 @@ export default function FormBuilderSave({ attributes }) {
 		fieldBorderColor,
 		fieldBackgroundColor,
 		fieldBorderRadius,
+		fieldFocusColor,
+		fieldErrorColor,
+		fieldSuccessColor,
+		stepProgressColor,
 		submitButtonColor,
 		submitButtonBackgroundColor,
 		submitButtonPaddingVertical,
@@ -42,6 +46,7 @@ export default function FormBuilderSave({ attributes }) {
 		enableHoneypot,
 		enableTurnstile,
 		redirectUrl,
+		stepProgress,
 	} = attributes;
 
 	// If the author never picked a template (so the form has no fields),
@@ -91,6 +96,11 @@ export default function FormBuilderSave({ attributes }) {
 		'--airo-wp-form-border-color': convertColorToCSSVar(fieldBorderColor),
 		'--airo-wp-form-field-bg': convertColorToCSSVar(fieldBackgroundColor),
 		'--airo-wp-form-border-radius': validateCSSLength(fieldBorderRadius),
+		'--airo-wp-form-focus-color': convertColorToCSSVar(fieldFocusColor),
+		'--airo-wp-form-error-color': convertColorToCSSVar(fieldErrorColor),
+		'--airo-wp-form-success-color': convertColorToCSSVar(fieldSuccessColor),
+		'--airo-wp-form-progress-color':
+			convertColorToCSSVar(stepProgressColor),
 		// Button colors now applied as inline styles on button element
 	};
 
@@ -138,6 +148,11 @@ export default function FormBuilderSave({ attributes }) {
 		}),
 		...(redirectUrl && {
 			'data-redirect-url': redirectUrl,
+		}),
+		// Multi-step progress style. Only non-default values are written, so
+		// forms without steps (and default ones) serialize byte-identically.
+		...(['bar', 'none'].includes(stepProgress) && {
+			'data-airo-wp-step-progress': stepProgress,
 		}),
 	});
 

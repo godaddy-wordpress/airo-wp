@@ -7,11 +7,14 @@
  * itself put on a page, wherever it was placed — post content, a template or
  * template part, a synced pattern, a widget, or another query's item.
  *
- * So first paint embeds the query's definition (attributes + inner blocks)
- * with an HMAC signature, and the route renders only a definition whose
- * signature verifies. The payload is base64 in a data attribute because it
- * passes through the_content: filters like capital_P_dangit() rewrite text
- * inside inline <script> JSON, and any rewrite would break the signature.
+ * First paint embeds an opaque, signed reference to a server-held definition.
+ * Encoding the template itself would expose blocks hidden by visibility rules.
+ * Definitions bind to the issuing viewer (user ID, or 0 for all visitors).
+ * This prevents replay of a member-only query or ancestor across viewers.
+ * WordPress transients retain each definition/viewer pair for 30 days; missing
+ * records fail closed. Purge page/CDN caches when upgrading from plaintext
+ * sources or clearing transients. Keep page-cache lifetimes below 30 days.
+ * Base64 protects the envelope from the_content text filters, not from readers.
  *
  * @package airo-wp
  * @since 2.7.4
@@ -30,7 +33,10 @@ class RefreshSource {
 	/**
 	 * Payload format version.
 	 */
-	const VERSION = 1;
+	const VERSION = 2;
+
+	/** Maximum storage lifetime; page caches must expire sooner. */
+	const LIFETIME = 30 * DAY_IN_SECONDS;
 
 	/**
 	 * Post IDs whose content is being rendered, innermost last.
@@ -103,26 +109,44 @@ class RefreshSource {
 	}
 
 	/**
-	 * Encode and sign a query definition.
+	 * Store a query definition and sign its opaque reference.
 	 *
 	 * @param string $query_id       Sanitized query ID.
 	 * @param array  $attributes     Query block attributes.
 	 * @param string $inner_blocks   Serialized inner blocks.
 	 * @param int    $source_post_id Post whose content holds the query, or 0.
+	 * @param array  $page_context   Page facts the query reads from its first-paint
+	 *                               request (current post, inherited archive vars).
+	 *                               Carried in the signed envelope, so a refresh
+	 *                               replays them and a caller can't supply them.
 	 * @return array{source: string, signature: string}
 	 */
-	public static function sign( $query_id, array $attributes, $inner_blocks, $source_post_id ) {
-		$source = base64_encode( // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- transport encoding, see class docblock.
-			(string) wp_json_encode(
-				array(
-					'v'            => self::VERSION,
-					'queryId'      => (string) $query_id,
-					'sourcePostId' => absint( $source_post_id ),
-					'attributes'   => $attributes,
-					'innerBlocks'  => (string) $inner_blocks,
-				)
-			)
+	public static function sign( $query_id, array $attributes, $inner_blocks, $source_post_id, array $page_context = array() ) {
+		$definition = array(
+			'queryId'      => (string) $query_id,
+			'sourcePostId' => absint( $source_post_id ),
+			'viewerId'     => get_current_user_id(),
+			'attributes'   => $attributes,
+			'innerBlocks'  => (string) $inner_blocks,
 		);
+		$reference  = self::reference( $definition );
+		$key        = 'airowp_query_source_' . $reference;
+		self::store( $key, $definition );
+
+		$envelope = array(
+			'v'            => self::VERSION,
+			'queryId'      => $definition['queryId'],
+			'sourcePostId' => $definition['sourcePostId'],
+			'ref'          => $reference,
+		);
+		// Page facts travel in the signed envelope, never in the stored record:
+		// they vary per request (a search term, an archive date), so keying the
+		// record on them would let anonymous requests mint a 30-day row each.
+		// The signature covers the envelope, so they still can't be forged.
+		if ( ! empty( $page_context['currentPostId'] ) || ! empty( $page_context['inheritedVars'] ) ) {
+			$envelope['ctx'] = $page_context;
+		}
+		$source = base64_encode( (string) wp_json_encode( $envelope ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- transport encoding, see class docblock.
 
 		return array(
 			'source'    => $source,
@@ -131,12 +155,35 @@ class RefreshSource {
 	}
 
 	/**
+	 * Persist a definition, avoiding a database write on every page view.
+	 *
+	 * Without a persistent object cache a transient lives in wp_options, so an
+	 * unconditional set_transient() is two option writes per Query per view.
+	 * An unchanged record is only rewritten once half its lifetime has elapsed,
+	 * which keeps it comfortably ahead of any page cache that holds the key.
+	 *
+	 * @param string $key        Transient key.
+	 * @param array  $definition Definition to store.
+	 * @return void
+	 */
+	private static function store( $key, array $definition ) {
+		if ( ! wp_using_ext_object_cache() && get_transient( $key ) === $definition ) {
+			$expires = (int) get_option( '_transient_timeout_' . $key, 0 );
+			if ( $expires - time() > self::LIFETIME / 2 ) {
+				return;
+			}
+		}
+
+		set_transient( $key, $definition, self::LIFETIME );
+	}
+
+	/**
 	 * Verify and decode a signed source.
 	 *
 	 * @param mixed  $source    Encoded source from the request.
 	 * @param mixed  $signature Signature from the request.
 	 * @param string $query_id  Query ID the request names.
-	 * @return array{queryId: string, sourcePostId: int, attributes: array, innerBlocks: string}|null Definition, or null when it doesn't verify.
+	 * @return array{queryId: string, sourcePostId: int, attributes: array, innerBlocks: string, pageContext?: array}|null Definition, or null when it doesn't verify.
 	 */
 	public static function verify( $source, $signature, $query_id ) {
 		if ( ! is_string( $source ) || '' === $source || ! is_string( $signature ) ) {
@@ -150,28 +197,42 @@ class RefreshSource {
 		$data = json_decode( (string) base64_decode( $source, true ), true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- transport encoding, see class docblock.
 		if (
 			! is_array( $data ) ||
-			! isset( $data['v'], $data['queryId'] ) ||
+			! isset( $data['v'], $data['queryId'], $data['sourcePostId'], $data['ref'] ) ||
 			self::VERSION !== $data['v'] ||
 			$data['queryId'] !== (string) $query_id ||
-			! is_array( $data['attributes'] ?? null ) ||
-			! is_string( $data['innerBlocks'] ?? null )
+			! is_int( $data['sourcePostId'] ) ||
+			! is_string( $data['ref'] ) ||
+			! preg_match( '/^[a-f0-9]{64}$/D', $data['ref'] ) ||
+			! is_array( $data['ctx'] ?? array() )
 		) {
 			return null;
 		}
 
-		return array(
-			'queryId'      => (string) $data['queryId'],
-			'sourcePostId' => absint( $data['sourcePostId'] ?? 0 ),
-			'attributes'   => $data['attributes'],
-			'innerBlocks'  => $data['innerBlocks'],
-		);
+		$definition = get_transient( 'airowp_query_source_' . $data['ref'] );
+		if (
+			! is_array( $definition ) ||
+			( $definition['queryId'] ?? null ) !== $data['queryId'] ||
+			( $definition['sourcePostId'] ?? null ) !== $data['sourcePostId'] ||
+			( $definition['viewerId'] ?? null ) !== get_current_user_id() ||
+			! is_array( $definition['attributes'] ?? null ) ||
+			! is_string( $definition['innerBlocks'] ?? null ) ||
+			! hash_equals( self::reference( $definition ), $data['ref'] )
+		) {
+			return null;
+		}
+
+		if ( ! empty( $data['ctx'] ) ) {
+			$definition['pageContext'] = $data['ctx'];
+		}
+
+		return $definition;
 	}
 
 	/**
 	 * Whether the current user may see the post a query was placed in.
 	 *
-	 * A query outside any post content (sourcePostId 0) rendered for whoever
-	 * loaded that template, pattern or widget, so it stays public.
+	 * A query outside post content (sourcePostId 0) has no additional post gate.
+	 * Its issuing-viewer binding has already been checked by verify().
 	 *
 	 * @param int $source_post_id Post whose content holds the query, or 0.
 	 * @return bool
@@ -187,6 +248,16 @@ class RefreshSource {
 		}
 
 		return is_post_publicly_viewable( $post ) || current_user_can( 'read_post', $post->ID );
+	}
+
+	/**
+	 * Stable, unguessable key for an unchanged definition/viewer on this site.
+	 *
+	 * @param array $definition Query definition, kept entirely server-side.
+	 * @return string Hex reference.
+	 */
+	private static function reference( array $definition ) {
+		return hash_hmac( 'sha256', 'airo-wp/query-template|' . get_current_blog_id() . '|' . wp_json_encode( $definition ), wp_salt( 'auth' ) );
 	}
 
 	/**

@@ -56,6 +56,57 @@ export function PublishConfirmModal({ isOpen, onConfirm, onCancel }) {
 }
 
 /**
+ * Publish Conflict Modal
+ *
+ * Shown when the live page was edited after the draft was created.
+ *
+ * @param {Object}   props           Component props.
+ * @param {boolean}  props.isOpen    Whether the modal is open.
+ * @param {Function} props.onConfirm Callback when user chooses to publish anyway.
+ * @param {Function} props.onCancel  Callback when user cancels.
+ */
+export function ConflictConfirmModal({ isOpen, onConfirm, onCancel }) {
+	if (!isOpen) {
+		return null;
+	}
+
+	return (
+		<Modal
+			title={__('Live Page Has Changed', 'airo-wp')}
+			onRequestClose={onCancel}
+			size="small"
+		>
+			<Flex direction="column" gap={4}>
+				<FlexItem>
+					<p style={{ margin: 0 }}>
+						{__(
+							'The live page was edited after this draft was created. Publishing now will overwrite those edits with your draft.',
+							'airo-wp'
+						)}
+					</p>
+				</FlexItem>
+				<Flex justify="flex-end" gap={3}>
+					<FlexItem>
+						<Button variant="tertiary" onClick={onCancel}>
+							{__('Cancel', 'airo-wp')}
+						</Button>
+					</FlexItem>
+					<FlexItem>
+						<Button
+							variant="primary"
+							isDestructive
+							onClick={onConfirm}
+						>
+							{__('Publish Anyway', 'airo-wp')}
+						</Button>
+					</FlexItem>
+				</Flex>
+			</Flex>
+		</Modal>
+	);
+}
+
+/**
  * Discard Draft Confirmation Modal
  *
  * @param {Object}   props           Component props.

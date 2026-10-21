@@ -51,6 +51,16 @@ define( 'AUTOMATIC_UPDATER_DISABLED', true );
 define( 'DISABLE_WP_CRON', true );
 PHP
 
+# Serve a 1x1 PNG at a path with no file extension, so the upload-image URL test
+# needs no third-party host. wp_safe_remote_get() lets this through: a URL on the
+# home host and port skips wp_http_validate_url()'s private-IP rejection. The
+# site downloading from itself needs a second worker, hence PHP_CLI_SERVER_WORKERS.
+# Fixtures in environment/mu-plugins/ are committed files so wp-env can mount the
+# directory through .wp-env.json `mappings` (a reused wp-env server never runs this
+# script); copy all of them here so both lanes load that set. The heredoc fixtures
+# above are private-lane only -- a fixture both lanes need belongs in that directory.
+cp "$REPO_ROOT/tests/e2e/functional/environment/mu-plugins/"*.php "$WP_DIR/wp-content/mu-plugins/"
+
 wp plugin install "$ZIP" --activate --path="$WP_DIR" --allow-root
 # hello-dolly is used by mcp-update-plugin e2e tests; install it explicitly
 # because the e2e WordPress image does not bundle it by default.
@@ -62,5 +72,8 @@ wp rewrite structure '/%postname%/' --path="$WP_DIR" --allow-root
 wp rewrite flush --path="$WP_DIR" --allow-root
 
 echo "Airo WP e2e ready: $WP_DIR on port $PORT (log: $WP_DIR/php-server.log)"
+# More than one worker is load-bearing: the upload-image e2e test has the site
+# download the pixel fixture (see above) from itself. With a single worker that
+# loopback deadlocks and the test burns download_url()'s 300s timeout.
 PHP_CLI_SERVER_WORKERS=6 exec wp server --host=0.0.0.0 --port="$PORT" \
 	--path="$WP_DIR" --allow-root >>"$WP_DIR/php-server.log" 2>&1

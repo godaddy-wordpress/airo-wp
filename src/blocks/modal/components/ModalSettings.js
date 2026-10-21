@@ -7,12 +7,11 @@
  *
  * @package
  */
-/* eslint-disable no-nested-ternary */
-import { __ } from '@wordpress/i18n';
+
+import { __, sprintf } from '@wordpress/i18n';
 import {
 	SelectControl,
 	TextControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../../components/shared';
@@ -21,6 +20,7 @@ export default function ModalSettings({ attributes, setAttributes }) {
 	const {
 		modalId,
 		modalLabel,
+		savedModalLabel,
 		width,
 		maxWidth,
 		height,
@@ -39,17 +39,34 @@ export default function ModalSettings({ attributes, setAttributes }) {
 			<DsgoInspectorPanel.Item
 				label={__('Accessible Label', 'airo-wp')}
 				hasValue={() => modalLabel.trim() !== ''}
-				onDeselect={() => setAttributes({ modalLabel: '' })}
+				onDeselect={() =>
+					setAttributes({
+						modalLabel: '',
+						savedModalLabel: undefined,
+					})
+				}
 				isShownByDefault
 			>
 				<TextControl
 					label={__('Accessible Label', 'airo-wp')}
 					value={modalLabel}
-					onChange={(value) => setAttributes({ modalLabel: value })}
-					placeholder={__('Modal', 'airo-wp')}
-					help={__(
-						'Describes the modal for screen readers (aria-label). Defaults to "Modal" when left blank.',
-						'airo-wp'
+					// Any edit drops the label frozen from the stored markup,
+					// so clearing the field falls back to the default, not
+					// to a custom label that was saved earlier.
+					onChange={(value) =>
+						setAttributes({
+							modalLabel: value,
+							savedModalLabel: undefined,
+						})
+					}
+					placeholder={savedModalLabel || __('Modal', 'airo-wp')}
+					help={sprintf(
+						/* translators: %s: the label used when this field is left blank. */
+						__(
+							'Describes the modal for screen readers (aria-label). Defaults to "%s" when left blank.',
+							'airo-wp'
+						),
+						savedModalLabel || __('Modal', 'airo-wp')
 					)}
 					__next40pxDefaultSize
 					__nextHasNoMarginBottom

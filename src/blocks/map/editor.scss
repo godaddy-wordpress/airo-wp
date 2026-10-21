@@ -4,6 +4,9 @@
  * Styles specific to the WordPress block editor (not shown on frontend).
  */
 
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
 .editor-styles-wrapper {
 
 	.airo-wp-map {
@@ -21,6 +24,23 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
+		}
+
+		// "Find a location" state for a map with no coordinates yet.
+		&__placeholder {
+			height: 100%;
+			min-height: inherit;
+		}
+
+		&__placeholder-form {
+			display: flex;
+			gap: 8px;
+			width: 100%;
+			max-width: 480px;
+
+			> .components-base-control {
+				flex: 1;
+			}
 		}
 
 		// Live embed preview. Pointer events are off so clicking the map
@@ -76,7 +96,7 @@
 			code {
 				background: rgba(255, 255, 255, 0.8);
 				padding: 0.25rem 0.5rem;
-				border-radius: 3px;
+				border-radius: $airo-wp-radius-small; // was 3px; small token is 4px, <=2px drift.
 				font-family: Monaco, 'Courier New', monospace;
 				font-size: 0.9rem;
 				color: #667eea;
@@ -92,7 +112,7 @@
 			margin-top: 0.5rem;
 			padding: 0.5rem 0.75rem;
 			background: rgba(255, 255, 255, 0.9);
-			border-radius: 4px;
+			border-radius: $airo-wp-radius-small;
 			font-size: 0.9rem;
 			color: #34495e;
 		}
@@ -100,7 +120,8 @@
 		&__preview-note {
 			margin-top: 1rem;
 			font-size: 0.85rem;
-			color: #95a5a6;
+			color: inherit;
+			opacity: 0.7;
 			font-style: italic;
 		}
 
@@ -149,7 +170,7 @@
 	}
 
 	// Responsive preview in editor
-	@media (max-width: 768px) {
+	@media (max-width: #{$breakpoint-mobile}) {
 
 		.airo-wp-map {
 

@@ -2,79 +2,15 @@
  * Frontend JavaScript for Countdown Timer block
  */
 
-/**
- * Calculate time remaining until target date
- *
- * @param {string} targetDateTime - ISO 8601 datetime string
- * @return {Object} Object with days, hours, minutes, seconds, isComplete
- */
-function calculateTimeRemaining(targetDateTime) {
-	if (!targetDateTime) {
-		return {
-			days: 0,
-			hours: 0,
-			minutes: 0,
-			seconds: 0,
-			isComplete: true,
-		};
-	}
-
-	const targetDate = new Date(targetDateTime);
-	const now = new Date();
-	const difference = targetDate.getTime() - now.getTime();
-
-	if (difference <= 0) {
-		return {
-			days: 0,
-			hours: 0,
-			minutes: 0,
-			seconds: 0,
-			isComplete: true,
-		};
-	}
-
-	const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-	const hours = Math.floor(
-		(difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-	);
-	const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-	const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-	return {
-		days,
-		hours,
-		minutes,
-		seconds,
-		isComplete: false,
-	};
-}
+import { getUnitLabel } from './utils/format-time';
 
 /**
- * Format time unit with leading zero
- *
- * @param {number} value - Time unit value
- * @return {string} Formatted value
+ * Internal dependencies
  */
-function formatTimeUnit(value) {
-	return value < 10 ? `0${value}` : `${value}`;
-}
-
-/**
- * Get unit label (singular/plural)
- *
- * @param {string} unitType - Type of unit
- * @param {number} value    - Current value
- * @return {string} Label text
- */
-function getUnitLabel(unitType, value) {
-	const labels = {
-		days: value === 1 ? 'Day' : 'Days',
-		hours: value === 1 ? 'Hour' : 'Hours',
-		minutes: 'Min',
-		seconds: 'Sec',
-	};
-	return labels[unitType] || '';
-}
+import {
+	calculateTimeRemaining,
+	formatTimeUnit,
+} from './utils/time-calculator';
 
 /**
  * Update countdown display
@@ -108,11 +44,37 @@ function updateCountdownDisplay(timer, timeData) {
 }
 
 /**
- * Handle countdown completion
+ * Expose the timer to assistive tech. `timer` carries an implicit
+ * aria-live="off", so the per-second ticks are never announced; the
+ * completion message is a polite status region, set up while still hidden
+ * so its later reveal can be announced.
  *
  * @param {Element} timer - Timer element
  */
-function handleCompletion(timer) {
+function setupTimerSemantics(timer) {
+	const unitsContainer = timer.querySelector(
+		'.airo-wp-countdown-timer__units'
+	);
+	if (unitsContainer) {
+		unitsContainer.setAttribute('role', 'timer');
+	}
+
+	const messageContainer = timer.querySelector(
+		'.airo-wp-countdown-timer__completion-message'
+	);
+	if (messageContainer && timer.dataset.completionAction === 'message') {
+		messageContainer.setAttribute('role', 'status');
+	}
+}
+
+/**
+ * Handle countdown completion
+ *
+ * @param {Element} timer            - Timer element
+ * @param {boolean} [announce=false] - Whether the visitor watched it finish,
+ *                                   so the message should be announced.
+ */
+function handleCompletion(timer, announce = false) {
 	const completionAction = timer.dataset.completionAction;
 
 	if (completionAction === 'hide') {
@@ -135,8 +97,56 @@ function handleCompletion(timer) {
 			// The message text is already server-rendered inside this element
 			// (sourced into the `completionMessage` attribute); just reveal it.
 			messageContainer.style.display = 'block';
+
+			// A live region announces changes, not content that merely
+			// becomes visible, so re-insert the text once it is shown.
+			if (announce) {
+				const message = messageContainer.textContent;
+				messageContainer.textContent = '';
+				window.requestAnimationFrame(() => {
+					messageContainer.textContent = message;
+				});
+			}
 		}
 	}
+}
+
+/**
+ * Time left for a timer, read the same way everywhere it is shown.
+ *
+ * `timezone` is the block's own timezone attribute (empty means "use the
+ * WordPress site timezone"). `siteTimezone` is stamped onto the markup at
+ * render time (includes/features/class-countdown-timer-timezone.php),
+ * because PHP is the only place `timezone_string` / `gmt_offset` live. It is
+ * passed through as-is: when the attribute is missing (cached or raw HTML)
+ * the resolver keeps the old browser-local reading instead of assuming UTC.
+ *
+ * @param {Element} timer - Timer element.
+ * @return {Object} calculateTimeRemaining() result.
+ */
+function getTimeData(timer) {
+	return calculateTimeRemaining(
+		timer.dataset.targetDatetime,
+		timer.dataset.timezone || '',
+		timer.dataset.siteTimezone ?? null,
+		{
+			days: timer.dataset.showDays !== 'false',
+			hours: timer.dataset.showHours !== 'false',
+			minutes: timer.dataset.showMinutes !== 'false',
+			seconds: timer.dataset.showSeconds !== 'false',
+		}
+	);
+}
+
+/**
+ * Timers that are currently ticking. One shared visibility listener serves
+ * all of them (a listener per timer leaked on soft navigation).
+ */
+const activeTimers = new Set();
+let visibilityBound = false;
+
+function onVisibilityChange() {
+	activeTimers.forEach((controller) => controller.onVisibility());
 }
 
 /**
@@ -145,11 +155,11 @@ function handleCompletion(timer) {
  * @param {Element} timer - Timer element
  */
 function initCountdownTimer(timer) {
-	const targetDateTime = timer.dataset.targetDatetime;
-
-	if (!targetDateTime) {
+	if (!timer.dataset.targetDatetime) {
 		return;
 	}
+
+	setupTimerSemantics(timer);
 
 	// Check for reduced motion preference
 	const prefersReducedMotion = window.matchMedia(
@@ -157,7 +167,7 @@ function initCountdownTimer(timer) {
 	).matches;
 
 	// Initial update
-	let timeData = calculateTimeRemaining(targetDateTime);
+	let timeData = getTimeData(timer);
 	updateCountdownDisplay(timer, timeData);
 
 	if (timeData.isComplete) {
@@ -165,24 +175,96 @@ function initCountdownTimer(timer) {
 		return;
 	}
 
-	// Update every second
-	const interval = setInterval(
-		() => {
-			timeData = calculateTimeRemaining(targetDateTime);
-			updateCountdownDisplay(timer, timeData);
+	let interval = null;
 
-			if (timeData.isComplete) {
-				clearInterval(interval);
-				handleCompletion(timer);
-			}
-		},
-		prefersReducedMotion ? 5000 : 1000
-	); // Slower updates for reduced motion
-
-	// Clean up on page unload
-	window.addEventListener('beforeunload', () => {
+	const stop = () => {
 		clearInterval(interval);
-	});
+		interval = null;
+	};
+
+	const controller = { onVisibility: () => {} };
+
+	// A soft navigation can remove the timer; stop ticking and listening
+	// rather than keep updating a detached element.
+	const detach = () => {
+		stop();
+		activeTimers.delete(controller);
+		if (!activeTimers.size && visibilityBound) {
+			document.removeEventListener(
+				'visibilitychange',
+				onVisibilityChange
+			);
+			visibilityBound = false;
+		}
+	};
+
+	const tick = () => {
+		if (!timer.isConnected) {
+			detach();
+			return;
+		}
+		timeData = getTimeData(timer);
+		updateCountdownDisplay(timer, timeData);
+
+		if (timeData.isComplete) {
+			detach();
+			handleCompletion(timer, true);
+		}
+	};
+
+	// Update every second (slower for reduced motion).
+	const start = () => {
+		if (interval) {
+			return;
+		}
+		interval = setInterval(tick, prefersReducedMotion ? 5000 : 1000);
+	};
+
+	// A hidden tab can't see the timer, so stop ticking. The remaining time is
+	// recomputed from the clock on return, so nothing drifts while paused.
+	controller.onVisibility = () => {
+		if (document.hidden) {
+			stop();
+			return;
+		}
+		tick();
+		if (timer.isConnected && !timeData.isComplete) {
+			start();
+		}
+	};
+
+	activeTimers.add(controller);
+	if (!visibilityBound) {
+		document.addEventListener('visibilitychange', onVisibilityChange);
+		visibilityBound = true;
+	}
+
+	if (!document.hidden) {
+		start();
+	}
+}
+
+// One observer for every timer, created lazily and released when idle.
+let sharedObserver = null;
+
+function getObserver() {
+	if (!sharedObserver) {
+		// eslint-disable-next-line no-undef
+		sharedObserver = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (entry.isIntersecting) {
+						sharedObserver.unobserve(entry.target);
+						initCountdownTimer(entry.target);
+					}
+				});
+			},
+			{
+				rootMargin: '50px', // Start 50px before entering viewport
+			}
+		);
+	}
+	return sharedObserver;
 }
 
 /**
@@ -198,23 +280,23 @@ function initAllCountdownTimers() {
 		}
 		timer.setAttribute('data-airo-wp-initialized', 'true');
 
-		// Use Intersection Observer for lazy initialization
-		// eslint-disable-next-line no-undef
-		const observer = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting) {
-						initCountdownTimer(entry.target);
-						observer.unobserve(entry.target);
-					}
-				});
-			},
-			{
-				rootMargin: '50px', // Start 50px before entering viewport
-			}
-		);
+		// Show the current values and translated labels straight away:
+		// save() stores untranslated literals, and a timer below the fold
+		// would otherwise show them until it scrolls into view. Only the
+		// ticking waits for the observer.
+		const timeData = timer.dataset.targetDatetime
+			? getTimeData(timer)
+			: { days: 0, hours: 0, minutes: 0, seconds: 0 };
+		updateCountdownDisplay(timer, timeData);
 
-		observer.observe(timer);
+		// An already-passed timer resolves now (e.g. "hide" must not flash
+		// 00:00:00:00 until the visitor scrolls near it).
+		if (timer.dataset.targetDatetime && timeData.isComplete) {
+			handleCompletion(timer);
+			return;
+		}
+
+		getObserver().observe(timer);
 	});
 }
 

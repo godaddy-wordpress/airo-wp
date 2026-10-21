@@ -25,9 +25,11 @@ if ( ! function_exists( 'airowp_render_product_showcase_hero' ) ) {
 	 * @param array    $attributes Block attributes.
 	 * @param string   $content    Inner block content.
 	 * @param WP_Block $block      Block instance.
-	 * @return string|void Password form or rendered block output.
+	 * @return string|void Empty string when nothing renders; otherwise the output is echoed.
 	 */
 	function airowp_render_product_showcase_hero( $attributes, $content, $block ) {
+		unset( $content, $block );
+
 		// Bail if WooCommerce is not active.
 		if ( ! function_exists( 'wc_get_product' ) ) {
 			return '';
@@ -59,28 +61,29 @@ if ( ! function_exists( 'airowp_render_product_showcase_hero' ) ) {
 
 		// Respect password-protected products.
 		if ( post_password_required( $product_id ) ) {
-			return get_the_password_form( $product_id );
+			echo get_the_password_form( $product_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Core markup.
+			return;
 		}
 
 		// Extract display settings.
-		$layout                = isset( $attributes['layout'] ) && 'media-right' === $attributes['layout'] ? 'media-right' : 'media-left';
-		$image_size            = isset( $attributes['imageSize'] ) ? sanitize_key( $attributes['imageSize'] ) : 'large';
-		$show_price            = ! isset( $attributes['showPrice'] ) || $attributes['showPrice'];
-		$show_rating           = ! isset( $attributes['showRating'] ) || $attributes['showRating'];
-		$show_stock_status     = ! isset( $attributes['showStockStatus'] ) || $attributes['showStockStatus'];
-		$show_sale_badge       = ! isset( $attributes['showSaleBadge'] ) || $attributes['showSaleBadge'];
-		$show_short_desc       = ! empty( $attributes['showShortDescription'] );
-		$show_add_to_cart      = ! isset( $attributes['showAddToCart'] ) || $attributes['showAddToCart'];
-		$show_variations       = ! isset( $attributes['showVariations'] ) || $attributes['showVariations'];
-		$min_height            = isset( $attributes['minHeight'] ) ? $attributes['minHeight'] : '500px';
-		$focal_point           = isset( $attributes['mediaFocalPoint'] )
+		$layout             = isset( $attributes['layout'] ) && 'media-right' === $attributes['layout'] ? 'media-right' : 'media-left';
+		$image_size         = isset( $attributes['imageSize'] ) ? sanitize_key( $attributes['imageSize'] ) : 'large';
+		$show_price         = ! isset( $attributes['showPrice'] ) || $attributes['showPrice'];
+		$show_rating        = ! isset( $attributes['showRating'] ) || $attributes['showRating'];
+		$show_stock_status  = ! isset( $attributes['showStockStatus'] ) || $attributes['showStockStatus'];
+		$show_sale_badge    = ! isset( $attributes['showSaleBadge'] ) || $attributes['showSaleBadge'];
+		$show_short_desc    = ! empty( $attributes['showShortDescription'] );
+		$show_add_to_cart   = ! isset( $attributes['showAddToCart'] ) || $attributes['showAddToCart'];
+		$show_variations    = ! isset( $attributes['showVariations'] ) || $attributes['showVariations'];
+		$min_height         = isset( $attributes['minHeight'] ) ? $attributes['minHeight'] : '500px';
+		$focal_point        = isset( $attributes['mediaFocalPoint'] )
 			? $attributes['mediaFocalPoint']
 			: array(
 				'x' => 0.5,
 				'y' => 0.5,
 			);
-		$allowed_alignments    = array( 'top', 'center', 'bottom' );
-		$vertical_alignment    = isset( $attributes['contentVerticalAlignment'] ) && in_array( $attributes['contentVerticalAlignment'], $allowed_alignments, true )
+		$allowed_alignments = array( 'top', 'center', 'bottom' );
+		$vertical_alignment = isset( $attributes['contentVerticalAlignment'] ) && in_array( $attributes['contentVerticalAlignment'], $allowed_alignments, true )
 			? $attributes['contentVerticalAlignment']
 			: 'center';
 
@@ -96,37 +99,45 @@ if ( ! function_exists( 'airowp_render_product_showcase_hero' ) ) {
 			: '500px';
 
 		// Build focal point CSS.
-		$focal_x = isset( $focal_point['x'] ) ? max( 0, min( 1, floatval( $focal_point['x'] ) ) ) * 100 : 50;
-		$focal_y = isset( $focal_point['y'] ) ? max( 0, min( 1, floatval( $focal_point['y'] ) ) ) * 100 : 50;
+		$focal_x         = isset( $focal_point['x'] ) ? max( 0, min( 1, floatval( $focal_point['x'] ) ) ) * 100 : 50;
+		$focal_y         = isset( $focal_point['y'] ) ? max( 0, min( 1, floatval( $focal_point['y'] ) ) ) * 100 : 50;
 		$object_position = $focal_x . '% ' . $focal_y . '%';
 
 		// Map vertical alignment.
-		$align_map = array(
+		$align_map       = array(
 			'top'    => 'flex-start',
 			'center' => 'center',
 			'bottom' => 'flex-end',
 		);
 		$content_justify = isset( $align_map[ $vertical_alignment ] ) ? $align_map[ $vertical_alignment ] : 'center';
 
+		// Only the first hero on a page is likely the LCP image; a second
+		// fetchpriority=high just competes with it.
+		static $hero_count = 0;
+		++$hero_count;
+		$image_attrs = array(
+			'class'   => 'airo-wp-product-showcase-hero__image',
+			'style'   => 'object-position: ' . esc_attr( $object_position ) . ';',
+			'loading' => 'eager',
+		);
+		if ( 1 === $hero_count ) {
+			$image_attrs['fetchpriority'] = 'high';
+		}
+
 		// Get product image.
-		$image_id  = $product->get_image_id();
+		$image_id   = $product->get_image_id();
 		$image_html = '';
 		if ( $image_id ) {
 			$image_html = wp_get_attachment_image(
 				$image_id,
 				$image_size,
 				false,
-				array(
-					'class'         => 'airo-wp-product-showcase-hero__image',
-					'style'         => 'object-position: ' . esc_attr( $object_position ) . ';',
-					'loading'       => 'eager',
-					'fetchpriority' => 'high',
-				)
+				$image_attrs
 			);
 		}
 
 		// Build wrapper attributes.
-		$wrapper_class = 'airo-wp-product-showcase-hero airo-wp-product-showcase-hero--' . $layout;
+		$wrapper_class      = 'airo-wp-product-showcase-hero airo-wp-product-showcase-hero--' . $layout;
 		$wrapper_attributes = get_block_wrapper_attributes(
 			array(
 				'class' => $wrapper_class,
@@ -140,7 +151,7 @@ if ( ! function_exists( 'airowp_render_product_showcase_hero' ) ) {
 			$original_post    = $post;
 			$original_product = isset( $GLOBALS['product'] ) ? $GLOBALS['product'] : null;
 			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- WooCommerce template functions require the global post object; restored below.
-			$post             = get_post( $product_id );
+			$post = get_post( $product_id );
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- WooCommerce template functions require this global to be named exactly $product; swapped for loop context and restored below.
 		$GLOBALS['product'] = $product;
 		setup_postdata( $post );
@@ -183,10 +194,13 @@ if ( ! function_exists( 'airowp_render_product_showcase_hero' ) ) {
 
 					<?php if ( $show_stock_status ) : ?>
 						<?php
-						$stock_class = $product->is_in_stock() ? 'instock' : 'outofstock';
-						$stock_text  = $product->is_in_stock()
-							? __( 'In stock', 'airo-wp' )
-							: __( 'Out of stock', 'airo-wp' );
+						// WooCommerce's own availability text (backorder, low stock,
+						// custom wording) rather than a binary in/out of stock.
+						$stock_class  = $product->get_stock_status();
+						$availability = $product->get_availability();
+						$stock_text   = ! empty( $availability['availability'] )
+							? $availability['availability']
+							: ( $product->is_in_stock() ? __( 'In stock', 'airo-wp' ) : __( 'Out of stock', 'airo-wp' ) );
 						?>
 						<div class="airo-wp-product-showcase-hero__stock airo-wp-product-showcase-hero__stock--<?php echo esc_attr( $stock_class ); ?>">
 							<?php echo esc_html( $stock_text ); ?>
@@ -223,7 +237,7 @@ if ( ! function_exists( 'airowp_render_product_showcase_hero' ) ) {
 		// Restore original globals (manual restoration is safer than wp_reset_postdata()
 		// because it correctly handles secondary query loops where $wp_query->post differs).
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-		$post               = $original_post;
+		$post = $original_post;
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- restoring WooCommerce's original global $product after the loop; the name is fixed by WooCommerce.
 		$GLOBALS['product'] = $original_product;
 		if ( $post ) {

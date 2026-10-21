@@ -98,6 +98,12 @@
 			"type": "string",
 			"default": ""
 		},
+		"savedModalLabel": {
+			"type": "string",
+			"source": "attribute",
+			"selector": ".airo-wp-modal",
+			"attribute": "aria-label"
+		},
 		"allowHashTrigger": {
 			"type": "boolean",
 			"default": true
@@ -247,6 +253,12 @@
 			"type": "string",
 			"default": ""
 		},
+		"savedCloseButtonLabel": {
+			"type": "string",
+			"source": "attribute",
+			"selector": ".airo-wp-modal__close",
+			"attribute": "aria-label"
+		},
 		"closeButtonIconColor": {
 			"type": "string",
 			"default": ""
@@ -283,6 +295,6 @@
 	},
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
-	"style": "file:./index.css",
+	"style": "file:./style-index.css",
 	"viewScript": "file:./view.js"
 }

@@ -16,6 +16,7 @@ final class DiscardPageDraftTest extends TestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
+		Functions\when( 'current_user_can' )->justReturn( true );
 
 		if ( ! defined( 'PHPUNIT_RUNNING' ) ) {
 			define( 'PHPUNIT_RUNNING', true );
@@ -63,7 +64,21 @@ final class DiscardPageDraftTest extends TestCase {
 		$result = $this->tool->execute( array( 'draft_id' => 10 ) );
 
 		$this->assertFalse( $result['success'] );
-		$this->assertStringContainsString( 'Only page drafts can be published', $result['message'] );
+		$this->assertStringContainsString( 'Only page drafts can be discarded', $result['message'] );
+	}
+
+	public function test_non_draft_status_returns_error(): void {
+		$post              = new \stdClass();
+		$post->ID          = 10;
+		$post->post_type   = 'page';
+		$post->post_status = 'publish';
+
+		Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
+
+		$result = $this->tool->execute( array( 'draft_id' => 10 ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'can be discarded', $result['message'] );
 	}
 
 	public function test_force_delete_false_passes_to_service(): void {
@@ -143,5 +158,85 @@ final class DiscardPageDraftTest extends TestCase {
 		$result = $this->tool->execute( array( 'draft_id' => $draft_id, 'force_delete' => true ) );
 
 		$this->assertTrue( $result['success'] );
+	}
+
+	public function test_denied_when_user_cannot_edit_original(): void {
+		$draft_id    = 50;
+		$original_id = 5;
+
+		$draft              = new \stdClass();
+		$draft->ID          = $draft_id;
+		$draft->post_type   = 'page';
+		$draft->post_status = 'draft';
+
+		Functions\when( 'get_post' )->justReturn( $draft );
+		Functions\when( 'get_post_meta' )->alias(
+			function ( $post_id, $key = null, $single = false ) use ( $draft_id, $original_id ) {
+				if ( $post_id === $draft_id && DraftPageService::META_DRAFT_OF === $key ) {
+					return (string) $original_id;
+				}
+				return '';
+			}
+		);
+		Functions\when( 'current_user_can' )->alias(
+			function ( $cap, $id = null ) use ( $draft_id, $original_id ) {
+				return ! ( 'edit_post' === $cap && $original_id === $id );
+			}
+		);
+		Functions\when( 'wp_delete_post' )->alias(
+			function () {
+				throw new \RuntimeException( 'wp_delete_post must not be called' );
+			}
+		);
+		Functions\when( 'wp_trash_post' )->alias(
+			function () {
+				throw new \RuntimeException( 'wp_trash_post must not be called' );
+			}
+		);
+
+		$result = $this->tool->execute( array( 'draft_id' => $draft_id ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
+	}
+
+	public function test_denied_when_user_cannot_delete_draft(): void {
+		$draft_id    = 50;
+		$original_id = 5;
+
+		$draft              = new \stdClass();
+		$draft->ID          = $draft_id;
+		$draft->post_type   = 'page';
+		$draft->post_status = 'draft';
+
+		Functions\when( 'get_post' )->justReturn( $draft );
+		Functions\when( 'get_post_meta' )->alias(
+			function ( $post_id, $key = null, $single = false ) use ( $draft_id, $original_id ) {
+				if ( $post_id === $draft_id && DraftPageService::META_DRAFT_OF === $key ) {
+					return (string) $original_id;
+				}
+				return '';
+			}
+		);
+		Functions\when( 'current_user_can' )->alias(
+			function ( $cap, $id = null ) use ( $draft_id, $original_id ) {
+				return ! ( 'delete_post' === $cap && $draft_id === $id );
+			}
+		);
+		Functions\when( 'wp_delete_post' )->alias(
+			function () {
+				throw new \RuntimeException( 'wp_delete_post must not be called' );
+			}
+		);
+		Functions\when( 'wp_trash_post' )->alias(
+			function () {
+				throw new \RuntimeException( 'wp_trash_post must not be called' );
+			}
+		);
+
+		$result = $this->tool->execute( array( 'draft_id' => $draft_id ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
 	}
 }

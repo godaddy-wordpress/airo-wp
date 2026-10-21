@@ -5,7 +5,6 @@ import {
 	store as blockEditorStore,
 	useBlockProps,
 	useInnerBlocksProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
 } from '@wordpress/block-editor';
 import { ToolbarButton } from '@wordpress/components';

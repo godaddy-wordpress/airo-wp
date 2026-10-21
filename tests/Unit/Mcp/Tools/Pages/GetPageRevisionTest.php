@@ -19,6 +19,7 @@ final class GetPageRevisionTest extends TestCase {
 		}
 
 		Functions\when( '__' )->returnArg();
+		Functions\when( 'current_user_can' )->justReturn( true );
 
 		$this->tool = new GetPageRevision();
 	}
@@ -74,5 +75,24 @@ final class GetPageRevisionTest extends TestCase {
 
 		$this->assertFalse( $result['success'] );
 		$this->assertStringContainsString( '10', $result['message'] );
+	}
+
+	public function test_permission_denied_on_parent_returns_error(): void {
+		$parent            = new \stdClass();
+		$parent->ID        = 5;
+		$parent->post_type = 'page';
+
+		Functions\expect( 'get_post' )->with( 5 )->andReturn( $parent );
+		Functions\when( 'current_user_can' )->alias(
+			function ( $cap, $id = null ) {
+				return ! ( 'edit_post' === $cap && 5 === $id );
+			}
+		);
+		Functions\expect( 'wp_get_post_revision' )->never();
+
+		$result = $this->tool->execute( array( 'parent' => 5, 'id' => 6 ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
 	}
 }

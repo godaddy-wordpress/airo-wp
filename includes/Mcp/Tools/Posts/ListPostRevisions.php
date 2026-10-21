@@ -87,6 +87,13 @@ class ListPostRevisions extends BaseTool {
 			);
 		}
 
+		if ( ! current_user_can( 'edit_post', $parent_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to view revisions of this post', 'airo-wp' ),
+			);
+		}
+
 		// Build WP_Query args so pagination and filtering happen at the DB layer.
 		// wp_get_post_revisions() returns an already-sliced result, which makes
 		// accurate total / total_pages impossible without a second query, and it

@@ -27,16 +27,16 @@ return array(
 
 <!-- wp:airo-wp/row {"style":{"spacing":{"padding":{"top":"0","bottom":"0","left":"0","right":"0"}}},"layout":{"type":"flex","orientation":"horizontal","justifyContent":"center","flexWrap":"wrap"}} -->
 <div class="wp-block-airo-wp-row alignfull airo-wp-flex airo-wp-no-width-constraint" style="padding-top:0;padding-right:0;padding-bottom:0;padding-left:0"><div class="airo-wp-flex__inner" style="display:flex;justify-content:center;flex-wrap:wrap"><!-- wp:image {"width":"60px","height":"60px","scale":"cover","sizeSlug":"thumbnail","align":"center","className":"is-style-rounded"} -->
-<figure class="wp-block-image aligncenter size-thumbnail is-resized is-style-rounded"><img src="{{dsgo:placeholder-avatar}}" alt="Steve Jobs" style="object-fit:cover;width:60px;height:60px"/></figure>
+<figure class="wp-block-image aligncenter size-thumbnail is-resized is-style-rounded"><img src="{{dsgo:placeholder-avatar}}" alt="Elena Marsh" style="object-fit:cover;width:60px;height:60px"/></figure>
 <!-- /wp:image -->
 
 <!-- wp:airo-wp/section {"constrainWidth":false,"style":{"spacing":{"padding":{"top":"0","bottom":"0","left":"0","right":"0"}}}} -->
 <div class="wp-block-airo-wp-section alignfull airo-wp-stack airo-wp-no-width-constraint" style="padding-top:0;padding-right:0;padding-bottom:0;padding-left:0"><div class="airo-wp-stack__inner"><!-- wp:paragraph {"align":"center","style":{"typography":{"fontStyle":"normal","fontWeight":"600"}},"textColor":"base"} -->
-<p class="has-text-align-center has-base-color has-text-color" style="font-style:normal;font-weight:600">Steve Jobs</p>
+<p class="has-text-align-center has-base-color has-text-color" style="font-style:normal;font-weight:600">Elena Marsh</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph {"align":"center","style":{"color":{"text":"rgba(255,255,255,0.7)"}},"fontSize":"small"} -->
-<p class="has-text-align-center has-text-color has-small-font-size" style="color:rgba(255,255,255,0.7)">Co-founder, Apple Inc.</p>
+<p class="has-text-align-center has-text-color has-small-font-size" style="color:rgba(255,255,255,0.7)">Founder, Northwind Studio</p>
 <!-- /wp:paragraph --></div></div>
 <!-- /wp:airo-wp/section --></div></div>
 <!-- /wp:airo-wp/row --></div></div>

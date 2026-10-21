@@ -5,5 +5,8 @@
   "testsPort": 9190,
   "plugins": [
     "."
-  ]
+  ],
+  "mappings": {
+    "wp-content/mu-plugins": "./tests/e2e/functional/environment/mu-plugins"
+  }
 }

@@ -35,6 +35,10 @@ if ( ! defined( 'PHPUNIT_RUNNING' ) ) {
 	define( 'PHPUNIT_RUNNING', true );
 }
 
+if ( ! defined( 'MINUTE_IN_SECONDS' ) ) {
+	define( 'MINUTE_IN_SECONDS', 60 );
+}
+
 if ( ! class_exists( 'WP_Post' ) ) {
 	// phpcs:disable
 	/**
@@ -54,6 +58,9 @@ if ( ! class_exists( 'WP_Post' ) ) {
 		public string $post_author   = '';
 		public string $post_date     = '';
 		public string $post_modified = '';
+		public string $post_password = '';
+		public string $post_type     = 'post';
+		public string $post_mime_type = '';
 
 		public function __construct( array $props = array() ) {
 			foreach ( $props as $key => $value ) {
@@ -74,7 +81,7 @@ if ( ! class_exists( 'WP_Query' ) ) {
 	 */
 	class WP_Query {
 		/** @var array Posts to iterate over in this instance (set from static seed). */
-		private array $posts = array();
+		public array $posts = array();
 
 		/** @var int Current iteration cursor. */
 		private int $cursor = 0;

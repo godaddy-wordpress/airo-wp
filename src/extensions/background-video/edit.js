@@ -13,9 +13,7 @@ import {
 	InspectorControls,
 	MediaUpload,
 	MediaUploadCheck,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import {
@@ -29,7 +27,6 @@ import {
 	encodeColorValue,
 	decodeColorValue,
 } from '../../utils/encode-color-value';
-import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
 
 /**
  * Video file upload control
@@ -346,65 +343,5 @@ export function BackgroundVideoPanel(props) {
 				</PanelBody>
 			</InspectorControls>
 		</Fragment>
-	);
-}
-
-/**
- * Background video editor preview wrapper
- *
- * @param {Object} props                Block list block props
- * @param {Object} props.BlockListBlock Original BlockListBlock component
- */
-export function BackgroundVideoPreview({ BlockListBlock, ...props }) {
-	const { attributes } = props;
-	const { dsgoVideoUrl, dsgoVideoPoster, dsgoVideoOverlayColor } = attributes;
-
-	// Apply 70% opacity to overlay color if set
-	const overlayStyle = dsgoVideoOverlayColor
-		? {
-				backgroundColor: convertColorToCSSVar(dsgoVideoOverlayColor),
-				opacity: 0.7,
-				position: 'absolute',
-				top: 0,
-				left: 0,
-				width: '100%',
-				height: '100%',
-				zIndex: 1,
-				pointerEvents: 'none',
-			}
-		: null;
-
-	return (
-		<div className="airo-wp-has-video-background">
-			<div
-				className="airo-wp-video-background-editor"
-				style={{
-					position: 'absolute',
-					top: 0,
-					left: 0,
-					width: '100%',
-					height: '100%',
-					zIndex: 0,
-					overflow: 'hidden',
-					pointerEvents: 'none',
-				}}
-			>
-				<video
-					src={dsgoVideoUrl}
-					poster={dsgoVideoPoster}
-					autoPlay
-					loop
-					muted
-					playsInline
-					style={{
-						width: '100%',
-						height: '100%',
-						objectFit: 'cover',
-					}}
-				/>
-				{overlayStyle && <div style={overlayStyle} />}
-			</div>
-			<BlockListBlock {...props} />
-		</div>
 	);
 }

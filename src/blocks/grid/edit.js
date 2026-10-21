@@ -16,30 +16,29 @@ import {
 	AlignmentControl,
 	store as blockEditorStore,
 	useSettings,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import {
 	RangeControl,
 	SelectControl,
+	TextControl,
 	ToggleControl,
 	ToolbarGroup,
 	ToolbarDropdownMenu,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseCustomUnits as useCustomUnits,
 } from '@wordpress/components';
 import { grid as gridIcon } from '@wordpress/icons';
 import { DsgoInspectorPanel } from '../../components/shared';
+import LayoutControls from '../../extensions/layout/controls';
 import { useState, useEffect, useRef } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import {
 	convertPresetToCSSVar,
 	convertColorToCSSVar,
 } from '../../utils/convert-preset-to-css-var';
+import { getOverlayOpacity } from '../../utils/overlay-opacity';
 import {
 	encodeColorValue,
 	decodeColorValue,
@@ -49,8 +48,9 @@ import {
 	hoverVariationClasses,
 } from '../../utils/style-variation-classes';
 import { useGridRowMatch } from './utils/use-grid-row-match';
-import { getGridTemplateColumns } from './grid-columns';
+import { getGridTemplateColumns, sanitizeColumnTemplate } from './grid-columns';
 import { useRenderedColumns } from './utils/use-rendered-columns';
+import ResponsiveTemplateControls from './components/ResponsiveTemplateControls';
 
 /**
  * Grid Container Edit Component
@@ -69,6 +69,9 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 		constrainWidth,
 		contentWidth,
 		columnMinWidth,
+		columnTemplate,
+		tabletColumnTemplate,
+		mobileColumnTemplate,
 		desktopColumns,
 		tabletColumns,
 		mobileColumns,
@@ -156,32 +159,30 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 	const gridTemplateColumns = getGridTemplateColumns(
 		columnMinWidth,
 		desktopColumns,
-		resolvedColumnGap
+		resolvedColumnGap,
+		columnTemplate
 	);
 
-	// "Align Rows": derive whether the subgrid is active and the per-card row
-	// count to publish (`--airo-wp-row-count` + activation class). The frontend
-	// measures this from the DOM in view.js; in the editor the hook reads it
-	// from the block tree and the previewed device width.
-	const { isRowMatchActive: isRowMatchConfigured, matchRowCount } =
-		useGridRowMatch(clientId, {
-			matchRowHeights,
-			desktopColumns,
-			tabletColumns,
-			mobileColumns,
-		});
-
-	// The configured column count is an upper bound — a column min width can
-	// drop a column rather than overflow (see ./grid-columns.js). Row matching
-	// is only meaningful once the grid actually renders 2+ columns; below that
-	// the row-track spans just absorb row gaps and inflate every card.
+	// Measure the used tracks: custom templates can override every configured count.
 	const innerRef = useRef();
 	const renderedColumns = useRenderedColumns(
 		innerRef,
 		desktopColumns || 3,
-		gridTemplateColumns
+		[
+			gridTemplateColumns,
+			tabletColumnTemplate,
+			mobileColumnTemplate,
+			tabletColumns,
+			mobileColumns,
+		].join('|')
 	);
-	const isRowMatchActive = isRowMatchConfigured && renderedColumns > 1;
+	const { isRowMatchActive, matchRowCount } = useGridRowMatch(clientId, {
+		matchRowHeights,
+		desktopColumns,
+		tabletColumns,
+		mobileColumns,
+		renderedColumns,
+	});
 
 	// Block wrapper props - outer div stays full width (must match save.js EXACTLY)
 	const hasOverlay = !!overlayColor || hasOverlayStyleClass(className);
@@ -219,17 +220,28 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 			}),
 			...(overlayColor && {
 				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
-				'--airo-wp-overlay-opacity': '0.8',
+				'--airo-wp-overlay-opacity': getOverlayOpacity(
+					overlayColor,
+					attributes.overlayOpacity
+				),
 			}),
 		},
 	});
 
 	const innerStyles = {
 		display: 'grid',
+		// Editor-only: responsive child spans clamp without changing saved attributes.
+		'--airo-wp-grid-rendered-columns': renderedColumns,
 		gridTemplateColumns,
 		alignItems: alignItems || 'stretch',
 		rowGap: blockGapRow || rowGap || defaultGap,
 		columnGap: resolvedColumnGap,
+		...(tabletColumnTemplate?.trim() && {
+			'--airo-wp-grid-columns-tablet': tabletColumnTemplate.trim(),
+		}),
+		...(mobileColumnTemplate?.trim() && {
+			'--airo-wp-grid-columns-mobile': mobileColumnTemplate.trim(),
+		}),
 	};
 
 	// Apply width constraints if enabled
@@ -461,11 +473,15 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 							mobileColumns: 1,
 							alignItems: 'stretch',
 							matchRowHeights: false,
+							dsgoLayout: undefined,
 							rowGap: '',
 							columnGap: '',
 							constrainWidth: false,
 							contentWidth: '',
 							columnMinWidth: '',
+							columnTemplate: '',
+							tabletColumnTemplate: '',
+							mobileColumnTemplate: '',
 						});
 					}}
 				>
@@ -820,6 +836,41 @@ export default function GridEdit({ attributes, setAttributes, clientId }) {
 							)}
 						/>
 					</DsgoInspectorPanel.Item>
+
+					<DsgoInspectorPanel.Item
+						label={__('Column Template', 'airo-wp')}
+						hasValue={() => columnTemplate !== ''}
+						onDeselect={() => setAttributes({ columnTemplate: '' })}
+						isShownByDefault
+					>
+						<TextControl
+							label={__('Column Template', 'airo-wp')}
+							value={columnTemplate}
+							onChange={(value) =>
+								setAttributes({
+									columnTemplate:
+										sanitizeColumnTemplate(value),
+								})
+							}
+							placeholder="minmax(0, .7fr) minmax(0, 1.3fr)"
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+							help={__(
+								'A custom grid-template-columns value for desktop, for uneven columns. Overrides the column count and min width above; tablet and mobile use their own templates or column counts.',
+								'airo-wp'
+							)}
+						/>
+					</DsgoInspectorPanel.Item>
+					<ResponsiveTemplateControls
+						attributes={attributes}
+						setAttributes={setAttributes}
+					/>
+					<LayoutControls
+						name="airo-wp/grid"
+						attributes={attributes}
+						setAttributes={setAttributes}
+						clientId={clientId}
+					/>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 

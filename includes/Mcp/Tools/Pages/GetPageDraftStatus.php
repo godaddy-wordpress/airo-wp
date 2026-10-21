@@ -97,6 +97,13 @@ class GetPageDraftStatus extends BaseTool {
 			);
 		}
 
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to edit this page.', 'airo-wp' ),
+			);
+		}
+
 		// Check if this page IS a draft.
 		$draft_of_meta = get_post_meta( $post_id, DraftPageService::META_DRAFT_OF, true );
 		$original_id   = absint( $draft_of_meta );
