@@ -92,6 +92,13 @@ class ListPageRevisions extends BaseTool {
 			);
 		}
 
+		if ( ! current_user_can( 'edit_post', $parent_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to view revisions of this page', 'airo-wp' ),
+			);
+		}
+
 		// Build WP_Query args so pagination and filtering happen at the DB layer.
 		$per_page   = isset( $input['per_page'] ) ? (int) $input['per_page'] : 10;
 		$page       = isset( $input['page'] ) ? (int) $input['page'] : 1;

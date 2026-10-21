@@ -25,7 +25,6 @@ import {
 	FocalPointPicker,
 	Placeholder,
 	Spinner,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export in @wordpress/components
 	__experimentalHStack as HStack,
 } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
@@ -38,6 +37,7 @@ import {
 	useDynamicTagPreview,
 } from '../../components/DynamicTagPicker';
 import { DsgoInspectorPanel } from '../../components/shared';
+import { ChildLayoutControls } from '../../extensions/layout/controls';
 
 const OBJECT_FIT_OPTIONS = [
 	{ label: __('Cover', 'airo-wp'), value: 'cover' },
@@ -90,7 +90,13 @@ const DEFAULTS = {
 	rel: '',
 };
 
-export default function Edit({ attributes, setAttributes, clientId, context }) {
+export default function Edit({
+	attributes,
+	setAttributes,
+	clientId,
+	context,
+	isSelected,
+}) {
 	const {
 		source,
 		sourceArgs,
@@ -193,7 +199,9 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 					title={__('Settings', 'airo-wp')}
 					panelName="settings"
 					panelId={clientId}
-					resetAll={() => setAttributes(DEFAULTS)}
+					resetAll={() =>
+						setAttributes({ ...DEFAULTS, dsgoLayout: undefined })
+					}
 				>
 					<DsgoInspectorPanel.Item
 						label={__('Dynamic source', 'airo-wp')}
@@ -298,7 +306,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 									focalPoint: { x: 0.5, y: 0.5 },
 								})
 							}
-							isShownByDefault={false}
+							isShownByDefault
 						>
 							<FocalPointPicker
 								label={__('Focal point', 'airo-wp')}
@@ -385,7 +393,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 						onDeselect={() =>
 							setAttributes({ href: '', linkTarget: '', rel: '' })
 						}
-						isShownByDefault={false}
+						isShownByDefault
 					>
 						<TextControl
 							label={__('Link URL', 'airo-wp')}
@@ -401,7 +409,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 							label={__('Open in', 'airo-wp')}
 							hasValue={() => linkTarget !== ''}
 							onDeselect={() => setAttributes({ linkTarget: '' })}
-							isShownByDefault={false}
+							isShownByDefault
 						>
 							<SelectControl
 								label={__('Open in', 'airo-wp')}
@@ -421,7 +429,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 							label={__('Rel attribute', 'airo-wp')}
 							hasValue={() => rel !== ''}
 							onDeselect={() => setAttributes({ rel: '' })}
-							isShownByDefault={false}
+							isShownByDefault
 						>
 							<SelectControl
 								label={__('Rel attribute', 'airo-wp')}
@@ -435,6 +443,10 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 							/>
 						</DsgoInspectorPanel.Item>
 					)}
+					<ChildLayoutControls
+						name="airo-wp/dynamic-image"
+						{...{ attributes, setAttributes, clientId, isSelected }}
+					/>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 

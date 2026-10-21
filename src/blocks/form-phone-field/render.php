@@ -31,6 +31,8 @@ if ( ! function_exists( 'airowp_render_form_phone_field' ) ) {
 	 * @return void
 	 */
 	function airowp_render_form_phone_field( $attributes, $content, $block ) {
+		unset( $content, $block );
+
 		$field_name        = isset( $attributes['fieldName'] ) ? (string) $attributes['fieldName'] : '';
 		$label             = isset( $attributes['label'] ) ? (string) $attributes['label'] : '';
 		$placeholder       = isset( $attributes['placeholder'] ) ? (string) $attributes['placeholder'] : '';
@@ -45,14 +47,19 @@ if ( ! function_exists( 'airowp_render_form_phone_field' ) ) {
 
 		$field_id = 'field-' . $field_name;
 
-		// Resolve the HTML pattern from the phone format.
+		// Resolve the HTML pattern from the phone format. Both accept what the
+		// view script's auto-formatter produces and common manual entry; keep them
+		// in step with the `tel` check in class-form-handler.php.
 		$pattern = '';
 		switch ( $phone_format ) {
 			case 'us':
-				$pattern = '[0-9]{3}-[0-9]{3}-[0-9]{4}';
+				$pattern = '(?:\+?1[\s.\-]?)?(?:\([0-9]{3}\)|[0-9]{3})[\s.\-]?[0-9]{3}[\s.\-]?[0-9]{4}';
 				break;
 			case 'international':
-				$pattern = '\+[0-9]{1,3}[0-9\s\-]{4,14}';
+				// The "+" is only required when no country-code select supplies it.
+				$pattern = $show_country_code
+					? '(?=(?:[^0-9]*[0-9]){4,15}[^0-9]*$)[0-9\s.\-]+'
+					: '(?=(?:[^0-9]*[0-9]){7,15}[^0-9]*$)\+[0-9\s.\-]+';
 				break;
 		}
 
@@ -65,20 +72,20 @@ if ( ! function_exists( 'airowp_render_form_phone_field' ) ) {
 					$field_placeholder = '555-123-4567';
 					break;
 				case 'international':
-					$field_placeholder = '+1 555 123 4567';
+					$field_placeholder = $show_country_code ? '555-123-4567' : '+1-555-123-4567';
 					break;
 				default:
 					$field_placeholder = '';
 			}
 		}
 
-		$phone_wrapper  = '<div class="airo-wp-form-field__phone-wrapper" style="display: flex; gap: 0.5rem;" data-auto-format="' . esc_attr( $auto_format ? 'true' : 'false' ) . '">';
+		$phone_wrapper = '<div class="airo-wp-form-field__phone-wrapper" style="display: flex; gap: 0.5rem;" data-auto-format="' . esc_attr( $auto_format ? 'true' : 'false' ) . '">';
 
 		if ( $show_country_code ) {
 			// Options are intentionally empty here — view.js hydrates this <select> at
 			// runtime from the shared COUNTRY_CODES constant. The form already requires
 			// JS for auto-formatting, so the no-JS experience is an accepted trade-off.
-			$phone_wrapper .= '<select name="' . esc_attr( $field_name . '_country_code' ) . '" class="airo-wp-form-field__country-code" data-airo-wp-country-code="' . esc_attr( $country_code ) . '" style="min-width: 85px; flex-shrink: 0;" aria-label="Country Code"></select>';
+			$phone_wrapper .= '<select name="' . esc_attr( $field_name . '_country_code' ) . '" class="airo-wp-form-field__country-code" data-airo-wp-country-code="' . esc_attr( $country_code ) . '" style="min-width: 85px; flex-shrink: 0;" aria-label="' . esc_attr__( 'Country Code', 'airo-wp' ) . '"></select>';
 		}
 
 		$input = '<input type="tel" id="' . esc_attr( $field_id ) . '" name="' . esc_attr( $field_name ) . '" class="airo-wp-form-field__input"';
@@ -109,12 +116,7 @@ if ( ! function_exists( 'airowp_render_form_phone_field' ) ) {
 		$inner .= $phone_wrapper;
 		$inner .= airowp_form_field_help_html( $field_id, $help_text );
 
-		$wrapper = get_block_wrapper_attributes(
-			array(
-				'class' => 'airo-wp-form-field airo-wp-form-field--phone',
-				'style' => airowp_form_field_width_style( $field_width ),
-			)
-		);
+		$wrapper = airowp_form_field_wrapper_attributes( $attributes, 'phone', airowp_form_field_width_style( $field_width ) );
 
 		echo '<div ' . $wrapper . '>' . $inner . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}

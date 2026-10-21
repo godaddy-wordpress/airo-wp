@@ -1,0 +1,19 @@
+// Form step: a full-width item in the form's fields row, with its own
+// fields row inside (same layout as .airo-wp-form__fields).
+.airo-wp-form-step {
+	flex: 0 0 100%;
+	width: 100%;
+	min-width: 0;
+}
+
+.airo-wp-form-step__title {
+	margin: 0 0 var(--airo-wp-form-field-spacing, 1.5rem);
+}
+
+.airo-wp-form-step__fields {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: var(--airo-wp-form-field-spacing, 1.5rem);
+	align-items: flex-start;
+}

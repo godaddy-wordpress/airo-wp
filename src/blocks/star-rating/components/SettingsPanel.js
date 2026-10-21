@@ -12,11 +12,9 @@ import {
 	RangeControl,
 	TextControl,
 	ToggleControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
+	__experimentalNumberControl as NumberControl,
 	__experimentalToggleGroupControl as ToggleGroupControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalToggleGroupControlOption as ToggleGroupControlOption,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalVStack as VStack,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
@@ -229,19 +227,19 @@ export default function SettingsPanel({
 					/>
 					{showCount && (
 						<>
-							<RangeControl
+							<NumberControl
 								label={__('Number of ratings', 'airo-wp')}
 								value={ratingCount}
-								onChange={(value) =>
+								onChange={(value) => {
+									const parsed = parseInt(value, 10);
 									setAttributes({
-										ratingCount:
-											typeof value === 'number'
-												? value
-												: DEFAULTS.ratingCount,
-									})
-								}
+										ratingCount: Number.isNaN(parsed)
+											? DEFAULTS.ratingCount
+											: Math.max(0, parsed),
+									});
+								}}
 								min={0}
-								max={1000}
+								step={1}
 								__next40pxDefaultSize
 								__nextHasNoMarginBottom
 							/>

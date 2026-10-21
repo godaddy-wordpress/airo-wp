@@ -15,19 +15,25 @@ import {
 	createBlock,
 	serialize,
 	getBlockContent,
-	// eslint-disable-next-line import/no-unresolved
 } from '@wordpress/block-editor/node_modules/@wordpress/blocks';
 import metadata from '../block.json';
 import save from '../save';
-import deprecated from '../deprecated';
+import deprecatedWithLayout from '../deprecated';
+
+// Keep historical-version positional assertions independent of the new snapshot.
+const deprecated = deprecatedWithLayout.slice(1);
 
 setCategories([{ slug: 'airo-wp', title: 'airo-wp' }]);
 
-registerBlockType(metadata.name, { ...metadata, save, deprecated });
+registerBlockType(metadata.name, {
+	...metadata,
+	save,
+	deprecated: deprecatedWithLayout,
+});
 
 describe('row deprecations - style-kit overlay variation migration', () => {
-	// deprecated.js exports newest-first: [v5, v4, v3, v2, v1].
-	const [v5Deprecation] = deprecated;
+	// deprecated.js exports newest-first: [v6, v5, v4, v3, v2, v1].
+	const [, v5Deprecation] = deprecated;
 
 	const canonicalOverlayMarkup = serialize(
 		createBlock(metadata.name, { className: 'is-style-overlay-dark' })
@@ -96,7 +102,7 @@ describe('row deprecations - style-kit overlay variation migration', () => {
 });
 
 describe('row deprecations - style-kit hover variation migration', () => {
-	const [v5Deprecation] = deprecated;
+	const [, v5Deprecation] = deprecated;
 
 	const canonicalHoverMarkup = serialize(
 		createBlock(metadata.name, { className: 'is-style-hover-text-light' })

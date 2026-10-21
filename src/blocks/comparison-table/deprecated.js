@@ -1,0 +1,519 @@
+/**
+ * Comparison Table Block - Deprecations
+ *
+ * v1: Save before the table had header semantics. The top-left corner was an
+ * empty `<th>`, column headers had no `scope`, and each row's feature label
+ * was a `<td>` rather than `<th scope="row">`. Markup-only change (attribute
+ * schema unchanged), so no isEligible: stored HTML no longer matches the
+ * current save(), and this frozen copy reproduces it.
+ *
+ * It is 2.8.2's save(), which reads the badge and CTA fallback labels back
+ * from the stored markup (featuredBadgeText, savedCtaTexts) so tables saved
+ * in another editor language, or with custom labels, still match. Earlier
+ * tables used the same markup with default labels, so this one entry covers
+ * them too.
+ *
+ * v2: Save after header semantics, before icon sizes moved to CSS. It is
+ * v1's markup with the header semantics above, plus `width="20"
+ * height="20"` on the check and cross icons. It only ever existed on main
+ * between those two changes, but that content must not need recovery either.
+ *
+ * @package
+ */
+
+import { useBlockProps, RichText } from '@wordpress/block-editor';
+import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+import { getCtaFallback, getFeaturedBadgeText } from './utils/fallback-labels';
+import metadata from './block.json';
+
+/**
+ * v1 save: frozen copy of 2.8.2's save(), before header semantics.
+ *
+ * @param {Object} props            - Component props
+ * @param {Object} props.attributes - Block attributes
+ * @return {JSX.Element} Comparison Table save markup
+ */
+function saveV1({ attributes }) {
+	const {
+		columns,
+		rows,
+		alternatingRows,
+		responsiveMode,
+		featuredColumnColor,
+		headerBackgroundColor,
+		headerTextColor,
+		showCtaButtons,
+		ctaStyle,
+		featuredBadgeText,
+		savedCtaTexts,
+	} = attributes;
+
+	// Fallback labels are read back from the stored markup, so opening the
+	// post in another editor language keeps the block valid.
+
+	const blockProps = useBlockProps.save({
+		className: [
+			'airo-wp-comparison-table',
+			alternatingRows && 'airo-wp-comparison-table--alternating',
+			responsiveMode === 'stack' &&
+				'airo-wp-comparison-table--responsive-stack',
+			responsiveMode === 'scroll' &&
+				'airo-wp-comparison-table--responsive-scroll',
+		]
+			.filter(Boolean)
+			.join(' '),
+		style: {
+			...(featuredColumnColor && {
+				'--airo-wp-comparison-featured-color':
+					convertColorToCSSVar(featuredColumnColor),
+			}),
+			...(headerBackgroundColor && {
+				'--airo-wp-comparison-header-bg': convertColorToCSSVar(
+					headerBackgroundColor
+				),
+			}),
+			...(headerTextColor && {
+				'--airo-wp-comparison-header-text':
+					convertColorToCSSVar(headerTextColor),
+			}),
+		},
+	});
+
+	return (
+		<div {...blockProps}>
+			<div className="airo-wp-comparison-table__wrapper">
+				<table className="airo-wp-comparison-table__table">
+					{/* Header Row */}
+					<thead className="airo-wp-comparison-table__header">
+						<tr>
+							{/* Feature label column header */}
+							<th className="airo-wp-comparison-table__header-cell airo-wp-comparison-table__header-cell--label"></th>
+
+							{/* Column headers */}
+							{columns.map((col, colIndex) => (
+								<th
+									key={colIndex}
+									className={[
+										'airo-wp-comparison-table__header-cell',
+										col.featured &&
+											'airo-wp-comparison-table__header-cell--featured',
+									]
+										.filter(Boolean)
+										.join(' ')}
+								>
+									{col.featured && (
+										<span className="airo-wp-comparison-table__featured-badge">
+											{getFeaturedBadgeText(
+												featuredBadgeText
+											)}
+										</span>
+									)}
+
+									<RichText.Content
+										tagName="span"
+										className="airo-wp-comparison-table__column-name"
+										value={col.name}
+									/>
+
+									{showCtaButtons && col.link && (
+										<a
+											href={col.link}
+											className={`airo-wp-comparison-table__cta airo-wp-comparison-table__cta--${ctaStyle}`}
+											rel="noopener noreferrer"
+										>
+											{col.linkText ||
+												getCtaFallback(
+													columns,
+													savedCtaTexts,
+													colIndex
+												)}
+										</a>
+									)}
+
+									{showCtaButtons &&
+										!col.link &&
+										col.linkText && (
+											<span
+												className={`airo-wp-comparison-table__cta airo-wp-comparison-table__cta--${ctaStyle}`}
+											>
+												{col.linkText}
+											</span>
+										)}
+								</th>
+							))}
+						</tr>
+					</thead>
+
+					{/* Data Rows */}
+					<tbody className="airo-wp-comparison-table__body">
+						{rows.map((row, rowIndex) => (
+							<tr
+								key={rowIndex}
+								className="airo-wp-comparison-table__row"
+							>
+								{/* Feature label */}
+								<td className="airo-wp-comparison-table__cell airo-wp-comparison-table__cell--label">
+									<div className="airo-wp-comparison-table__label-wrapper">
+										<RichText.Content
+											tagName="span"
+											className="airo-wp-comparison-table__row-label"
+											value={row.label}
+										/>
+										{row.tooltip && (
+											<span
+												className="airo-wp-comparison-table__tooltip-trigger"
+												data-tooltip={row.tooltip}
+												aria-label={row.tooltip}
+												role="button"
+												tabIndex="0"
+											>
+												?
+											</span>
+										)}
+									</div>
+								</td>
+
+								{/* Cells */}
+								{row.cells.map((cell, colIndex) => (
+									<td
+										key={colIndex}
+										className={[
+											'airo-wp-comparison-table__cell',
+											columns[colIndex]?.featured &&
+												'airo-wp-comparison-table__cell--featured',
+										]
+											.filter(Boolean)
+											.join(' ')}
+										data-label={
+											columns[colIndex]?.name || ''
+										}
+									>
+										<div className="airo-wp-comparison-table__cell-content">
+											{cell.type === 'check' && (
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													width="20"
+													height="20"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2.5"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													className="airo-wp-comparison-table__icon airo-wp-comparison-table__icon--check"
+													aria-label="Yes"
+													role="img"
+												>
+													<polyline points="20 6 9 17 4 12" />
+												</svg>
+											)}
+
+											{cell.type === 'cross' && (
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													width="20"
+													height="20"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2.5"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													className="airo-wp-comparison-table__icon airo-wp-comparison-table__icon--cross"
+													aria-label="No"
+													role="img"
+												>
+													<line
+														x1="18"
+														y1="6"
+														x2="6"
+														y2="18"
+													/>
+													<line
+														x1="6"
+														y1="6"
+														x2="18"
+														y2="18"
+													/>
+												</svg>
+											)}
+
+											{cell.type === 'text' && (
+												<RichText.Content
+													tagName="span"
+													className="airo-wp-comparison-table__cell-text"
+													value={cell.value}
+												/>
+											)}
+										</div>
+									</td>
+								))}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	);
+}
+
+/**
+ * v2 save: frozen copy of save() between the header-semantics change (#596)
+ * and the icon-size change (#612). It has the `<td>` corner, `scope`
+ * attributes and `<th scope="row">` labels, and still bakes
+ * `width="20" height="20"` into the check and cross icons. It never shipped
+ * in a release, but sites running main (test sites, pages built through the
+ * Abilities API) store this markup.
+ *
+ * @param {Object} props            - Component props
+ * @param {Object} props.attributes - Block attributes
+ * @return {JSX.Element} Comparison Table save markup
+ */
+function saveV2({ attributes }) {
+	const {
+		columns,
+		rows,
+		alternatingRows,
+		responsiveMode,
+		featuredColumnColor,
+		headerBackgroundColor,
+		headerTextColor,
+		showCtaButtons,
+		ctaStyle,
+		featuredBadgeText,
+		savedCtaTexts,
+	} = attributes;
+
+	// Fallback labels are read back from the stored markup, so opening the
+	// post in another editor language keeps the block valid.
+
+	const blockProps = useBlockProps.save({
+		className: [
+			'airo-wp-comparison-table',
+			alternatingRows && 'airo-wp-comparison-table--alternating',
+			responsiveMode === 'stack' &&
+				'airo-wp-comparison-table--responsive-stack',
+			responsiveMode === 'scroll' &&
+				'airo-wp-comparison-table--responsive-scroll',
+		]
+			.filter(Boolean)
+			.join(' '),
+		style: {
+			...(featuredColumnColor && {
+				'--airo-wp-comparison-featured-color':
+					convertColorToCSSVar(featuredColumnColor),
+			}),
+			...(headerBackgroundColor && {
+				'--airo-wp-comparison-header-bg': convertColorToCSSVar(
+					headerBackgroundColor
+				),
+			}),
+			...(headerTextColor && {
+				'--airo-wp-comparison-header-text':
+					convertColorToCSSVar(headerTextColor),
+			}),
+		},
+	});
+
+	return (
+		<div {...blockProps}>
+			<div className="airo-wp-comparison-table__wrapper">
+				<table className="airo-wp-comparison-table__table">
+					{/* Header Row */}
+					<thead className="airo-wp-comparison-table__header">
+						<tr>
+							{/*
+							 * Feature label column corner. A <td>, not an empty
+							 * <th>: it labels nothing, and an empty header is
+							 * announced as a blank column heading.
+							 */}
+							<td className="airo-wp-comparison-table__header-cell airo-wp-comparison-table__header-cell--label"></td>
+
+							{/* Column headers */}
+							{columns.map((col, colIndex) => (
+								<th
+									key={colIndex}
+									scope="col"
+									className={[
+										'airo-wp-comparison-table__header-cell',
+										col.featured &&
+											'airo-wp-comparison-table__header-cell--featured',
+									]
+										.filter(Boolean)
+										.join(' ')}
+								>
+									{col.featured && (
+										<span className="airo-wp-comparison-table__featured-badge">
+											{getFeaturedBadgeText(
+												featuredBadgeText
+											)}
+										</span>
+									)}
+
+									<RichText.Content
+										tagName="span"
+										className="airo-wp-comparison-table__column-name"
+										value={col.name}
+									/>
+
+									{showCtaButtons && col.link && (
+										<a
+											href={col.link}
+											className={`airo-wp-comparison-table__cta airo-wp-comparison-table__cta--${ctaStyle}`}
+											rel="noopener noreferrer"
+										>
+											{col.linkText ||
+												getCtaFallback(
+													columns,
+													savedCtaTexts,
+													colIndex
+												)}
+										</a>
+									)}
+
+									{showCtaButtons &&
+										!col.link &&
+										col.linkText && (
+											<span
+												className={`airo-wp-comparison-table__cta airo-wp-comparison-table__cta--${ctaStyle}`}
+											>
+												{col.linkText}
+											</span>
+										)}
+								</th>
+							))}
+						</tr>
+					</thead>
+
+					{/* Data Rows */}
+					<tbody className="airo-wp-comparison-table__body">
+						{rows.map((row, rowIndex) => (
+							<tr
+								key={rowIndex}
+								className="airo-wp-comparison-table__row"
+							>
+								{/* Feature label: the row header for its cells */}
+								<th
+									scope="row"
+									className="airo-wp-comparison-table__cell airo-wp-comparison-table__cell--label"
+								>
+									<div className="airo-wp-comparison-table__label-wrapper">
+										<RichText.Content
+											tagName="span"
+											className="airo-wp-comparison-table__row-label"
+											value={row.label}
+										/>
+										{row.tooltip && (
+											<span
+												className="airo-wp-comparison-table__tooltip-trigger"
+												data-tooltip={row.tooltip}
+												aria-label={row.tooltip}
+												role="button"
+												tabIndex="0"
+											>
+												?
+											</span>
+										)}
+									</div>
+								</th>
+
+								{/* Cells */}
+								{row.cells.map((cell, colIndex) => (
+									<td
+										key={colIndex}
+										className={[
+											'airo-wp-comparison-table__cell',
+											columns[colIndex]?.featured &&
+												'airo-wp-comparison-table__cell--featured',
+										]
+											.filter(Boolean)
+											.join(' ')}
+										data-label={
+											columns[colIndex]?.name || ''
+										}
+									>
+										<div className="airo-wp-comparison-table__cell-content">
+											{cell.type === 'check' && (
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													width="20"
+													height="20"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2.5"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													className="airo-wp-comparison-table__icon airo-wp-comparison-table__icon--check"
+													aria-label="Yes"
+													role="img"
+												>
+													<polyline points="20 6 9 17 4 12" />
+												</svg>
+											)}
+
+											{cell.type === 'cross' && (
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													viewBox="0 0 24 24"
+													width="20"
+													height="20"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2.5"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													className="airo-wp-comparison-table__icon airo-wp-comparison-table__icon--cross"
+													aria-label="No"
+													role="img"
+												>
+													<line
+														x1="18"
+														y1="6"
+														x2="6"
+														y2="18"
+													/>
+													<line
+														x1="6"
+														y1="6"
+														x2="18"
+														y2="18"
+													/>
+												</svg>
+											)}
+
+											{cell.type === 'text' && (
+												<RichText.Content
+													tagName="span"
+													className="airo-wp-comparison-table__cell-text"
+													value={cell.value}
+												/>
+											)}
+										</div>
+									</td>
+								))}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	);
+}
+
+const v2 = {
+	apiVersion: 3,
+	attributes: metadata.attributes,
+	supports: metadata.supports,
+	save: saveV2,
+};
+
+const v1 = {
+	apiVersion: 3,
+	attributes: metadata.attributes,
+	supports: metadata.supports,
+	save: saveV1,
+};
+
+export { v1, v2 };
+export default [v2, v1];

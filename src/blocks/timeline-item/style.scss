@@ -3,6 +3,9 @@
  * Individual timeline milestone/event styling
  */
 
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
 .airo-wp-timeline-item {
 	box-sizing: border-box;
 	position: relative;
@@ -29,15 +32,26 @@
 		align-items: center;
 		justify-content: center;
 
-		// Marker image styling
+		// Neither the SVG nor the image carries a size in the markup; both
+		// follow the parent's --airo-wp-timeline-marker-size (an explicit Marker
+		// Size, or the theme token — see timeline/style.scss). The image's
+		// size is !important: content saved before this change
+		// stores it inline (style="width:16px;height:16px"), which a stylesheet
+		// can't otherwise beat. Those images ignored the Marker Size and theme
+		// token until the post was re-saved, while the SVG markers beside them
+		// followed it.
 		.airo-wp-timeline-item__marker-image {
 			display: block;
+			width: var(--airo-wp-timeline-marker-size, 16px) !important;
+			height: var(--airo-wp-timeline-marker-size, 16px) !important;
 			border: 2px solid var(--airo-wp-timeline-marker-border-color, var(--wp--preset--color--primary, #2563eb));
 			background-color: var(--wp--preset--color--base, #fff);
 		}
 
 		svg {
 			display: block;
+			width: var(--airo-wp-timeline-marker-size, 16px);
+			height: var(--airo-wp-timeline-marker-size, 16px);
 		}
 	}
 
@@ -57,7 +71,7 @@
 		min-width: 0;
 		text-decoration: none;
 		color: inherit;
-		transition: transform 0.2s ease;
+		transition: transform $airo-wp-duration-fast $airo-wp-easing;
 
 		&:hover {
 			transform: translateX(4px);
@@ -125,8 +139,8 @@
 		.airo-wp-timeline-item__wrapper {
 			background-color: var(--wp--preset--color--base-2, rgba(0, 0, 0, 0.02));
 			padding: var(--wp--preset--spacing--30, 1rem);
-			border-radius: 8px;
-			border-left: 3px solid var(--airo-wp-timeline-marker-color, var(--wp--preset--color--primary, #2563eb));
+			border-radius: $airo-wp-radius-medium;
+			border-inline-start: 3px solid var(--airo-wp-timeline-marker-color, var(--wp--preset--color--primary, #2563eb));
 		}
 	}
 
@@ -137,7 +151,7 @@
 		cursor: pointer;
 
 		.airo-wp-timeline-item__wrapper {
-			transition: background-color 0.2s ease;
+			transition: background-color $airo-wp-duration-fast $airo-wp-easing;
 		}
 
 		&:hover .airo-wp-timeline-item__wrapper {
@@ -174,7 +188,7 @@
 	&.airo-wp-timeline--layout-alternating {
 
 		.airo-wp-timeline-item {
-			text-align: right;
+			text-align: end;
 
 			.airo-wp-timeline-item__marker {
 				position: absolute;
@@ -192,7 +206,7 @@
 
 			// Even items on the opposite side
 			&:nth-child(even) {
-				text-align: left;
+				text-align: start;
 
 				> .airo-wp-timeline-item__wrapper,
 				> .airo-wp-timeline-item__link {
@@ -224,7 +238,7 @@
 // ===================
 // HORIZONTAL TIMELINE LAYOUT (desktop only)
 // ===================
-@media (min-width: 769px) {
+@media (min-width: #{$breakpoint-mobile + 1px}) {
 
 	.airo-wp-timeline--horizontal {
 
@@ -254,12 +268,14 @@
 // ===================
 // MOBILE RESPONSIVE
 // ===================
-@media (max-width: 768px) {
+@media (max-width: #{$breakpoint-mobile}) {
 
 	// All timeline items (vertical alternating, vertical-right, and horizontal)
 	// use vertical-right style on mobile
 	.airo-wp-timeline-item {
 		flex-direction: row !important;
+		// Physical on purpose: the marker and its padding below are physical
+		// too, and the RTL stylesheet mirrors all three together.
 		text-align: left !important;
 		width: 100% !important;
 		margin-left: 0 !important;
@@ -312,7 +328,7 @@
 @media print {
 
 	.airo-wp-timeline-item {
-		page-break-inside: avoid;
+		break-inside: avoid;
 
 		.airo-wp-timeline-item__marker {
 			-webkit-print-color-adjust: exact;

@@ -92,7 +92,7 @@ export default function AnimatedWordsControl({ value, onChange }) {
 			{words.map((word, index) => (
 				<Flex
 					// Word text is mutable and has no separate persistent ID.
-					// eslint-disable-next-line react/no-array-index-key
+
 					key={index}
 					align="flex-end"
 					gap={2}

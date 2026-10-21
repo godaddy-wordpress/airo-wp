@@ -252,24 +252,180 @@ export function announceResultCount(
 		return;
 	}
 	const n = Number.isFinite(totalItems) ? totalItems : 0;
+	// Translated templates arrive from PHP as data attributes: this file is a
+	// script module, where @wordpress/i18n is not reliably available. English
+	// is the fallback when the attributes are absent.
+	const attr = (name, fallback) => statusEl.getAttribute(name) || fallback;
 	let message;
 	if (n === 0) {
-		message = 'No results found';
+		message = attr('data-airo-wp-msg-none', 'No results found');
 	} else if (n === 1) {
-		message = '1 result found';
+		message = attr('data-airo-wp-msg-one', '1 result found');
 	} else {
-		message = `${n} results found`;
+		message = attr('data-airo-wp-msg-many', '%d results found').replace(
+			'%d',
+			String(n)
+		);
 	}
 	statusEl.textContent = message;
 	statusEl.setAttribute('data-airo-wp-total-items', String(n));
 }
 
 /**
+ * Remember which control inside a region has focus, by a stable identity.
+ *
+ * A refresh replaces the region's markup, so the focused element is destroyed
+ * and focus would fall to <body>. Controls are matched afterwards by id, then
+ * by name + type (+ value for checkboxes / radios), then by position among
+ * same-named controls.
+ *
+ * @param {Element} region Query region about to be swapped.
+ * @return {Object|null} Focus descriptor, or null when focus is elsewhere.
+ */
+export function captureFocus(region) {
+	const doc = region.ownerDocument;
+	const el = doc.activeElement;
+	if (!el || el === doc.body || !region.contains(el)) {
+		return null;
+	}
+	const tag = el.tagName.toLowerCase();
+	if (!['input', 'select', 'textarea', 'button', 'a'].includes(tag)) {
+		return null;
+	}
+	const same = sameKind(region, {
+		tag,
+		type: el.getAttribute('type') || '',
+		name: el.getAttribute('name') || '',
+		className: el.getAttribute('class') || '',
+	});
+	let selection = null;
+	try {
+		if (typeof el.selectionStart === 'number') {
+			selection = [el.selectionStart, el.selectionEnd];
+		}
+	} catch (e) {
+		// Input types without a selection (checkbox, number) throw in some browsers.
+	}
+	return {
+		tag,
+		id: el.id || '',
+		type: el.getAttribute('type') || '',
+		name: el.getAttribute('name') || '',
+		className: el.getAttribute('class') || '',
+		value: el.getAttribute('value') || '',
+		index: same.indexOf(el),
+		selection,
+	};
+}
+
+/**
+ * Controls in a region that look like the described one.
+ *
+ * @param {Element} region Region to search.
+ * @param {Object}  d      Descriptor with tag, type, name and className.
+ * @return {Element[]} Matching elements in document order.
+ */
+function sameKind(region, d) {
+	return Array.from(region.querySelectorAll(d.tag)).filter(
+		(c) =>
+			(c.getAttribute('type') || '') === d.type &&
+			(c.getAttribute('name') || '') === d.name &&
+			// Links and buttons have no name: tell them apart by class.
+			(d.name !== '' || (c.getAttribute('class') || '') === d.className)
+	);
+}
+
+/**
+ * Put focus back on the control captureFocus() described.
+ *
+ * @param {Element}     region Region that was swapped.
+ * @param {Object|null} saved  Descriptor from captureFocus().
+ * @return {boolean} Whether a control was focused.
+ */
+export function restoreFocus(region, saved) {
+	if (!saved) {
+		return false;
+	}
+	let target = null;
+	if (saved.id) {
+		target = region.ownerDocument.getElementById(saved.id);
+		target = target && region.contains(target) ? target : null;
+	}
+	if (!target) {
+		const candidates = sameKind(region, saved);
+		const isChoice = saved.type === 'checkbox' || saved.type === 'radio';
+		// A checkbox / radio group shares one name; its value says which.
+		const byValue = isChoice
+			? candidates.filter(
+					(c) => (c.getAttribute('value') || '') === saved.value
+				)
+			: [];
+		target = byValue.length
+			? byValue[0]
+			: candidates[
+					Math.min(Math.max(saved.index, 0), candidates.length - 1)
+				];
+	}
+	if (!target) {
+		return false;
+	}
+	target.focus({ preventScroll: true });
+	if (saved.selection && typeof target.setSelectionRange === 'function') {
+		try {
+			target.setSelectionRange(saved.selection[0], saved.selection[1]);
+		} catch (e) {
+			// Not a text-like control; focus alone is enough.
+		}
+	}
+	return true;
+}
+
+/**
+ * Replace a region's children with a freshly rendered region's, keeping what
+ * a keyboard or screen-reader user is relying on.
+ *
+ * - Focus returns to the control that had it (a filter checkbox, a select,
+ *   the search box), with its caret.
+ * - The result-count status node is carried across rather than replaced. A
+ *   live region that is inserted already holding its text is often not
+ *   announced; one that persists and changes text is.
+ *
+ * @param {Element} region    Live region element to update.
+ * @param {Element} newRegion Region element parsed from the response.
+ * @param {string}  queryId   The query ID.
+ */
+export function swapRegionContent(region, newRegion, queryId) {
+	const focus = captureFocus(region);
+	const statusSelector = `[data-airo-wp-query-status="${queryId}"]`;
+	const oldStatus = region.querySelector(statusSelector);
+
+	while (region.firstChild) {
+		region.removeChild(region.firstChild);
+	}
+	// Moves nodes from the parsed document into the live one.
+	Array.from(newRegion.childNodes).forEach((node) =>
+		region.appendChild(region.ownerDocument.adoptNode(node))
+	);
+
+	if (oldStatus) {
+		const fresh = region.querySelector(statusSelector);
+		if (fresh) {
+			oldStatus.textContent = fresh.textContent;
+			fresh.replaceWith(oldStatus);
+		} else {
+			region.insertBefore(oldStatus, region.firstChild);
+		}
+	}
+
+	restoreFocus(region, focus);
+}
+
+/**
  * Read the signed refresh source a query region carries.
  *
- * First paint embeds the query's definition and an HMAC signature; the
- * public REST route renders only a definition whose signature verifies, so
- * the pair is sent back verbatim.
+ * First paint carries a signed opaque reference to a server-held definition.
+ * The public REST route verifies the reference and viewer before rendering,
+ * so the pair is sent back verbatim.
  *
  * @param {Element|null} blobsHost The region's `[data-airo-wp-blobs-for]` element.
  * @return {{source: string, signature: string}|null} Signed source, or null.
@@ -288,12 +444,17 @@ export function readRefreshSource(blobsHost) {
  * and core rejects a stale one before the route runs. A page-wide
  * wpApiSettings nonce is never borrowed for the same reason.
  *
- * @param {Object} ctx                IAPI context (queryId, restUrl, nonce).
- * @param {Object} refreshSource      Result of readRefreshSource().
- * @param {Object} request            Request details.
- * @param {number} request.page       Page to render.
- * @param {Object} request.params     Filter params (see collectParams()).
- * @param {string} request.currentUrl URL the results are for.
+ * @param {Object}  ctx                  IAPI context (queryId, restUrl, nonce).
+ * @param {Object}  refreshSource        Result of readRefreshSource().
+ * @param {Object}  request              Request details.
+ * @param {number}  request.page         Page to render.
+ * @param {Object}  request.params       Filter params (see collectParams()).
+ * @param {string}  request.currentUrl   URL the results are for.
+ * @param {boolean} [request.multiQuery] Whether the page has other Queries,
+ *                                       so rendered controls and pagination
+ *                                       use per-Query keys.
+ * @param {number}  [request.seed]       A random-order Query's first-paint
+ *                                       seed, so later pages continue it.
  * @return {{url: string, init: Object}} fetch() URL and options.
  */
 export function buildRefreshRequest(ctx, refreshSource, request) {
@@ -318,6 +479,8 @@ export function buildRefreshRequest(ctx, refreshSource, request) {
 				page: request.page,
 				params: request.params,
 				currentUrl: request.currentUrl,
+				multiQuery: !!request.multiQuery,
+				...(request.seed ? { seed: request.seed } : {}),
 			}),
 		},
 	};
@@ -325,9 +488,14 @@ export function buildRefreshRequest(ctx, refreshSource, request) {
 
 /**
  * Build the filter params object from a URL's search params. Collects only
- * filter_*, q, and sort keys — extensions can add more via the server-side
+ * filter_*, q, sort and WooCommerce filter-block keys — extensions can add more via the server-side
  * `airowp_query_url_params` filter (the REST endpoint is the source of
  * truth for the allowed list).
+ *
+ * Per-Query keys (`filter_category__{queryId}`, `q__{queryId}`, including
+ * an empty one that shadows a bare key) are forwarded verbatim, so the
+ * server resolves them exactly as it resolves first paint's $_GET — see
+ * url-scope.js and param-scoping.php.
  *
  * Handles both ?key[]=v and ?key=v styles: multi-value keys (either expressed
  * with trailing brackets or repeated bare keys) are coerced to arrays.
@@ -338,14 +506,24 @@ export function buildRefreshRequest(ctx, refreshSource, request) {
 export function collectParams(url) {
 	const params = {};
 	for (const [k, v] of url.searchParams.entries()) {
-		const isArrayKey = k.endsWith('[]');
-		const baseKey = isArrayKey ? k.slice(0, -2) : k;
+		// `[]` and indexed `[0]` (WordPress's pagination links) are both lists.
+		const list = k.match(/^(.+)\[\d*\]$/);
+		const isArrayKey = !!list;
+		const baseKey = list ? list[1] : k;
 
-		if (
-			!baseKey.startsWith('filter_') &&
-			baseKey !== 'q' &&
-			baseKey !== 'sort'
-		) {
+		const isRecognized =
+			baseKey.startsWith('filter_') ||
+			baseKey === 'q' ||
+			baseKey === 'sort' ||
+			// WooCommerce's own filter blocks write these, always bare: they
+			// apply to every Query, so they are never scoped.
+			baseKey === 'min_price' ||
+			baseKey === 'max_price' ||
+			baseKey === 'rating_filter' ||
+			baseKey.startsWith('query_type_') ||
+			baseKey.startsWith('q__') ||
+			baseKey.startsWith('sort__');
+		if (!isRecognized) {
 			continue;
 		}
 
@@ -360,93 +538,4 @@ export function collectParams(url) {
 		}
 	}
 	return params;
-}
-
-/**
- * Apply the toggle-filter semantics to a URL, given a checkbox-style input.
- *
- * - Adds the value to `name[]` if checked; removes it otherwise.
- * - Deduplicates values.
- * - Strips both pagination params (`paged` and `page`) so toggling always
- *   returns to page 1.
- *
- * Pure function — does not touch the DOM or IAPI state. The caller is
- * responsible for dispatching the resulting URL to the refresh helper.
- *
- * @param {URL}     url     Source URL (is NOT mutated).
- * @param {string}  name    Param name WITHOUT the trailing `[]` (e.g. "filter_category").
- * @param {string}  value   The checkbox value.
- * @param {boolean} checked Whether the checkbox is now checked.
- * @return {URL} A new URL with the toggle applied.
- */
-export function applyToggleFilter(url, name, value, checked) {
-	const next = new URL(url.toString());
-	const arrayKey = `${name}[]`;
-	const current = next.searchParams.getAll(arrayKey);
-	next.searchParams.delete(arrayKey);
-
-	if (checked) {
-		if (!current.includes(value)) {
-			current.push(value);
-		}
-	} else {
-		const idx = current.indexOf(value);
-		if (idx > -1) {
-			current.splice(idx, 1);
-		}
-	}
-
-	current.forEach((v) => next.searchParams.append(arrayKey, v));
-	next.searchParams.delete('paged');
-	next.searchParams.delete('page');
-	return next;
-}
-
-/**
- * Apply the set-filter semantics to a URL: set or remove the given param,
- * always strip pagination. Pure function.
- *
- * @param {URL}    url   Source URL (not mutated).
- * @param {string} name  Param name (no `[]`).
- * @param {string} value New value; empty string removes the param entirely.
- * @return {URL} New URL with the param set or removed and pagination stripped.
- */
-export function applySetFilter(url, name, value) {
-	const next = new URL(url.toString());
-	if (value) {
-		next.searchParams.set(name, value);
-	} else {
-		next.searchParams.delete(name);
-	}
-	next.searchParams.delete('paged');
-	next.searchParams.delete('page');
-	return next;
-}
-
-/**
- * Strip all filter params (filter_*, q, sort) and pagination from the URL.
- * Pure function — used by the "Reset filters" action.
- *
- * @param {URL} url Source URL (not mutated).
- * @return {URL} New URL with all filter + pagination params removed.
- */
-export function applyResetFilters(url) {
-	const next = new URL(url.toString());
-	const toDelete = [];
-	for (const k of next.searchParams.keys()) {
-		const base = k.endsWith('[]') ? k.slice(0, -2) : k;
-		if (
-			base.startsWith('filter_') ||
-			base === 'q' ||
-			base === 'sort' ||
-			base === 'paged' ||
-			base === 'page'
-		) {
-			toDelete.push(k);
-		}
-	}
-	// Dedup — a key may appear multiple times in the iterator view; set below
-	// is tolerant but we avoid redundant delete() calls.
-	Array.from(new Set(toDelete)).forEach((k) => next.searchParams.delete(k));
-	return next;
 }

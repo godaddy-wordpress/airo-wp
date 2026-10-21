@@ -1,6 +1,8 @@
+@use '../../styles/variables' as *;
+
 .wp-block-airo-wp-query-no-results {
 	padding: 1rem;
 	border: 1px dashed rgba( 0, 0, 0, 0.15 );
-	border-radius: 4px;
+	border-radius: $airo-wp-radius-small;
 	color: rgba( 0, 0, 0, 0.55 );
 }

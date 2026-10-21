@@ -11,9 +11,7 @@ import {
 	ToggleControl,
 	Button,
 	Notice,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export in @wordpress/components
 	__experimentalUnitControl as UnitControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export in @wordpress/components
 	__experimentalHStack as HStack,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';

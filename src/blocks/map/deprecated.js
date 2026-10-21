@@ -5,7 +5,6 @@
  */
 
 import { useBlockProps } from '@wordpress/block-editor';
-import { __, sprintf } from '@wordpress/i18n';
 import classnames from 'classnames';
 import { getDeprecatedBlockHTML } from '../../utils/deprecated-block-html';
 
@@ -46,6 +45,53 @@ const sharedSupports = {
 };
 
 /**
+ * Recover historical UI text from the markup being validated. Re-translating
+ * these labels in the current editor locale would invalidate an older map.
+ * These attributes exist only during migration; render.php owns current labels.
+ */
+const legacyTextAttributes = {
+	legacyMapLabel: {
+		type: 'string',
+		source: 'attribute',
+		selector: '.airo-wp-map__container',
+		attribute: 'aria-label',
+	},
+	legacyLoadLabel: {
+		type: 'string',
+		source: 'text',
+		selector: '.airo-wp-map__load-button',
+	},
+	legacyLoadAriaLabel: {
+		type: 'string',
+		source: 'attribute',
+		selector: '.airo-wp-map__load-button',
+		attribute: 'aria-label',
+	},
+	legacyPrivacyText: {
+		type: 'string',
+		source: 'text',
+		selector: '.airo-wp-map__privacy-text',
+	},
+};
+
+/**
+ * Drop validation-only labels so the dynamic block uses the site's locale.
+ *
+ * @param {Object} attributes Historical block attributes.
+ * @return {Object} Current block attributes.
+ */
+function migrateLegacyText(attributes) {
+	const {
+		legacyMapLabel,
+		legacyLoadLabel,
+		legacyLoadAriaLabel,
+		legacyPrivacyText,
+		...currentAttributes
+	} = attributes;
+	return currentAttributes;
+}
+
+/**
  * vStatic: the last STATIC save, immediately before the Map block became
  * server-rendered (save() now returns null; render.php owns output).
  *
@@ -54,8 +100,10 @@ const sharedSupports = {
  * Migration is a passthrough — only the render path changed.
  */
 const vStatic = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: {
+		...legacyTextAttributes,
 		dsgoProvider: { type: 'string', default: 'openstreetmap' },
 		dsgoLatitude: { type: 'number', default: 40.7128 },
 		dsgoLongitude: { type: 'number', default: -74.006 },
@@ -99,7 +147,10 @@ const vStatic = {
 			dsgoHeight,
 			dsgoAspectRatio,
 			dsgoPrivacyMode,
-			dsgoPrivacyNotice,
+			legacyMapLabel,
+			legacyLoadLabel,
+			legacyLoadAriaLabel,
+			legacyPrivacyText,
 			dsgoMapStyle,
 		} = attributes;
 
@@ -136,11 +187,6 @@ const vStatic = {
 			...dataAttributes,
 		});
 
-		const mapAriaLabel = dsgoAddress
-			? /* translators: %s: The address being shown on the map */
-				sprintf(__('Map showing %s', 'airo-wp'), dsgoAddress)
-			: __('Interactive map', 'airo-wp');
-
 		return (
 			<div {...blockProps}>
 				{dsgoPrivacyMode ? (
@@ -161,18 +207,14 @@ const vStatic = {
 								<circle cx="12" cy="10" r="3" />
 							</svg>
 							<p className="airo-wp-map__privacy-text">
-								{dsgoPrivacyNotice ||
-									__('Click to load map', 'airo-wp')}
+								{legacyPrivacyText}
 							</p>
 							<button
 								className="airo-wp-map__load-button"
 								type="button"
-								aria-label={__(
-									'Load map. This will connect to external map services.',
-									'airo-wp'
-								)}
+								aria-label={legacyLoadAriaLabel}
 							>
-								{__('Load Map', 'airo-wp')}
+								{legacyLoadLabel}
 							</button>
 						</div>
 					</div>
@@ -180,7 +222,7 @@ const vStatic = {
 					<div
 						className="airo-wp-map__container"
 						role="region"
-						aria-label={mapAriaLabel}
+						aria-label={legacyMapLabel}
 					/>
 				)}
 			</div>
@@ -188,7 +230,7 @@ const vStatic = {
 	},
 
 	migrate(attributes) {
-		return attributes;
+		return migrateLegacyText(attributes);
 	},
 };
 
@@ -197,8 +239,10 @@ const vStatic = {
  * Deprecated when markers were removed from the block
  */
 const v1 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: {
+		...legacyTextAttributes,
 		dsgoProvider: {
 			type: 'string',
 			default: 'openstreetmap',
@@ -283,7 +327,10 @@ const v1 = {
 			dsgoAspectRatio,
 			dsgoGrayscale,
 			dsgoPrivacyMode,
-			dsgoPrivacyNotice,
+			legacyMapLabel,
+			legacyLoadLabel,
+			legacyLoadAriaLabel,
+			legacyPrivacyText,
 			dsgoMapStyle,
 		} = attributes;
 
@@ -327,12 +374,6 @@ const v1 = {
 			...dataAttributes,
 		});
 
-		// Compute aria-label for map container
-		const mapAriaLabel = dsgoAddress
-			? /* translators: %s: The address being shown on the map */
-				sprintf(__('Map showing %s', 'airo-wp'), dsgoAddress)
-			: __('Interactive map', 'airo-wp');
-
 		// Render privacy overlay or map container
 		if (dsgoPrivacyMode) {
 			return (
@@ -353,18 +394,14 @@ const v1 = {
 							<circle cx="12" cy="10" r="3" />
 						</svg>
 						<p className="airo-wp-map__privacy-text">
-							{dsgoPrivacyNotice ||
-								__('Click to load map', 'airo-wp')}
+							{legacyPrivacyText}
 						</p>
 						<button
 							className="airo-wp-map__load-button"
 							type="button"
-							aria-label={__(
-								'Load map. This will connect to external map services.',
-								'airo-wp'
-							)}
+							aria-label={legacyLoadAriaLabel}
 						>
-							{__('Load Map', 'airo-wp')}
+							{legacyLoadLabel}
 						</button>
 					</div>
 				</div>
@@ -376,7 +413,7 @@ const v1 = {
 				<div
 					className="airo-wp-map__container"
 					role="region"
-					aria-label={mapAriaLabel}
+					aria-label={legacyMapLabel}
 				/>
 			</div>
 		);
@@ -386,7 +423,7 @@ const v1 = {
 		// Remove deprecated attributes (popup message and grayscale)
 		const { dsgoMarkerPopup, dsgoGrayscale, ...newAttributes } = attributes;
 
-		return newAttributes;
+		return migrateLegacyText(newAttributes);
 	},
 };
 

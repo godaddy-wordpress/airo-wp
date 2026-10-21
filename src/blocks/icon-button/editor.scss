@@ -5,6 +5,7 @@
  */
 
 // Import frontend styles
+@use '../../styles/variables' as *;
 @use './style.scss' as *;
 
 .airo-wp-icon-button {
@@ -68,7 +69,7 @@
 .airo-wp-grid--has-hover-button:hover .airo-wp-grid__inner > .airo-wp-icon-button .airo-wp-icon-button__wrapper,
 .airo-wp-stack--has-hover-button:hover .airo-wp-stack__inner > .airo-wp-icon-button .airo-wp-icon-button__wrapper {
 	background-color: var(--airo-wp-parent-hover-button-bg) !important;
-	transition: background-color 0.3s ease;
+	transition: background-color $airo-wp-duration-normal $airo-wp-easing;
 }
 
 // CRITICAL: Prevent button from stretching vertically in stretch contexts (editor-only)

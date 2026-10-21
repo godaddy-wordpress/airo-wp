@@ -1,0 +1,64 @@
+{
+  "block-animations": {
+    "needles": [ "has-airo-wp-animation", "data-airo-wp-animation-enabled", "data-airo-wp-svg-draw" ],
+    "attributes": [ "dsgoAnimationEnabled", "dsgoSvgDraw" ],
+    "scripts": [ "src/extensions/block-animations/frontend.js", "src/extensions/block-animations/svg-draw.js" ],
+    "style": "src/extensions/block-animations/animations.scss"
+  },
+  "background-video": {
+    "needles": [ "airo-wp-has-video-background" ],
+    "attributes": [ "dsgoVideoUrl" ],
+    "scripts": [ "src/extensions/background-video/frontend.js" ],
+    "style": "src/extensions/background-video/style.scss"
+  },
+  "clickable-group": {
+    "needles": [ "airo-wp-clickable" ],
+    "attributes": [ "dsgoLinkUrl" ],
+    "scripts": [ "src/extensions/clickable-group/frontend.js" ],
+    "style": "src/extensions/clickable-group/styles.scss"
+  },
+  "text-reveal": {
+    "needles": [ "has-airo-wp-text-reveal", "data-airo-wp-text-reveal-enabled" ],
+    "attributes": [ "dsgoTextRevealEnabled" ],
+    "scripts": [ "src/extensions/text-reveal/frontend.js" ],
+    "style": "src/extensions/text-reveal/style.scss"
+  },
+  "expanding-background": {
+    "needles": [ "has-airo-wp-expanding-background", "data-airo-wp-expanding-bg-enabled" ],
+    "attributes": [ "dsgoExpandingBgEnabled" ],
+    "scripts": [ "src/extensions/expanding-background/frontend.js" ],
+    "style": "src/extensions/expanding-background/style.scss"
+  },
+  "vertical-scroll-parallax": {
+    "needles": [ "data-airo-wp-parallax-enabled" ],
+    "attributes": [ "dsgoParallaxEnabled" ],
+    "scripts": [ "src/extensions/vertical-scroll-parallax/frontend.js" ]
+  },
+  "hover-effects": {
+    "needles": [ "airo-wp-hover-effect" ],
+    "style": "src/extensions/hover-effects/styles.scss"
+  },
+  "reveal-control": {
+    "needles": [ "airo-wp-has-reveal" ],
+    "attributes": [ "dsgoRevealOnHover" ],
+    "style": "src/extensions/reveal-control/styles.scss"
+  },
+  "svg-patterns": {
+    "needles": [ "has-airo-wp-svg-pattern" ],
+    "attributes": [ "dsgoSvgPatternEnabled" ],
+    "style": "src/extensions/svg-patterns/style.scss"
+  },
+  "grid-span": {
+    "needles": [ "airo-wp-grid__inner" ],
+    "style": "src/extensions/grid-span/style.scss"
+  },
+  "grid-mobile-order": {
+    "needles": [ "airo-wp-grid__inner" ],
+    "style": "src/extensions/grid-mobile-order/style.scss"
+  },
+  "interactions": {
+    "needles": [ "data-airo-wp-interactions" ],
+    "attributes": [ "dsgoInteractions" ],
+    "style": "src/extensions/interactions/style.scss"
+  }
+}

@@ -12,12 +12,11 @@
 	}
 
 	&.airo-wp-text-path--align-center :where(svg) {
-		margin-right: auto;
-		margin-left: auto;
+		margin-inline: auto;
 	}
 
 	&.airo-wp-text-path--align-right :where(svg) {
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	:where(text) {
@@ -40,4 +39,16 @@
 		color: inherit;
 		text-decoration: none;
 	}
+}
+
+.wp-block-airo-wp-text-path :where(.airo-wp-text-path__pause) {
+	display: block;
+	margin-block-start: 0.5em;
+	padding: 0.25em 0.75em;
+	border: 1px solid currentcolor;
+	border-radius: 2px;
+	background: transparent;
+	color: inherit;
+	font-size: 0.875rem;
+	cursor: pointer;
 }

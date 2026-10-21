@@ -6,6 +6,9 @@
  * @package airo-wp
  */
 
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
 .airo-wp-grid {
 	// The block wrapper must stay a normal block: in the two-div pattern the
 	// wrapper handles full-width/background/padding and `.airo-wp-grid__inner` is
@@ -26,7 +29,7 @@
 	position: relative;
 
 	// Smooth transition for hover background color
-	transition: background-color 0.3s ease;
+	transition: background-color $airo-wp-duration-normal $airo-wp-easing;
 
 	/**
 	 * Background overlay
@@ -73,20 +76,21 @@
 	// MUST be duplicated from editor.scss for editor/frontend parity
 	&.alignfull {
 		max-width: none;
-		margin-left: 0;
-		margin-right: 0;
+		margin-inline: 0;
 	}
 
 	&.alignwide {
 		max-width: var(--wp--custom--layout--wide-size, 1200px);
 		width: 100%;
-		margin-left: auto;
-		margin-right: auto;
+		margin-inline: auto;
 	}
 
 	// Inner container handles all grid styling
 	// With two-div structure: .airo-wp-grid > .airo-wp-grid__inner
 	.airo-wp-grid__inner {
+		// Each grid owns its responsive tracks; never inherit a parent template.
+		--airo-wp-grid-columns-tablet: initial;
+		--airo-wp-grid-columns-mobile: initial;
 		// CRITICAL: Prevent grid items from overflowing their cells
 		// Grid items automatically fill their grid cell, so we only need to prevent overflow
 		> * {
@@ -109,12 +113,15 @@
 			width: 100%;
 		}
 
-		// CRITICAL: Container blocks need !important to override WordPress layout system
+		// Container widths are defaults; authored classes and inline controls can override them.
 		// WordPress's constrained layout can apply max-width to nested containers
 		> .airo-wp-flex,
 		> .airo-wp-grid,
 		> .airo-wp-stack {
-			width: 100% !important;
+
+			:where(&) {
+				width: 100%;
+			}
 		}
 	}
 
@@ -124,12 +131,14 @@
 	.airo-wp-stack__inner > &,
 	.airo-wp-flex__inner > &,
 	.airo-wp-grid__inner > & {
-		width: 100% !important;
 
-		.airo-wp-grid__inner {
+		:where(&) {
+			width: 100%;
+		}
+
+		&:where(:not([class*="airo-wp-layout-"])) > .airo-wp-grid__inner {
 			max-width: none !important;
-			margin-left: 0 !important;
-			margin-right: 0 !important;
+			margin-inline: 0 !important;
 		}
 	}
 
@@ -140,10 +149,9 @@
 	&.alignfull.airo-wp-no-width-constraint > .airo-wp-grid__inner[class*="wp-container-"] {
 		// Target all direct children that aren't explicitly aligned
 		// Exclude blocks with explicit max-width set via our extension
-		> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width) {
+		> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width):not(.airo-wp-stack--has-box-width):where(:not([class*="airo-wp-layout-"])) {
 			max-width: none !important;
-			margin-left: 0 !important;
-			margin-right: 0 !important;
+			margin-inline: 0 !important;
 		}
 	}
 
@@ -153,21 +161,21 @@
 	// CRITICAL: Target .airo-wp-grid__inner since that's where grid-template-columns is applied
 
 	// Tablet breakpoint (≤ 1024px)
-	@media (max-width: 1024px) {
+	@media (max-width: #{$breakpoint-tablet}) {
 
 		@for $i from 1 through 12 {
-			&.airo-wp-grid-cols-tablet-#{$i} .airo-wp-grid__inner {
-				grid-template-columns: repeat(#{$i}, 1fr) !important;
+			&.airo-wp-grid-cols-tablet-#{$i} > .airo-wp-grid__inner {
+				grid-template-columns: var(--airo-wp-grid-columns-tablet, repeat(#{$i}, minmax(0, 1fr))) !important;
 			}
 		}
 	}
 
 	// Mobile breakpoint (≤ 767px)
-	@media (max-width: 767px) {
+	@include below($breakpoint-mobile) {
 
 		@for $i from 1 through 12 {
-			&.airo-wp-grid-cols-mobile-#{$i} .airo-wp-grid__inner {
-				grid-template-columns: repeat(#{$i}, 1fr) !important;
+			&.airo-wp-grid-cols-mobile-#{$i} > .airo-wp-grid__inner {
+				grid-template-columns: var(--airo-wp-grid-columns-mobile, repeat(#{$i}, minmax(0, 1fr))) !important;
 			}
 		}
 	}
@@ -224,13 +232,16 @@
 // CRITICAL: Force grid items and nested layouts to stack properly on mobile
 // Must be outside .airo-wp-grid scope for proper specificity
 // With two-div structure: target .airo-wp-grid__inner children
-@media (max-width: 767px) {
-	// Force all grid items with column spans to span 1 on mobile
-	// High specificity to override inline styles
-	.airo-wp-grid__inner > [style*="grid-column"],
-	.airo-wp-grid__inner > [data-block][style*="grid-column"],
-	.airo-wp-grid__inner > [data-block] {
-		grid-column: span 1 !important;
+@include below($breakpoint-mobile) {
+	// Single-column defaults must override saved spans in the editor as well.
+	// Authored mobile templates and multi-column counts retain their spans;
+	// frontend view.js clamps them against the actual rendered track count.
+	:where(.airo-wp-grid-cols-mobile-1) > .airo-wp-grid__inner:not([style*="--airo-wp-grid-columns-mobile"]) {
+
+		> [style*="grid-column"],
+		> [data-block] {
+			grid-column: span 1 !important;
+		}
 	}
 
 	// Force nested layouts inside grid items to stack
@@ -255,18 +266,15 @@
  * With two-div structure: .airo-wp-grid > .airo-wp-grid__inner > items
  */
 
-// Remove all margin-block spacing from grid items
-// CRITICAL: !important needed to override WordPress's layout system
-// Target inner container's children since we now have two-div structure
-.airo-wp-grid__inner > * {
-	margin-block-start: 0 !important;
-	margin-block-end: 0 !important;
-}
-
-// Also target data-block wrapped elements in editor
-.airo-wp-grid__inner > [data-block] {
-	margin-block-start: 0 !important;
-	margin-block-end: 0 !important;
+// Grid items are spaced by row-gap/column-gap, never by margins. When Block
+// spacing is set, WordPress layout support prints
+// `.wp-container-* > * + * { margin-block-start: <gap> }` for this inner
+// wrapper, which offsets every item after the first. The doubled class
+// (0,2,0) outranks that rule without !important, so inline Inspector margins
+// and later two-class design rules still apply.
+.airo-wp-grid__inner.airo-wp-grid__inner > * {
+	margin-block-start: 0;
+	margin-block-end: 0;
 }
 
 // ===================================================================

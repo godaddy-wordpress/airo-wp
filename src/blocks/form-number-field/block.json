@@ -14,7 +14,8 @@
 		"decimal"
 	],
 	"parent": [
-		"airo-wp/form-builder"
+		"airo-wp/form-builder",
+		"airo-wp/form-step"
 	],
 	"textdomain": "airo-wp",
 	"icon": "calculator",
@@ -33,6 +34,10 @@
 		"airo-wp/form/inputPadding"
 	],
 	"attributes": {
+		"dsgoConditions": {
+			"type": "object",
+			"default": null
+		},
 		"fieldName": {
 			"type": "string",
 			"default": ""

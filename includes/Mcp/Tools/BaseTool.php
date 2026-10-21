@@ -54,6 +54,77 @@ abstract class BaseTool {
 	}
 
 	/**
+	 * Whether the current user may read a post through an MCP tool.
+	 *
+	 * Shared by get-post and list-posts so an ID hidden from one cannot be read
+	 * through the other.
+	 *
+	 * @param \WP_Post $post Post object.
+	 * @return bool
+	 */
+	protected function can_read_post( $post ): bool {
+		$post_id = (int) $post->ID;
+
+		if ( ! current_user_can( 'read_post', $post_id ) ) {
+			return false;
+		}
+
+		// read_post on a revision resolves to the parent's read cap (plain `read` when published), so also require edit_post, as core does.
+		if ( 'revision' === $post->post_type ) {
+			return current_user_can( 'edit_post', $post_id );
+		}
+
+		$type_object = get_post_type_object( $post->post_type );
+		if ( ! $type_object ) {
+			return false;
+		}
+
+		// Non-viewable types (wp_template, wp_navigation, ...) pass read_post for any user, so require the type's own edit cap.
+		if ( ! is_post_type_viewable( $type_object ) ) {
+			return current_user_can( $type_object->cap->edit_posts );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Whether a post's content must be withheld from the current user.
+	 *
+	 * Core REST blanks password-protected content for callers who cannot edit the post.
+	 *
+	 * @param \WP_Post $post     Post object.
+	 * @param bool     $can_edit Whether the current user can edit the post.
+	 * @return bool
+	 */
+	protected function is_content_withheld( $post, bool $can_edit ): bool {
+		return '' !== (string) $post->post_password && ! $can_edit;
+	}
+
+	/**
+	 * Load the parents of the given posts into the object cache in one query.
+	 *
+	 * Checking read_post resolves the parent for two types only: an attached attachment
+	 * (its status comes from the parent, in get_post_status()) and a revision (map_meta_cap
+	 * checks the parent instead). For those, a per-item capability loop would otherwise
+	 * cost one query per parent; other types never read it, so do not prime for them.
+	 *
+	 * @param array<int, \WP_Post> $posts Posts whose parents will be read.
+	 */
+	protected function prime_parent_caches( array $posts ): void {
+		$parent_ids = array();
+		foreach ( $posts as $post ) {
+			$parent_id = (int) $post->post_parent;
+			if ( $parent_id > 0 ) {
+				$parent_ids[ $parent_id ] = $parent_id;
+			}
+		}
+
+		if ( $parent_ids ) {
+			_prime_post_caches( array_values( $parent_ids ), false, false );
+		}
+	}
+
+	/**
 	 * Build a standard output schema with success/message base fields.
 	 *
 	 * @param string              $description Additional description.

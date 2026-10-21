@@ -78,11 +78,17 @@ class GetAllMedia extends BaseTool {
 			);
 		}
 
+		$this->prime_parent_caches( $query->posts );
+
 		$media_items = array();
 
 		while ( $query->have_posts() ) {
 			$query->the_post();
 			$post = get_post();
+
+			if ( ! current_user_can( 'read_post', $post->ID ) ) {
+				continue;
+			}
 
 			$attachment_metadata = wp_get_attachment_metadata( $post->ID );
 			$file_path           = get_attached_file( $post->ID );

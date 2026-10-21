@@ -16,9 +16,14 @@
 	"textdomain": "airo-wp",
 	"icon": "edit-page",
 	"parent": [
-		"airo-wp/form-builder"
+		"airo-wp/form-builder",
+		"airo-wp/form-step"
 	],
 	"attributes": {
+		"dsgoConditions": {
+			"type": "object",
+			"default": null
+		},
 		"fieldName": {
 			"type": "string",
 			"default": ""
@@ -70,6 +75,6 @@
 	},
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
-	"style": "file:./index.css",
+	"style": "file:./style-index.css",
 	"render": "file:./render.php"
 }

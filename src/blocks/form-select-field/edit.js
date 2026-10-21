@@ -15,9 +15,12 @@ import {
 	FlexItem,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
+import FieldConditionsItem from '../form-builder/components/FieldConditionsItem';
+import ConditionalBadge from '../form-builder/components/ConditionalBadge';
 import { useEffect } from '@wordpress/element';
 import classnames from 'classnames';
 import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+import { getFormFieldWidthStyle } from '../form-builder/utils/field-width';
 
 const FIELD_WIDTH_OPTIONS = [
 	{ label: __('Full Width (100%)', 'airo-wp'), value: '100' },
@@ -33,7 +36,6 @@ const DEFAULT_OPTIONS = [
 	{ label: 'Option 2', value: 'option-2' },
 	{ label: 'Option 3', value: 'option-3' },
 ];
-const DEFAULT_PLACEHOLDER = '-- Select an option --';
 
 // Deep-equality check against DEFAULT_OPTIONS. Options is an array of
 // {label, value} pairs; matches the block.json default exactly when the
@@ -64,6 +66,12 @@ export default function FormSelectFieldEdit({
 		fieldWidth,
 	} = attributes;
 
+	// Keep the translated default out of saved content; an empty string opts out.
+	const effectivePlaceholder =
+		placeholder === undefined
+			? __('-- Select an option --', 'airo-wp')
+			: placeholder;
+
 	// Generate field name from clientId if empty
 	useEffect(() => {
 		if (!fieldName) {
@@ -87,14 +95,7 @@ export default function FormSelectFieldEdit({
 		className: fieldClasses,
 		style: {
 			...fieldStyles,
-			flexBasis:
-				fieldWidth === '100'
-					? '100%'
-					: `calc(${fieldWidth}% - var(--airo-wp-form-field-spacing, 1.5rem) / 2)`,
-			maxWidth:
-				fieldWidth === '100'
-					? '100%'
-					: `calc(${fieldWidth}% - var(--airo-wp-form-field-spacing, 1.5rem) / 2)`,
+			...getFormFieldWidthStyle(fieldWidth),
 		},
 	});
 
@@ -139,12 +140,13 @@ export default function FormSelectFieldEdit({
 					resetAll={() =>
 						setAttributes({
 							fieldName: '',
+							dsgoConditions: null,
 							label: 'Select Option',
 							helpText: '',
 							required: false,
 							defaultValue: '',
 							options: DEFAULT_OPTIONS,
-							placeholder: DEFAULT_PLACEHOLDER,
+							placeholder: undefined,
 							fieldWidth: '100',
 						})
 					}
@@ -268,15 +270,15 @@ export default function FormSelectFieldEdit({
 
 					<DsgoInspectorPanel.Item
 						label={__('Placeholder', 'airo-wp')}
-						hasValue={() => placeholder !== DEFAULT_PLACEHOLDER}
+						hasValue={() => placeholder !== undefined}
 						onDeselect={() =>
-							setAttributes({ placeholder: DEFAULT_PLACEHOLDER })
+							setAttributes({ placeholder: undefined })
 						}
 						isShownByDefault
 					>
 						<TextControl
 							label={__('Placeholder', 'airo-wp')}
-							value={placeholder}
+							value={effectivePlaceholder}
 							onChange={(value) =>
 								setAttributes({ placeholder: value })
 							}
@@ -349,10 +351,19 @@ export default function FormSelectFieldEdit({
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>
+					<FieldConditionsItem
+						attributes={attributes}
+						setAttributes={setAttributes}
+						clientId={clientId}
+					/>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 
 			<div {...blockProps}>
+				<ConditionalBadge
+					conditions={attributes.dsgoConditions}
+					clientId={clientId}
+				/>
 				<label htmlFor={fieldId} className="airo-wp-form-field__label">
 					{label}
 					{required && (
@@ -372,7 +383,9 @@ export default function FormSelectFieldEdit({
 					aria-describedby={helpText ? `${fieldId}-help` : undefined}
 					disabled
 				>
-					{placeholder && <option value="">{placeholder}</option>}
+					{effectivePlaceholder && (
+						<option value="">{effectivePlaceholder}</option>
+					)}
 					{options.map((option, index) => (
 						<option key={index} value={option.value}>
 							{option.label}

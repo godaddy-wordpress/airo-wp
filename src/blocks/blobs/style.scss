@@ -6,6 +6,9 @@
  * @since 1.0.0
  */
 
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
 // Outer wrapper - takes full width and receives WordPress classes/styles
 .airo-wp-blobs-wrapper {
 	display: block;
@@ -19,10 +22,15 @@
 		background-color: transparent !important;
 	}
 
-	// Alignment classes on wrapper should apply to inner blob
+	// Alignment classes on wrapper should apply to inner blob. Only
+	// aligncenter converts to a logical shorthand (centering is
+	// direction-agnostic) — alignleft/alignright stay physical because
+	// WordPress's own align classes are not direction-aware (core never
+	// flips .alignleft/.alignright for RTL), so a logical property here
+	// would make this block mirror in RTL while every other WP block's
+	// .alignleft stays put.
 	&.aligncenter > .airo-wp-blobs {
-		margin-left: auto;
-		margin-right: auto;
+		margin-inline: auto;
 	}
 
 	&.alignleft > .airo-wp-blobs {
@@ -42,8 +50,7 @@
 	//   3. 100% — literal fallback (no constraint).
 	&.airo-wp-has-max-width {
 		max-width: var(--airo-wp-blob-max-width, var(--wp--custom--airo-wp--blobs--max-width, 100%));
-		margin-left: auto;
-		margin-right: auto;
+		margin-inline: auto;
 
 		// Anchor the constrained box to the block's alignment instead of always
 		// centering, preserving the behavior of the generic max-width extension
@@ -51,6 +58,8 @@
 		// wrapper (alignleft/alignright) and core's text-align classes
 		// (has-text-align-*), so either control anchors the box. The extra class
 		// raises specificity above the centering rule, so no !important needed.
+		// Physical, not logical — anchors to WordPress's own (non-direction-aware)
+		// align/text-align classes; see the comment on the align rules above.
 		&.alignleft,
 		&.has-text-align-left {
 			margin-left: 0;
@@ -73,8 +82,13 @@
 
 	// Container with blob shape
 	position: relative;
-	width: var(--airo-wp-blob-size);
-	height: var(--airo-wp-blob-height, var(--airo-wp-blob-size));
+	// Never wider than its container: a fixed size on a phone pushed the page
+	// sideways. Without an explicit height the box stays square at whatever
+	// width it gets (with overflow: hidden, content can't stretch it); with
+	// one, width and height are both definite and aspect-ratio is ignored.
+	width: min(var(--airo-wp-blob-size), 100%);
+	height: var(--airo-wp-blob-height, auto);
+	aspect-ratio: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -265,7 +279,7 @@
 }
 
 // Responsive: Adjust size on mobile
-@media (max-width: 768px) {
+@media (max-width: #{$breakpoint-mobile}) {
 
 	.airo-wp-blobs {
 

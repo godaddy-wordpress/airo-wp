@@ -27,7 +27,6 @@ import {
 	createBlock,
 	serialize,
 	getBlockContent,
-	// eslint-disable-next-line import/no-unresolved
 } from '@wordpress/block-editor/node_modules/@wordpress/blocks';
 import metadata from '../block.json';
 import save from '../save';

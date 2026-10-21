@@ -3,6 +3,8 @@
  * CRITICAL: Must be duplicated from style.scss for editor/frontend parity
  */
 
+@use '../../styles/variables' as *;
+
 // Fix DateTimePicker horizontal alignment and overflow issues
 .components-datetime {
 
@@ -257,7 +259,14 @@
 		padding: 2rem;
 		text-align: center;
 		border: 2px dashed #ccc;
-		border-radius: 8px;
+		border-radius: $airo-wp-radius-medium;
 		background: #f9f9f9;
 	}
+}
+
+// Inspector: the DateTimePicker's timezone badge always names the site zone.
+// When the block sets its own timezone the badge is wrong, so hide it; the
+// panel names the zone in use instead (DateTimePanel.js).
+.airo-wp-countdown-datetime--block-zone .components-datetime__timezone {
+	display: none;
 }

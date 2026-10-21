@@ -96,6 +96,13 @@ class CreatePageDraft extends BaseTool {
 			);
 		}
 
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to edit this page.', 'airo-wp' ),
+			);
+		}
+
 		if ( 'publish' !== $post->post_status ) {
 			return array(
 				'success' => false,

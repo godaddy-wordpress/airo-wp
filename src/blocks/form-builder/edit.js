@@ -10,9 +10,7 @@ import {
 	useInnerBlocksProps,
 	InspectorControls,
 	useSettings,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import {
@@ -22,14 +20,13 @@ import {
 	ToggleControl,
 	RangeControl,
 	SelectControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
 import { useEffect, useMemo } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import classnames from 'classnames';
-import { useUniqueBlockId } from '../../hooks';
+import { useUniqueFormId } from './utils/unique-form-id';
 import {
 	encodeColorValue,
 	decodeColorValue,
@@ -37,25 +34,17 @@ import {
 import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
 import { validateCSSLength } from '../../utils/css-generator';
 import FormBuilderPlaceholder from './components/FormBuilderPlaceholder';
+import TurnstileSettings from './components/TurnstileSettings';
+import StepsSettings from './components/StepsSettings';
+import WebhookUrlControl from './components/WebhookUrlControl';
+import AddStepToolbar from './components/AddStepToolbar';
+import { FORM_FIELD_BLOCKS } from './utils/field-blocks';
+import { collectFormFields } from './utils/use-form-fields';
+import { hasStepChildren, STEP_BLOCK } from './utils/steps';
 
 // Non-default submitButtonVariation values from block.json. Allowlisted before
 // interpolation into the class name. MUST MATCH save.js.
 const SUBMIT_BUTTON_VARIATIONS = ['secondary', 'outline'];
-
-// Blocks that Gutenberg identifies as form fields for the reply-to dropdown.
-const EMAILABLE_FIELD_BLOCKS = new Set([
-	'airo-wp/form-text-field',
-	'airo-wp/form-email-field',
-	'airo-wp/form-textarea-field',
-	'airo-wp/form-number-field',
-	'airo-wp/form-phone-field',
-	'airo-wp/form-url-field',
-	'airo-wp/form-date-field',
-	'airo-wp/form-time-field',
-	'airo-wp/form-select-field',
-	'airo-wp/form-checkbox-field',
-	'airo-wp/form-hidden-field',
-]);
 
 export default function FormBuilderEdit({
 	attributes,
@@ -78,6 +67,10 @@ export default function FormBuilderEdit({
 		fieldBorderColor,
 		fieldBackgroundColor,
 		fieldBorderRadius,
+		fieldFocusColor,
+		fieldErrorColor,
+		fieldSuccessColor,
+		stepProgressColor,
 		submitButtonColor,
 		submitButtonBackgroundColor,
 		submitButtonPaddingVertical,
@@ -99,6 +92,7 @@ export default function FormBuilderEdit({
 		emailReplyTo,
 		emailBody,
 		redirectUrl,
+		webhookUrl,
 	} = attributes;
 
 	// Get theme color palette and gradient settings
@@ -145,12 +139,7 @@ export default function FormBuilderEdit({
 		? ` is-style-${submitButtonVariation}`
 		: '';
 
-	useUniqueBlockId({
-		clientId,
-		attributeName: 'formId',
-		value: formId,
-		setAttributes,
-	});
+	useUniqueFormId({ clientId, setAttributes });
 
 	// Track child count so we can show the template chooser on first insert,
 	// and build the reply-to dropdown options from the actual form fields.
@@ -169,15 +158,14 @@ export default function FormBuilderEdit({
 		[clientId]
 	);
 	const hasInnerBlocks = childBlocks.length > 0;
+	const hasSteps = hasStepChildren(childBlocks);
+	// collectFormFields walks into steps; every type it knows is emailable.
 	const replyToFieldOptions = useMemo(
 		() =>
-			childBlocks
-				.filter((child) => EMAILABLE_FIELD_BLOCKS.has(child.name))
-				.map((child) => ({
-					name: child.attributes?.fieldName || '',
-					label: child.attributes?.label || '',
-				}))
-				.filter((field) => !!field.name),
+			collectFormFields(childBlocks, null).map(({ name, label }) => ({
+				name,
+				label,
+			})),
 		[childBlocks]
 	);
 
@@ -208,6 +196,11 @@ export default function FormBuilderEdit({
 		'--airo-wp-form-border-color': convertColorToCSSVar(fieldBorderColor),
 		'--airo-wp-form-field-bg': convertColorToCSSVar(fieldBackgroundColor),
 		'--airo-wp-form-border-radius': validateCSSLength(fieldBorderRadius),
+		'--airo-wp-form-focus-color': convertColorToCSSVar(fieldFocusColor),
+		'--airo-wp-form-error-color': convertColorToCSSVar(fieldErrorColor),
+		'--airo-wp-form-success-color': convertColorToCSSVar(fieldSuccessColor),
+		'--airo-wp-form-progress-color':
+			convertColorToCSSVar(stepProgressColor),
 		// Button colors now applied as inline styles on button element
 	};
 
@@ -259,20 +252,12 @@ export default function FormBuilderEdit({
 				className: 'airo-wp-form__fields',
 			},
 			{
-				allowedBlocks: [
-					'airo-wp/form-text-field',
-					'airo-wp/form-email-field',
-					'airo-wp/form-textarea-field',
-					'airo-wp/form-number-field',
-					'airo-wp/form-phone-field',
-					'airo-wp/form-url-field',
-					'airo-wp/form-date-field',
-					'airo-wp/form-time-field',
-					'airo-wp/form-select-field',
-					'airo-wp/form-checkbox-field',
-					'airo-wp/form-hidden-field',
-				],
+				allowedBlocks: hasSteps ? [STEP_BLOCK] : FORM_FIELD_BLOCKS,
 				orientation: 'vertical',
+				// With steps, fields are added inside a step and steps from
+				// the toolbar (AddStepToolbar). The form's own "+" sat on the
+				// last step's "+" and offered field blocks.
+				renderAppender: hasSteps ? false : undefined,
 			}
 		);
 
@@ -290,6 +275,12 @@ export default function FormBuilderEdit({
 
 	return (
 		<>
+			{hasSteps && (
+				<AddStepToolbar
+					clientId={clientId}
+					childCount={childBlocks.length}
+				/>
+			)}
 			<InspectorControls>
 				<DsgoInspectorPanel
 					title={__('Settings', 'airo-wp')}
@@ -297,6 +288,7 @@ export default function FormBuilderEdit({
 					panelId={clientId}
 					resetAll={() =>
 						setAttributes({
+							stepProgress: 'steps',
 							submitButtonText: 'Submit',
 							submitButtonAlignment: 'left',
 							submitButtonPosition: 'below',
@@ -307,6 +299,7 @@ export default function FormBuilderEdit({
 							errorMessage:
 								'There was an error submitting the form. Please try again.',
 							redirectUrl: '',
+							webhookUrl: '',
 							fieldSpacing: '',
 							inputHeight: '',
 							inputPadding: '',
@@ -330,6 +323,13 @@ export default function FormBuilderEdit({
 						})
 					}
 				>
+					<StepsSettings
+						clientId={clientId}
+						childBlocks={childBlocks}
+						attributes={attributes}
+						setAttributes={setAttributes}
+					/>
+
 					<DsgoInspectorPanel.Item
 						label={__('AJAX Submit', 'airo-wp')}
 						hasValue={() => ajaxSubmit !== true}
@@ -369,41 +369,45 @@ export default function FormBuilderEdit({
 						/>
 					</DsgoInspectorPanel.Item>
 
-					<DsgoInspectorPanel.Item
-						label={__('Button Position', 'airo-wp')}
-						hasValue={() => submitButtonPosition !== 'below'}
-						onDeselect={() =>
-							setAttributes({ submitButtonPosition: 'below' })
-						}
-						isShownByDefault
-					>
-						<SelectControl
+					{!hasSteps && (
+						<DsgoInspectorPanel.Item
 							label={__('Button Position', 'airo-wp')}
-							value={submitButtonPosition}
-							options={[
-								{
-									label: __('Below fields', 'airo-wp'),
-									value: 'below',
-								},
-								{
-									label: __(
-										'Inline with last field',
-										'airo-wp'
-									),
-									value: 'inline',
-								},
-							]}
-							onChange={(value) =>
-								setAttributes({ submitButtonPosition: value })
+							hasValue={() => submitButtonPosition !== 'below'}
+							onDeselect={() =>
+								setAttributes({ submitButtonPosition: 'below' })
 							}
-							help={__(
-								'Place button below all fields or inline with the last field (useful for subscribe forms)',
-								'airo-wp'
-							)}
-							__next40pxDefaultSize
-							__nextHasNoMarginBottom
-						/>
-					</DsgoInspectorPanel.Item>
+							isShownByDefault
+						>
+							<SelectControl
+								label={__('Button Position', 'airo-wp')}
+								value={submitButtonPosition}
+								options={[
+									{
+										label: __('Below fields', 'airo-wp'),
+										value: 'below',
+									},
+									{
+										label: __(
+											'Inline with last field',
+											'airo-wp'
+										),
+										value: 'inline',
+									},
+								]}
+								onChange={(value) =>
+									setAttributes({
+										submitButtonPosition: value,
+									})
+								}
+								help={__(
+									'Place button below all fields or inline with the last field (useful for subscribe forms)',
+									'airo-wp'
+								)}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+							/>
+						</DsgoInspectorPanel.Item>
+					)}
 
 					<DsgoInspectorPanel.Item
 						label={__('Button Style', 'airo-wp')}
@@ -798,10 +802,9 @@ export default function FormBuilderEdit({
 							type="url"
 							placeholder="https://example.com/thank-you"
 							help={__(
-								'Redirect to this URL after successful submission. Leave empty to show the success message instead. Requires AJAX Submit to be enabled.',
+								'Redirect to this URL after successful submission. Leave empty to show the success message instead.',
 								'airo-wp'
 							)}
-							disabled={!ajaxSubmit}
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>
@@ -917,45 +920,12 @@ export default function FormBuilderEdit({
 						}
 						isShownByDefault
 					>
-						<ToggleControl
-							label={__('Enable Cloudflare Turnstile', 'airo-wp')}
-							checked={enableTurnstile}
+						<TurnstileSettings
+							enabled={enableTurnstile}
 							onChange={(value) =>
 								setAttributes({ enableTurnstile: value })
 							}
-							help={__(
-								'Privacy-friendly CAPTCHA alternative',
-								'airo-wp'
-							)}
-							__nextHasNoMarginBottom
 						/>
-						{enableTurnstile && (
-							<p className="airo-wp-form-builder__turnstile-note">
-								{__(
-									'Configure your Turnstile keys in',
-									'airo-wp'
-								)}{' '}
-								<a
-									href={
-										window.designSetGoAdmin?.adminUrl +
-										'admin.php?page=airo-wp-settings'
-									}
-									target="_blank"
-									rel="noopener noreferrer"
-									aria-label={__(
-										'Settings → Integrations (opens in new tab)',
-										'airo-wp'
-									)}
-								>
-									{__('Settings → Integrations', 'airo-wp')}
-								</a>
-								.{' '}
-								{__(
-									'Widget mode (Managed, Non-interactive, Invisible) is configured in your Cloudflare dashboard.',
-									'airo-wp'
-								)}
-							</p>
-						)}
 					</DsgoInspectorPanel.Item>
 
 					<DsgoInspectorPanel.Item
@@ -1003,10 +973,9 @@ export default function FormBuilderEdit({
 								onChange={(value) =>
 									setAttributes({ emailTo: value })
 								}
-								type="email"
 								placeholder="admin@example.com"
 								help={__(
-									'Leave empty to use the site admin email address',
+									'Separate several addresses with commas. Leave empty to use the site admin email address.',
 									'airo-wp'
 								)}
 								__next40pxDefaultSize
@@ -1185,6 +1154,20 @@ export default function FormBuilderEdit({
 							/>
 						</DsgoInspectorPanel.Item>
 					)}
+
+					<DsgoInspectorPanel.Item
+						label={__('Webhook URL', 'airo-wp')}
+						hasValue={() => webhookUrl !== ''}
+						onDeselect={() => setAttributes({ webhookUrl: '' })}
+						isShownByDefault
+					>
+						<WebhookUrlControl
+							value={webhookUrl}
+							onChange={(value) =>
+								setAttributes({ webhookUrl: value })
+							}
+						/>
+					</DsgoInspectorPanel.Item>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 
@@ -1244,6 +1227,78 @@ export default function FormBuilderEdit({
 							enableAlpha: true,
 							clearable: true,
 						},
+						{
+							label: __('Focus Color', 'airo-wp'),
+							colorValue: decodeColorValue(
+								fieldFocusColor,
+								colorGradientSettings
+							),
+							onColorChange: (color) =>
+								setAttributes({
+									fieldFocusColor:
+										encodeColorValue(
+											color,
+											colorGradientSettings
+										) || '',
+								}),
+							enableAlpha: true,
+							clearable: true,
+						},
+						{
+							label: __('Error Color', 'airo-wp'),
+							colorValue: decodeColorValue(
+								fieldErrorColor,
+								colorGradientSettings
+							),
+							onColorChange: (color) =>
+								setAttributes({
+									fieldErrorColor:
+										encodeColorValue(
+											color,
+											colorGradientSettings
+										) || '',
+								}),
+							enableAlpha: true,
+							clearable: true,
+						},
+						{
+							label: __('Success Color', 'airo-wp'),
+							colorValue: decodeColorValue(
+								fieldSuccessColor,
+								colorGradientSettings
+							),
+							onColorChange: (color) =>
+								setAttributes({
+									fieldSuccessColor:
+										encodeColorValue(
+											color,
+											colorGradientSettings
+										) || '',
+								}),
+							enableAlpha: true,
+							clearable: true,
+						},
+						...(hasSteps
+							? [
+									{
+										label: __('Progress Color', 'airo-wp'),
+										colorValue: decodeColorValue(
+											stepProgressColor,
+											colorGradientSettings
+										),
+										onColorChange: (color) =>
+											setAttributes({
+												stepProgressColor:
+													encodeColorValue(
+														color,
+														colorGradientSettings
+													) || '',
+											}),
+										enableAlpha: true,
+										clearable: true,
+									},
+								]
+							: []),
 						{
 							label: __('Button Text Color', 'airo-wp'),
 							colorValue: decodeColorValue(
@@ -1323,7 +1378,7 @@ export default function FormBuilderEdit({
 			<div {...blockProps}>
 				<div {...innerBlocksPropsWithoutChildren}>
 					{children}
-					{submitButtonPosition === 'inline' && (
+					{submitButtonPosition === 'inline' && !hasSteps && (
 						<button
 							type="button"
 							className={`airo-wp-form__submit airo-wp-form__submit--inline${submitVariationClass} wp-element-button${submitAnimationClass}`}
@@ -1335,7 +1390,7 @@ export default function FormBuilderEdit({
 					)}
 				</div>
 
-				{submitButtonPosition === 'below' && (
+				{(submitButtonPosition === 'below' || hasSteps) && (
 					<div className="airo-wp-form__footer">
 						<button
 							type="button"

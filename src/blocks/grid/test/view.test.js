@@ -190,6 +190,14 @@ describe('grid view.js - rendered column count gates row matching', () => {
 		expect(grid.getRenderedColumns(3)).toBe(2);
 	});
 
+	test('named grid lines do not inflate the measured track count', () => {
+		jest.spyOn(window, 'getComputedStyle').mockReturnValue({
+			gridTemplateColumns: '[start first] 300px [middle] 300px [end]',
+		});
+		const grid = new DSGGrid(buildGrid());
+		expect(grid.getRenderedColumns(3)).toBe(2);
+	});
+
 	test('falls back to the configured count when the track list is unreadable', () => {
 		jest.spyOn(window, 'getComputedStyle').mockReturnValue({
 			gridTemplateColumns: 'none',
@@ -246,5 +254,114 @@ describe('grid view.js - measurement is skipped without Align Rows', () => {
 		const spy = jest.spyOn(grid, 'getRenderedColumns');
 		grid.handleResize();
 		expect(spy).toHaveBeenCalled();
+	});
+});
+
+describe('grid view.js - responsive templates constrain actual tracks', () => {
+	const initialWidth = window.innerWidth;
+	afterEach(() => {
+		document.body.innerHTML = '';
+		jest.restoreAllMocks();
+		window.innerWidth = initialWidth;
+	});
+
+	test('a mobile two-track template retains a two-column span', () => {
+		window.innerWidth = 600;
+		jest.spyOn(window, 'getComputedStyle').mockReturnValue({
+			gridTemplateColumns: '300px 300px',
+		});
+		const element = buildGrid({ match: false, mobile: 1 });
+		const inner = element.querySelector('.airo-wp-grid__inner');
+		inner.style.setProperty('--airo-wp-grid-columns-mobile', '1fr 1fr');
+		inner.children[0].style.gridColumn = 'span 2';
+		new DSGGrid(element);
+		expect(inner.children[0].style.gridColumn).toBe('span 2');
+	});
+
+	test('an oversized span cannot create an implicit track that defeats the constraint', () => {
+		window.innerWidth = 600;
+		jest.spyOn(window, 'getComputedStyle').mockImplementation((inner) => ({
+			gridTemplateColumns:
+				inner.children[0].style.gridColumn === 'span 3'
+					? '200px 200px 200px'
+					: '300px 300px',
+		}));
+		const element = buildGrid({ match: false, mobile: 1 });
+		const inner = element.querySelector('.airo-wp-grid__inner');
+		inner.style.setProperty('--airo-wp-grid-columns-mobile', '1fr 1fr');
+		inner.children[0].style.gridColumn = 'span 3';
+		new DSGGrid(element);
+		expect(inner.children[0].style.gridColumn).toBe('span 2');
+	});
+
+	test('spans are restored when widening after a mobile constraint', () => {
+		window.innerWidth = 600;
+		const element = buildGrid({ match: false, mobile: 1 });
+		const inner = element.querySelector('.airo-wp-grid__inner');
+		inner.children[0].style.gridColumn = 'span 3';
+		const grid = new DSGGrid(element);
+		expect(inner.children[0].style.gridColumn).toBe('span 1');
+		window.innerWidth = 1200;
+		grid.handleResize();
+		expect(inner.children[0].style.gridColumn).toBe('span 3');
+	});
+});
+
+describe('grid view.js - resize re-applies constraints on the next frame', () => {
+	const initialWidth = window.innerWidth;
+	afterEach(() => {
+		document.body.innerHTML = '';
+		jest.restoreAllMocks();
+		window.innerWidth = initialWidth;
+	});
+
+	test('every grid re-runs once per frame, without waiting for a debounce', () => {
+		const frames = [];
+		jest.spyOn(window, 'requestAnimationFrame').mockImplementation(
+			(callback) => frames.push(callback)
+		);
+		const first = new DSGGrid(buildGrid({ match: false }));
+		const second = new DSGGrid(buildGrid({ match: false }));
+		const firstSpy = jest.spyOn(first, 'getResponsiveColumns');
+		const secondSpy = jest.spyOn(second, 'getResponsiveColumns');
+
+		// Grids from earlier tests still listen on window, so compare
+		// counts rather than assuming only these two exist.
+		window.dispatchEvent(new Event('resize'));
+		const perResize = frames.length;
+		window.dispatchEvent(new Event('resize'));
+		// One frame request per grid, however many resize events arrive.
+		expect(frames).toHaveLength(perResize);
+
+		frames.splice(0).forEach((callback) => callback());
+		expect(firstSpy).toHaveBeenCalledTimes(1);
+		expect(secondSpy).toHaveBeenCalledTimes(1);
+
+		// The gate reopens after the frame runs.
+		window.dispatchEvent(new Event('resize'));
+		expect(frames).toHaveLength(perResize);
+	});
+
+	test('a span wider than the mobile column count is clamped on the frame', () => {
+		const frames = [];
+		jest.spyOn(window, 'requestAnimationFrame').mockImplementation(
+			(callback) => frames.push(callback)
+		);
+		window.innerWidth = 1280;
+		const grid = new DSGGrid(
+			buildGrid({ cols: 4, mobile: 2, match: false })
+		);
+		const card = grid.inner.children[0];
+		card.style.gridColumn = 'span 3';
+
+		window.innerWidth = 390;
+		window.dispatchEvent(new Event('resize'));
+		frames.splice(0).forEach((callback) => callback());
+		expect(card.style.gridColumn).toBe('span 2');
+
+		window.innerWidth = 1280;
+		window.dispatchEvent(new Event('resize'));
+		frames.splice(0).forEach((callback) => callback());
+		expect(card.style.gridColumn).toBe('span 3');
 	});
 });

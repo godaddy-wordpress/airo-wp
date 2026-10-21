@@ -33,12 +33,14 @@ if ( function_exists( 'wp_enqueue_script_module' ) ) {
 	wp_enqueue_script_module( 'airo-wp-query-view-script-module' );
 }
 
-$airowp_page = max( 1, absint( get_query_var( 'paged' ) ) );
-if ( 1 === $airowp_page ) {
-	$airowp_page = max( 1, absint( get_query_var( 'page' ) ) );
-}
-
 $airowp_query_id = isset( $attributes['queryId'] ) ? sanitize_key( (string) $attributes['queryId'] ) : '';
+
+// Registered before rendering, so this Query's own filters and pagination
+// already count it when deciding whether the page holds several Queries.
+airowp_query_register_rendered_id( $airowp_query_id );
+
+// `qpage__{queryId}` when several Queries share the page, else `paged`.
+$airowp_page = airowp_query_current_page( $airowp_query_id );
 
 $airowp_parsed_children = isset( $block->parsed_block['innerBlocks'] )
 	? (array) $block->parsed_block['innerBlocks']

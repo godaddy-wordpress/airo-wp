@@ -11,9 +11,7 @@ import { __ } from '@wordpress/i18n';
 import { InspectorControls, useSettings } from '@wordpress/block-editor';
 import {
 	PanelBody,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseCustomUnits as useCustomUnits,
 } from '@wordpress/components';
 import { useEffect } from '@wordpress/element';

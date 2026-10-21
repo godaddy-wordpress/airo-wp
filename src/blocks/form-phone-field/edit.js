@@ -12,10 +12,13 @@ import {
 	SelectControl,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
+import FieldConditionsItem from '../form-builder/components/FieldConditionsItem';
+import ConditionalBadge from '../form-builder/components/ConditionalBadge';
 import { useEffect } from '@wordpress/element';
 import classnames from 'classnames';
 import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
 import COUNTRY_CODES from './country-codes';
+import { getFormFieldWidthStyle } from '../form-builder/utils/field-width';
 
 const FIELD_WIDTH_OPTIONS = [
 	{ label: __('Full Width (100%)', 'airo-wp'), value: '100' },
@@ -73,14 +76,7 @@ export default function FormPhoneFieldEdit({
 		className: fieldClasses,
 		style: {
 			...fieldStyles,
-			flexBasis:
-				fieldWidth === '100'
-					? '100%'
-					: `calc(${fieldWidth}% - var(--airo-wp-form-field-spacing, 1.5rem) / 2)`,
-			maxWidth:
-				fieldWidth === '100'
-					? '100%'
-					: `calc(${fieldWidth}% - var(--airo-wp-form-field-spacing, 1.5rem) / 2)`,
+			...getFormFieldWidthStyle(fieldWidth),
 		},
 	});
 
@@ -90,9 +86,9 @@ export default function FormPhoneFieldEdit({
 	const getPattern = () => {
 		switch (phoneFormat) {
 			case 'us':
-				return '[0-9]{3}-[0-9]{3}-[0-9]{4}';
+				return '(?:\\+?1[\\s.\\-]?)?(?:\\([0-9]{3}\\)|[0-9]{3})[\\s.\\-]?[0-9]{3}[\\s.\\-]?[0-9]{4}';
 			case 'international':
-				return '\\+[0-9]{1,3}[0-9\\s\\-]{4,14}';
+				return '(?=(?:[^0-9]*[0-9]){7,15}[^0-9]*$)\\+[0-9\\s.\\-]+';
 			default:
 				return undefined;
 		}
@@ -108,7 +104,7 @@ export default function FormPhoneFieldEdit({
 			case 'us':
 				return '555-123-4567';
 			case 'international':
-				return '+1 555 123 4567';
+				return '+1-555-123-4567';
 			default:
 				return '';
 		}
@@ -124,6 +120,7 @@ export default function FormPhoneFieldEdit({
 					resetAll={() =>
 						setAttributes({
 							fieldName: '',
+							dsgoConditions: null,
 							label: 'Phone Number',
 							placeholder: '',
 							helpText: '',
@@ -391,10 +388,19 @@ export default function FormPhoneFieldEdit({
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>
+					<FieldConditionsItem
+						attributes={attributes}
+						setAttributes={setAttributes}
+						clientId={clientId}
+					/>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 
 			<div {...blockProps}>
+				<ConditionalBadge
+					conditions={attributes.dsgoConditions}
+					clientId={clientId}
+				/>
 				<label htmlFor={fieldId} className="airo-wp-form-field__label">
 					{label}
 					{required && (

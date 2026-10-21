@@ -16,6 +16,7 @@ final class PublishPageDraftTest extends TestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
+		Functions\when( 'current_user_can' )->justReturn( true );
 
 		if ( ! defined( 'PHPUNIT_RUNNING' ) ) {
 			define( 'PHPUNIT_RUNNING', true );
@@ -77,7 +78,7 @@ final class PublishPageDraftTest extends TestCase {
 		$result = $this->tool->execute( array( 'draft_id' => 10 ) );
 
 		$this->assertFalse( $result['success'] );
-		$this->assertStringContainsString( 'Only posts in draft status can be published as a Site Designer draft', $result['message'] );
+		$this->assertStringContainsString( 'Only posts in draft status can be published as a page draft', $result['message'] );
 	}
 
 	public function test_force_delete_false_passes_to_service(): void {
@@ -225,5 +226,75 @@ final class PublishPageDraftTest extends TestCase {
 		$result = $this->tool->execute( array( 'draft_id' => $draft_id, 'force_delete' => true ) );
 
 		$this->assertTrue( $result['success'] );
+	}
+
+	public function test_denied_when_user_cannot_edit_original(): void {
+		$draft_id    = 50;
+		$original_id = 5;
+
+		$draft              = new \stdClass();
+		$draft->ID          = $draft_id;
+		$draft->post_type   = 'page';
+		$draft->post_status = 'draft';
+
+		Functions\when( 'get_post' )->justReturn( $draft );
+		Functions\when( 'get_post_meta' )->alias(
+			function ( $post_id, $key = null, $single = false ) use ( $draft_id, $original_id ) {
+				if ( $post_id === $draft_id && DraftPageService::META_DRAFT_OF === $key ) {
+					return (string) $original_id;
+				}
+				return '';
+			}
+		);
+		Functions\when( 'current_user_can' )->alias(
+			function ( $cap, $id = null ) use ( $draft_id, $original_id ) {
+				return ! ( 'edit_post' === $cap && $original_id === $id );
+			}
+		);
+		Functions\when( 'wp_update_post' )->alias(
+			function () {
+				throw new \RuntimeException( 'wp_update_post must not be called' );
+			}
+		);
+
+		$result = $this->tool->execute( array( 'draft_id' => $draft_id ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
+	}
+
+	public function test_denied_when_user_cannot_edit_draft(): void {
+		$draft_id    = 50;
+		$original_id = 5;
+
+		$draft              = new \stdClass();
+		$draft->ID          = $draft_id;
+		$draft->post_type   = 'page';
+		$draft->post_status = 'draft';
+
+		Functions\when( 'get_post' )->justReturn( $draft );
+		Functions\when( 'get_post_meta' )->alias(
+			function ( $post_id, $key = null, $single = false ) use ( $draft_id, $original_id ) {
+				if ( $post_id === $draft_id && DraftPageService::META_DRAFT_OF === $key ) {
+					return (string) $original_id;
+				}
+				return '';
+			}
+		);
+		Functions\when( 'current_user_can' )->alias(
+			function ( $cap, $id = null ) use ( $draft_id, $original_id ) {
+				return ! ( 'edit_post' === $cap && $draft_id === $id );
+			}
+		);
+		Functions\when( 'wp_update_post' )->alias(
+			function () {
+				throw new \RuntimeException( 'wp_update_post must not be called' );
+			}
+		);
+
+		$result = $this->tool->execute( array( 'draft_id' => $draft_id ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
 	}
 }

@@ -14,7 +14,8 @@
 		"choice"
 	],
 	"parent": [
-		"airo-wp/form-builder"
+		"airo-wp/form-builder",
+		"airo-wp/form-step"
 	],
 	"textdomain": "airo-wp",
 	"icon": "menu",
@@ -33,6 +34,10 @@
 		"airo-wp/form/inputPadding"
 	],
 	"attributes": {
+		"dsgoConditions": {
+			"type": "object",
+			"default": null
+		},
 		"fieldName": {
 			"type": "string",
 			"default": ""
@@ -82,8 +87,7 @@
 			}
 		},
 		"placeholder": {
-			"type": "string",
-			"default": "-- Select an option --"
+			"type": "string"
 		},
 		"fieldWidth": {
 			"type": "string",

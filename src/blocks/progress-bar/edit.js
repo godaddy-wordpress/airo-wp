@@ -10,9 +10,7 @@ import { __ } from '@wordpress/i18n';
 import {
 	useBlockProps,
 	InspectorControls,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import {
@@ -20,11 +18,8 @@ import {
 	ToggleControl,
 	SelectControl,
 	TextControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalToggleGroupControl as ToggleGroupControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalToggleGroupControlOption as ToggleGroupControlOption,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
@@ -33,6 +28,8 @@ import {
 	decodeColorValue,
 } from '../../utils/encode-color-value';
 import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+import useInsideLabelFit from './hooks/useInsideLabelFit';
+import { LABEL_CLIPPED_CLASS, MEASURED_CLASS } from './utils/label-fit';
 
 /**
  * Edit component for Progress Bar block
@@ -114,9 +111,16 @@ export default function ProgressBarEdit({
 		return parts.join(' - ') || __('Progress Bar', 'airo-wp');
 	})();
 
+	const hasInsideLabel =
+		(showLabel || showPercentage) && labelPosition === 'inside';
+	const [fillRef, labelClipped] = useInsideLabelFit(
+		hasInsideLabel,
+		displayText
+	);
+
 	// Get block props
 	const blockProps = useBlockProps({
-		className: 'airo-wp-progress-bar',
+		className: `airo-wp-progress-bar ${MEASURED_CLASS}`,
 	});
 
 	return (
@@ -338,6 +342,10 @@ export default function ProgressBarEdit({
 							onChange={(value) =>
 								setAttributes({ showPercentage: value })
 							}
+							help={__(
+								'Shows the Percentage value above. If you bind the fill width to dynamic data (Style Bindings, Advanced panel), this label will not update to match — turn it off for bound bars.',
+								'airo-wp'
+							)}
 							__nextHasNoMarginBottom
 						/>
 					</DsgoInspectorPanel.Item>
@@ -469,14 +477,20 @@ export default function ProgressBarEdit({
 								: ''
 						}`}
 						style={barFillStyles}
+						ref={fillRef}
 					>
 						{/* Label Inside */}
-						{(showLabel || showPercentage) &&
-							labelPosition === 'inside' && (
-								<div className="airo-wp-progress-bar__label airo-wp-progress-bar__label--inside">
-									{displayText}
-								</div>
-							)}
+						{hasInsideLabel && (
+							<div
+								className={`airo-wp-progress-bar__label airo-wp-progress-bar__label--inside${
+									labelClipped
+										? ` ${LABEL_CLIPPED_CLASS}`
+										: ''
+								}`}
+							>
+								{displayText}
+							</div>
+						)}
 					</div>
 				</div>
 

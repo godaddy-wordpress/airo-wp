@@ -12,7 +12,6 @@ import {
 	serialize,
 	registerBlockType,
 	setCategories,
-	// eslint-disable-next-line import/no-unresolved
 } from '@wordpress/block-editor/node_modules/@wordpress/blocks';
 import metadata from '../block.json';
 import save from '../save';
@@ -20,6 +19,37 @@ import save from '../save';
 setCategories([{ slug: 'airo-wp', title: 'airo-wp' }]);
 
 registerBlockType(metadata.name, { ...metadata, save });
+
+describe('grid save - responsive track templates', () => {
+	test('keeps templates on the inner layout element', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				tabletColumnTemplate: 'minmax(0, 2fr) minmax(0, 1fr)',
+				mobileColumnTemplate: '1fr 1fr',
+			})
+		);
+		expect(html).toContain(
+			'--airo-wp-grid-columns-tablet:minmax(0, 2fr) minmax(0, 1fr)'
+		);
+		expect(html).toContain('--airo-wp-grid-columns-mobile:1fr 1fr');
+		expect(html).toMatch(
+			/class="airo-wp-grid__inner" style="[^"]*--airo-wp-grid-columns-tablet/
+		);
+	});
+
+	test('empty responsive templates preserve existing markup', () => {
+		const baseline = serialize(createBlock(metadata.name));
+		expect(
+			serialize(
+				createBlock(metadata.name, {
+					tabletColumnTemplate: '',
+					mobileColumnTemplate: '',
+				})
+			)
+		).toBe(baseline);
+		expect(baseline).not.toContain('--airo-wp-grid-columns-');
+	});
+});
 
 describe('grid save - overlay class', () => {
 	test('no overlay by default', () => {
@@ -120,5 +150,32 @@ describe('grid save - align rows (match row heights)', () => {
 		);
 		expect(html).not.toContain('airo-wp-grid__inner--rows-matched');
 		expect(html).not.toContain('--airo-wp-row-count');
+	});
+});
+
+describe('grid save - custom column template', () => {
+	test('columnTemplate replaces the repeated column count on the inner element', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				desktopColumns: 2,
+				columnTemplate: 'minmax(0, .7fr) minmax(0, 1.3fr)',
+			})
+		);
+		expect(html).toContain(
+			'grid-template-columns:minmax(0, .7fr) minmax(0, 1.3fr)'
+		);
+		expect(html).not.toContain('repeat(2, 1fr)');
+		expect(html).toContain('airo-wp-grid-cols-2');
+	});
+
+	test('a blank columnTemplate changes nothing', () => {
+		const html = serialize(
+			createBlock(metadata.name, {
+				desktopColumns: 3,
+				columnTemplate: '',
+			})
+		);
+		expect(html).toContain('grid-template-columns:repeat(3, 1fr)');
+		expect(html).not.toContain('columnTemplate');
 	});
 });

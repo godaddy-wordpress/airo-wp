@@ -1,9 +1,27 @@
 .wp-block-airo-wp-hotspot {
 	--airo-wp-hotspot-tooltip-width: 240px;
-	--airo-wp-hotspot-marker-color: #fff;
-	--airo-wp-hotspot-marker-background: #111;
-	--airo-wp-hotspot-tooltip-background: #111;
-	--airo-wp-hotspot-tooltip-color: #fff;
+	// Default marker and tooltip colors. Colors the author picks in the block
+	// sidebar are written inline by save() and win. Otherwise each resolves
+	// through a theme.json / Style Kit token
+	// (settings.custom.airowp.hotspot.*), then the theme's contrast /
+	// base presets (dark on light, inverted on dark themes), then the old
+	// literals.
+	--airo-wp-hotspot-marker-color: var(
+		--wp--custom--airo-wp--hotspot--marker-color,
+		var(--wp--preset--color--base, #fff)
+	);
+	--airo-wp-hotspot-marker-background: var(
+		--wp--custom--airo-wp--hotspot--marker-background,
+		var(--wp--preset--color--contrast, #111)
+	);
+	--airo-wp-hotspot-tooltip-background: var(
+		--wp--custom--airo-wp--hotspot--tooltip-background,
+		var(--wp--preset--color--contrast, #111)
+	);
+	--airo-wp-hotspot-tooltip-color: var(
+		--wp--custom--airo-wp--hotspot--tooltip-color,
+		var(--wp--preset--color--base, #fff)
+	);
 
 	:where(.airo-wp-hotspot__image-wrap) {
 		position: relative;
@@ -18,7 +36,7 @@
 
 	:where(.airo-wp-hotspot__image--empty) {
 		min-height: 16rem;
-		background: #f0f0f0;
+		background: color-mix(in srgb, currentcolor 8%, transparent);
 	}
 
 	:where(.airo-wp-hotspot__items) {

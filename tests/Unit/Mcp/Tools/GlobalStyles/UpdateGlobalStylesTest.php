@@ -206,4 +206,173 @@ final class UpdateGlobalStylesTest extends TestCase {
 		$this->assertArrayHasKey( 'date', $result['data'] );
 		$this->assertStringContainsString( 'updated successfully', $result['message'] );
 	}
+
+	/**
+	 * @return array<string, array{array, bool}>
+	 */
+	public function provide_non_array_font_families_input(): array {
+		return array(
+			'string, merge'     => array( array( 'typography' => array( 'fontFamilies' => 'Roboto' ) ), false ),
+			'number, merge'     => array( array( 'typography' => array( 'fontFamilies' => 42 ) ), false ),
+			'string, overwrite' => array( array( 'typography' => array( 'fontFamilies' => 'Roboto' ) ), true ),
+		);
+	}
+
+	/**
+	 * @dataProvider provide_non_array_font_families_input
+	 */
+	public function test_non_array_font_families_input_does_not_fatal( array $settings, bool $overwrite ): void {
+		$font_downloader = \Mockery::mock( FontDownloader::class );
+		$font_downloader->shouldNotReceive( 'process_font_families' );
+		$tool = new UpdateGlobalStyles( $font_downloader );
+
+		Functions\when( 'get_post' )->justReturn( $this->global_styles_post( array() ) );
+		Functions\expect( 'wp_update_post' )->once()->andReturn( 1 );
+
+		$result = $tool->execute(
+			array(
+				'id'        => 1,
+				'settings'  => $settings,
+				'overwrite' => $overwrite,
+			)
+		);
+
+		$this->assertTrue( $result['success'] );
+	}
+
+	public function test_type_error_from_font_downloader_returns_error_instead_of_fataling(): void {
+		// What FontDownloader lets through when an FTP/SSH WP_Filesystem has lost its connection.
+		$font_downloader = \Mockery::mock( FontDownloader::class );
+		$font_downloader->shouldReceive( 'process_font_families' )->once()
+			->andThrow( new \TypeError( 'ftp_rename(): Argument #1 ($ftp) must be of type FTP\Connection, null given' ) );
+		$tool = new UpdateGlobalStyles( $font_downloader );
+
+		Functions\when( 'get_post' )->justReturn( $this->global_styles_post( array() ) );
+		Functions\expect( 'wp_update_post' )->never();
+
+		$log_file = (string) tempnam( sys_get_temp_dir(), 'airo-wp-log-' );
+		ini_set( 'error_log', $log_file ); // phpcs:ignore WordPress.PHP.IniSet.Risky
+
+		try {
+			$result = $tool->execute(
+				array(
+					'id'       => 1,
+					'settings' => array( 'typography' => array( 'fontFamilies' => array( 'theme' => array() ) ) ),
+				)
+			);
+			$log    = (string) file_get_contents( $log_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		} finally {
+			ini_restore( 'error_log' );
+			unlink( $log_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+		}
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'Error updating global styles', $result['message'] );
+		$this->assertStringContainsString( '[Airo WP] update-global-styles: TypeError: ftp_rename()', $log );
+		$this->assertMatchesRegularExpression( '/ in \S+:\d+/', $log );
+	}
+
+	public function test_logged_throwable_message_cannot_forge_log_lines(): void {
+		$font_downloader = \Mockery::mock( FontDownloader::class );
+		$font_downloader->shouldReceive( 'process_font_families' )->once()
+			->andThrow( new \RuntimeException( "boom\n[Airo WP] forged line" ) );
+		$tool = new UpdateGlobalStyles( $font_downloader );
+
+		Functions\when( 'get_post' )->justReturn( $this->global_styles_post( array() ) );
+		Functions\expect( 'wp_update_post' )->never();
+
+		$log_file = (string) tempnam( sys_get_temp_dir(), 'airo-wp-log-' );
+		ini_set( 'error_log', $log_file ); // phpcs:ignore WordPress.PHP.IniSet.Risky
+
+		try {
+			$tool->execute(
+				array(
+					'id'       => 1,
+					'settings' => array( 'typography' => array( 'fontFamilies' => array( 'theme' => array() ) ) ),
+				)
+			);
+			$log = (string) file_get_contents( $log_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		} finally {
+			ini_restore( 'error_log' );
+			unlink( $log_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+		}
+
+		$lines = array_values( array_filter( explode( "\n", $log ) ) );
+		$this->assertCount( 1, $lines );
+		$this->assertStringContainsString( 'RuntimeException: boom [Airo WP] forged line', $lines[0] );
+	}
+
+	public function test_stored_non_array_font_families_does_not_fatal_on_settings_update(): void {
+		$font_downloader = \Mockery::mock( FontDownloader::class );
+		$font_downloader->shouldNotReceive( 'process_font_families' );
+		$tool = new UpdateGlobalStyles( $font_downloader );
+
+		Functions\when( 'get_post' )->justReturn(
+			$this->global_styles_post( array( 'settings' => array( 'typography' => array( 'fontFamilies' => 'Roboto' ) ) ) )
+		);
+		Functions\expect( 'wp_update_post' )->once()->andReturn( 1 );
+
+		$result = $tool->execute(
+			array(
+				'id'       => 1,
+				'settings' => array( 'color' => array( 'custom' => true ) ),
+			)
+		);
+
+		$this->assertTrue( $result['success'] );
+	}
+
+	/**
+	 * @return array<string, array{string}>
+	 */
+	public function provide_mergeable_sections(): array {
+		return array(
+			'settings' => array( 'settings' ),
+			'styles'   => array( 'styles' ),
+		);
+	}
+
+	/**
+	 * @dataProvider provide_mergeable_sections
+	 */
+	public function test_stored_non_array_section_is_replaced_in_merge_mode( string $section ): void {
+		$incoming = array( 'color' => array( 'text' => '#000' ) );
+
+		Functions\when( 'get_post' )->justReturn( $this->global_styles_post( array( $section => 'corrupt' ) ) );
+		Functions\expect( 'wp_update_post' )
+			->once()
+			->with(
+				\Mockery::on(
+					static function ( $args ) use ( $section, $incoming ) {
+						return json_decode( $args['post_content'], true )[ $section ] === $incoming;
+					}
+				),
+				true
+			)
+			->andReturn( 1 );
+
+		$result = $this->tool->execute(
+			array(
+				'id'     => 1,
+				$section => $incoming,
+			)
+		);
+
+		$this->assertTrue( $result['success'] );
+	}
+
+	/**
+	 * @param array $content Decoded global-styles content.
+	 * @return \stdClass
+	 */
+	private function global_styles_post( array $content ): \stdClass {
+		$post               = new \stdClass();
+		$post->ID           = 1;
+		$post->post_type    = 'wp_global_styles';
+		$post->post_title   = 'Styles';
+		$post->post_status  = 'publish';
+		$post->post_content = json_encode( $content );
+
+		return $post;
+	}
 }

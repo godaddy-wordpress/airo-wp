@@ -8,9 +8,7 @@ import { __ } from '@wordpress/i18n';
 import {
 	useBlockProps,
 	InspectorControls,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import classnames from 'classnames';
@@ -22,6 +20,7 @@ import {
 } from '../../utils/encode-color-value';
 // Inspector Panel
 import MapSettingsPanel from './components/inspector/MapSettingsPanel';
+import MapPlaceholder, { hasNoLocation } from './components/MapPlaceholder';
 import { buildEmbedUrl } from './utils/embed-url';
 
 /**
@@ -101,7 +100,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 								__('Click to load map', 'airo-wp')}
 						</p>
 						<button
-							className="airo-wp-map__load-button"
+							className="airo-wp-map__load-button wp-element-button"
 							type="button"
 							onClick={(e) => e.preventDefault()}
 						>
@@ -254,9 +253,13 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 			)}
 
 			<div {...blockProps}>
-				<div className="airo-wp-map__editor-preview">
-					{renderPreview()}
-				</div>
+				{hasNoLocation(attributes) ? (
+					<MapPlaceholder setAttributes={setAttributes} />
+				) : (
+					<div className="airo-wp-map__editor-preview">
+						{renderPreview()}
+					</div>
+				)}
 			</div>
 		</>
 	);

@@ -1,13 +1,14 @@
 /**
  * Row Block - Edit Component
  *
- * Flexible horizontal or vertical layouts with wrapping.
+ * Flexible horizontal layouts with wrapping.
  * Leverages WordPress's native flex layout system.
  *
  * @since 1.0.0
  */
 
 import { __, sprintf } from '@wordpress/i18n';
+import { getAlignItemsValue } from './alignment';
 import {
 	useBlockProps,
 	useInnerBlocksProps,
@@ -15,27 +16,25 @@ import {
 	InspectorControls,
 	store as blockEditorStore,
 	useSettings,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import {
 	ToggleControl,
 	SelectControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseCustomUnits as useCustomUnits,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
-import { useSelect, useDispatch } from '@wordpress/data';
+import LayoutControls from '../../extensions/layout/controls';
+import { useFixedOrientation } from '../../hooks';
+import { useSelect } from '@wordpress/data';
 import { useEffect } from '@wordpress/element';
-import { createBlock } from '@wordpress/blocks';
 import {
 	convertPresetToCSSVar,
 	convertColorToCSSVar,
 } from '../../utils/convert-preset-to-css-var';
+import { getOverlayOpacity } from '../../utils/overlay-opacity';
 import {
 	encodeColorValue,
 	decodeColorValue,
@@ -107,53 +106,16 @@ export default function RowEdit({ attributes, setAttributes, clientId }) {
 		availableUnits: ['px', 'em', 'rem', 'vh', 'vw', '%'],
 	});
 
-	const { replaceBlock } = useDispatch(blockEditorStore);
+	// A Row is always horizontal; the orientation toggle is hidden.
+	useFixedOrientation(layout, 'horizontal', setAttributes);
 
 	// Get inner blocks to determine if container is empty
-	const { hasInnerBlocks, innerBlocks } = useSelect(
-		(select) => {
-			const { getBlock } = select(blockEditorStore);
-			const block = getBlock(clientId);
-			return {
-				hasInnerBlocks: block?.innerBlocks?.length > 0,
-				innerBlocks: block?.innerBlocks || [],
-			};
-		},
+	const hasInnerBlocks = useSelect(
+		(select) =>
+			select(blockEditorStore).getBlock(clientId)?.innerBlocks?.length >
+			0,
 		[clientId]
 	);
-
-	// CRITICAL: Auto-convert to Section block when orientation changes to vertical
-	// Row is meant for horizontal layouts
-	// If user wants vertical layout, they should use Section block
-	useEffect(() => {
-		if (layout?.orientation === 'vertical') {
-			// Create a new Section block with the same attributes and inner blocks
-			const sectionBlock = createBlock(
-				'airo-wp/section',
-				{
-					hoverBackgroundColor,
-					hoverTextColor,
-					hoverIconBackgroundColor,
-					hoverButtonBackgroundColor,
-					overlayColor,
-				},
-				innerBlocks
-			);
-
-			// Replace this Row block with the Section block
-			replaceBlock(clientId, sectionBlock);
-		}
-	}, [
-		layout?.orientation,
-		clientId,
-		replaceBlock,
-		hoverBackgroundColor,
-		hoverTextColor,
-		hoverIconBackgroundColor,
-		hoverButtonBackgroundColor,
-		overlayColor,
-		innerBlocks,
-	]);
 
 	// Block wrapper props - outer div stays full width (must match save.js EXACTLY)
 	const hasOverlay = !!overlayColor || hasOverlayStyleClass(className);
@@ -190,7 +152,10 @@ export default function RowEdit({ attributes, setAttributes, clientId }) {
 			}),
 			...(overlayColor && {
 				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
-				'--airo-wp-overlay-opacity': '0.8',
+				'--airo-wp-overlay-opacity': getOverlayOpacity(
+					overlayColor,
+					attributes.overlayOpacity
+				),
 			}),
 		},
 	});
@@ -207,12 +172,8 @@ export default function RowEdit({ attributes, setAttributes, clientId }) {
 		delete blockProps.style.gap;
 	}
 
-	// Inner container props with flex layout and width constraints (must match save.js EXCEPT alignItems)
-	// CRITICAL: Apply display: flex here, not via WordPress layout support on outer div
-	// NOTE: alignItems is NOT set here — WordPress's layout system handles vertical alignment
-	// in the editor via the layout.verticalAlignment attribute and generated wp-container-* CSS.
-	// Setting it inline here would be overwritten by useInnerBlocksProps style merging.
-	// save.js sets alignItems inline because server-side rendering doesn't merge styles.
+	// Share the saved flex layout. Restore explicit alignment after WordPress merges
+	// its editor styles: vertical rows otherwise reinterpret justification as alignment.
 	const innerStyle = {
 		display: 'flex',
 		// Apply layout justifyContent to inner div where flex children are
@@ -247,6 +208,11 @@ export default function RowEdit({ attributes, setAttributes, clientId }) {
 				: InnerBlocks.ButtonBlockAppender,
 		}
 	);
+
+	const alignItems = getAlignItemsValue(layout?.verticalAlignment);
+	if (alignItems) {
+		innerBlocksProps.style = { ...innerBlocksProps.style, alignItems };
+	}
 
 	return (
 		<>
@@ -285,6 +251,7 @@ export default function RowEdit({ attributes, setAttributes, clientId }) {
 							mobileStack: false,
 							constrainWidth: false,
 							contentWidth: '',
+							dsgoLayout: undefined,
 						})
 					}
 				>
@@ -385,6 +352,12 @@ export default function RowEdit({ attributes, setAttributes, clientId }) {
 							/>
 						</DsgoInspectorPanel.Item>
 					)}
+					<LayoutControls
+						name="airo-wp/row"
+						attributes={attributes}
+						setAttributes={setAttributes}
+						clientId={clientId}
+					/>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 

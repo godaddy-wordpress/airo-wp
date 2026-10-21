@@ -49,7 +49,23 @@ namespace GoDaddy\WordPress\Plugins\AiroWp\Tests\Unit\Mcp\Tools\Media {
             Functions\when( 'sanitize_title' )->returnArg();
             Functions\when( 'sanitize_mime_type' )->returnArg();
 
+            \WP_Query::$seed = array();
+            unset( $GLOBALS['__lp_current_post'] );
+            Functions\when( 'get_post' )->alias( fn() => $GLOBALS['__lp_current_post'] ?? null );
+            Functions\when( 'wp_reset_postdata' )->justReturn( null );
+            Functions\when( 'wp_get_attachment_metadata' )->justReturn( false );
+            Functions\when( 'get_attached_file' )->justReturn( false );
+            Functions\when( 'get_post_meta' )->justReturn( '' );
+            Functions\when( 'wp_get_attachment_url' )->justReturn( 'https://example.com/x.jpg' );
+            Functions\when( 'current_user_can' )->justReturn( true );
+
             $this->tool = new ListMedia();
+        }
+
+        protected function tearDown(): void {
+            \WP_Query::$seed = array();
+            unset( $GLOBALS['__lp_current_post'] );
+            parent::tearDown();
         }
 
         public function test_tool_id_has_correct_prefix(): void {
@@ -87,6 +103,51 @@ namespace GoDaddy\WordPress\Plugins\AiroWp\Tests\Unit\Mcp\Tools\Media {
             $result = $this->tool->execute( array() );
 
             $this->assertArrayHasKey( 'media', $result );
+        }
+
+        private function make_attachment( int $id ): \WP_Post {
+            return new \WP_Post(
+                array(
+                    'ID'         => $id,
+                    'post_title' => 'img-' . $id,
+                    'post_name'  => 'img-' . $id,
+                )
+            );
+        }
+
+        public function test_unreadable_attachments_are_skipped(): void {
+            \WP_Query::$seed = array( $this->make_attachment( 1 ), $this->make_attachment( 2 ) );
+            Functions\when( 'current_user_can' )->alias(
+                function ( $cap, $id ) {
+                    return ! ( 'read_post' === $cap && 2 === $id );
+                }
+            );
+
+            $result = $this->tool->execute( array() );
+
+            $this->assertCount( 1, $result['media'] );
+            $this->assertSame( 1, $result['media'][0]['id'] );
+        }
+
+        public function test_attachment_parents_are_primed_in_one_call(): void {
+            $first              = $this->make_attachment( 1 );
+            $first->post_parent = 10;
+            $second              = $this->make_attachment( 2 );
+            $second->post_parent = 11;
+            \WP_Query::$seed = array( $first, $second );
+            Functions\expect( '_prime_post_caches' )->once()->with( array( 10, 11 ), false, false );
+
+            $result = $this->tool->execute( array() );
+
+            $this->assertCount( 2, $result['media'] );
+        }
+
+        public function test_readable_attachments_are_all_returned(): void {
+            \WP_Query::$seed = array( $this->make_attachment( 1 ), $this->make_attachment( 2 ) );
+
+            $result = $this->tool->execute( array() );
+
+            $this->assertCount( 2, $result['media'] );
         }
     }
 }

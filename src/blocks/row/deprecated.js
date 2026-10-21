@@ -14,7 +14,9 @@ import {
 	hoverVariationClasses,
 } from '../../utils/style-variation-classes';
 import metadata from './block.json';
+import layoutCompatibility from './deprecated-layout';
 import { getDeprecatedBlockHTML } from '../../utils/deprecated-block-html';
+import { withLegacyOverlayOpacity } from '../../utils/overlay-opacity';
 
 /**
  * Convert WordPress vertical alignment value to CSS align-items value.
@@ -109,6 +111,153 @@ const sharedSupports = {
 	},
 };
 
+/**
+ * Row save() as it was before the overlay opacity became colour-aware.
+ *
+ * Byte-for-byte the save() that shipped until the default overlay opacity
+ * dropped from 0.8 to 0.65 and alpha colours began emitting 1: every overlay
+ * wrote a fixed `--airo-wp-overlay-opacity:0.8`.
+ *
+ * @param {Object} props            Component props
+ * @param {Object} props.attributes Block attributes
+ * @return {JSX.Element} Saved markup.
+ */
+function saveWithFixedOverlayOpacity({ attributes }) {
+	const {
+		tagName = 'div',
+		constrainWidth,
+		contentWidth,
+		overlayColor,
+		hoverBackgroundColor,
+		hoverTextColor,
+		hoverIconBackgroundColor,
+		hoverButtonBackgroundColor,
+		mobileStack,
+		layout,
+	} = attributes;
+
+	// Overlay is enabled by an explicit overlayColor OR by a style-kit overlay
+	// variation (is-style-overlay-*) applied via className. In the variation
+	// case the color is supplied by the variation's stylesheet, so no inline
+	// --airo-wp-overlay-color is emitted below.
+	const hasOverlay =
+		!!overlayColor || hasOverlayStyleClass(attributes.className);
+
+	// Build className with conditional classes. Hover activation classes are
+	// emitted for hover style variations so their class-gated CSS can activate
+	// (the inline-`style` gate can't see a variation stylesheet's vars).
+	const className = [
+		'airo-wp-flex',
+		mobileStack && 'airo-wp-flex--mobile-stack',
+		!constrainWidth && 'airo-wp-no-width-constraint',
+		hasOverlay && 'airo-wp-flex--has-overlay',
+		...hoverVariationClasses(attributes.className, 'airo-wp-flex'),
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	// Block wrapper props - outer div stays full width
+	const TagName = tagName || 'div';
+	const blockProps = useBlockProps.save({
+		className,
+		style: {
+			...(hoverBackgroundColor && {
+				'--airo-wp-hover-bg-color':
+					convertColorToCSSVar(hoverBackgroundColor),
+			}),
+			...(hoverTextColor && {
+				'--airo-wp-hover-text-color':
+					convertColorToCSSVar(hoverTextColor),
+			}),
+			...(hoverIconBackgroundColor && {
+				'--airo-wp-parent-hover-icon-bg': convertColorToCSSVar(
+					hoverIconBackgroundColor
+				),
+			}),
+			...(hoverButtonBackgroundColor && {
+				'--airo-wp-parent-hover-button-bg': convertColorToCSSVar(
+					hoverButtonBackgroundColor
+				),
+			}),
+			...(overlayColor && {
+				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
+				'--airo-wp-overlay-opacity': '0.8',
+			}),
+		},
+	});
+
+	// Extract gap AFTER creating blockProps, so we can move it to inner div instead
+	// WordPress layout support stores gap in attributes.style.spacing.blockGap
+	// Convert from WordPress preset format (var:preset|spacing|md) to CSS var (var(--wp--preset--spacing--md))
+	const rawGapValue = attributes.style?.spacing?.blockGap;
+	const gapValue = convertPresetToCSSVar(rawGapValue);
+
+	// Remove gap from outer div's inline styles - it should only be on inner div
+	// This prevents WordPress from applying gap to the wrong element
+	if (blockProps.style?.gap) {
+		delete blockProps.style.gap;
+	}
+
+	// Inner container props with flex layout and width constraints
+	// CRITICAL: Apply display: flex here, not via WordPress layout support on outer div
+	// This ensures flex layout is applied to the element that contains the flex children
+	const alignItems = getAlignItemsValue(layout?.verticalAlignment);
+	const innerStyle = {
+		display: 'flex',
+		// Apply layout justifyContent to inner div where flex children are
+		justifyContent: layout?.justifyContent || 'left',
+		// Apply vertical alignment (align-items) from layout support
+		...(alignItems && { alignItems }),
+		// Apply flex-wrap from layout support
+		// Fallback must match block.json supports.layout.default.flexWrap ("nowrap").
+		// Using "wrap" here caused block-level children (which default to 100% width)
+		// to wrap onto their own lines and appear stacked on fresh rows where
+		// attributes.layout is not yet written.
+		flexWrap: layout?.flexWrap || 'nowrap',
+		// Apply gap from blockProps or attributes
+		...(gapValue && { gap: gapValue }),
+	};
+
+	// Apply width constraints if enabled
+	// Use custom contentWidth if set, otherwise fallback to theme's contentSize via CSS variable
+	if (constrainWidth) {
+		innerStyle.maxWidth =
+			contentWidth || 'var(--wp--style--global--content-size, 1140px)';
+		innerStyle.marginLeft = 'auto';
+		innerStyle.marginRight = 'auto';
+	}
+
+	// Merge inner blocks props
+	const innerBlocksProps = useInnerBlocksProps.save({
+		className: 'airo-wp-flex__inner',
+		style: innerStyle,
+	});
+
+	return (
+		<TagName {...blockProps}>
+			<div {...innerBlocksProps} />
+		</TagName>
+	);
+}
+
+// Version 6: Fixed 0.8 overlay opacity. The current save() resolves
+// `--airo-wp-overlay-opacity` from the overlay colour (0.65 for opaque colours and
+// presets, 1 for colours carrying their own alpha), so every row stored with an
+// overlayColor and the old `--airo-wp-overlay-opacity:0.8` mismatches it.
+//
+// Markup-change deprecation: WordPress reaches it by byte-matching the frozen
+// save() against an INVALID block, so no isEligible. No attribute changed, so
+// migrate() is a passthrough; the next save writes the new opacity.
+const v6 = {
+	apiVersion: 3,
+	supports: metadata.supports,
+	attributes: { ...metadata.attributes },
+	save: saveWithFixedOverlayOpacity,
+	migrate(attributes) {
+		return attributes;
+	},
+};
+
 // Version 5: Before style-kit overlay/hover variation detection. The current
 // save() also emits `airo-wp-flex--has-overlay` when a style-kit overlay
 // variation (`is-style-overlay-*`) is present on className, and emits
@@ -126,6 +275,7 @@ const sharedSupports = {
 // attribute values; the current save() then re-renders with the classes
 // derived from the variation.
 const v5 = {
+	apiVersion: 3,
 	supports: metadata.supports,
 	attributes: { ...metadata.attributes },
 	isEligible(attributes, innerBlocks, extra) {
@@ -249,6 +399,7 @@ const v5 = {
 // re-serialize the block with the correct "nowrap" inline style, fixing the
 // stacking behavior.
 const v4 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: {
 		align: {
@@ -411,6 +562,7 @@ const v4 = {
 // Version 3: Before align-items (vertical alignment) was added to inner div
 // This version has width constraints but no alignItems CSS property
 const v3 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: {
 		align: {
@@ -558,6 +710,7 @@ const v3 = {
 // This version had airo-wp-has-max-width class from max-width extension
 // but didn't output width constraints on inner div when constrainWidth was true
 const v2 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: {
 		align: {
@@ -695,6 +848,7 @@ const v2 = {
 
 // Version 1: Before align attribute - used className for alignment
 const v1 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: {
 		// Old blocks don't have align attribute, only className
@@ -823,4 +977,7 @@ const v1 = {
 	},
 };
 
-export default [v5, v4, v3, v2, v1];
+export default [
+	layoutCompatibility,
+	...withLegacyOverlayOpacity([v6, v5, v4, v3, v2, v1]),
+];

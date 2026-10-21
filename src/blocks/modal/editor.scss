@@ -4,11 +4,14 @@
  * @package airo-wp
  */
 
+@use '../../styles/variables' as *;
+@use './surface' as *;
+
 .airo-wp-modal-editor-preview {
 	position: relative;
 	padding: 20px;
 	border: 2px dashed #ddd;
-	border-radius: 4px;
+	border-radius: $airo-wp-radius-small;
 	background: #f9f9f9;
 	min-height: 200px;
 
@@ -19,7 +22,7 @@
 		right: 0;
 		bottom: 0;
 		pointer-events: none;
-		border-radius: 4px;
+		border-radius: $airo-wp-radius-small;
 		// Mirror the frontend default scrim (style.scss): inline author color
 		// wins, else theme token, else the historical black.
 		background-color: var(
@@ -40,9 +43,9 @@
 		position: relative;
 		margin: 0 auto;
 		padding: 24px;
-		background: #fff;
+		background: $airo-wp-modal-background;
 		border: 1px solid #ddd;
-		border-radius: 8px;
+		border-radius: $airo-wp-radius-medium;
 	}
 
 	.airo-wp-modal__close {
@@ -50,7 +53,7 @@
 		z-index: 2;
 		background: transparent;
 		border: none;
-		border-radius: 0;
+		border-radius: $airo-wp-radius-none;
 		cursor: not-allowed;
 		color: #666;
 		transition: all 0.2s ease;

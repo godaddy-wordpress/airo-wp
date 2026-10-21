@@ -10,6 +10,8 @@
  * `.airo-wp-icon__wrapper` in render.php.
  */
 
+@use '../../styles/variables' as *;
+
 .airo-wp-icon {
 	line-height: 1; // Prevent inherited line-height from creating extra vertical space
 
@@ -27,6 +29,11 @@
 
 		&:focus {
 			outline: none;
+		}
+
+		&:focus-visible {
+			outline: 2px solid currentcolor;
+			outline-offset: 2px;
 		}
 	}
 
@@ -84,7 +91,7 @@
 		}
 
 		&.shape-rounded {
-			border-radius: 8px;
+			border-radius: $airo-wp-radius-medium;
 		}
 		/* stylelint-enable selector-class-pattern */
 	}
@@ -141,5 +148,5 @@
 .airo-wp-grid--has-hover-icon:hover .airo-wp-grid__inner > .airo-wp-icon .airo-wp-icon__wrapper,
 .airo-wp-stack--has-hover-icon:hover .airo-wp-stack__inner > .airo-wp-icon .airo-wp-icon__wrapper {
 	background-color: var(--airo-wp-parent-hover-icon-bg) !important;
-	transition: background-color 0.3s ease;
+	transition: background-color $airo-wp-duration-normal $airo-wp-easing;
 }

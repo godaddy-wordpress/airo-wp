@@ -98,6 +98,13 @@
 			"selector": ".airo-wp-icon-button__text",
 			"default": ""
 		},
+		"ariaLabel": {
+			"type": "string",
+			"source": "attribute",
+			"selector": ".airo-wp-icon-button",
+			"attribute": "aria-label",
+			"default": ""
+		},
 		"url": {
 			"type": "string",
 			"default": ""
@@ -158,5 +165,5 @@
 	},
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
-	"style": "file:./index.css"
+	"style": "file:./style-index.css"
 }

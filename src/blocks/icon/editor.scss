@@ -4,6 +4,7 @@
  * Editor-specific styles and icon picker
  */
 
+@use '../../styles/variables' as *;
 @use './components/icon-picker';
 
 .airo-wp-icon {
@@ -19,14 +20,14 @@
 	&.is-selected {
 		outline: 1px solid var(--wp-admin-theme-color, #007cba);
 		outline-offset: 2px;
-		border-radius: 4px;
+		border-radius: $airo-wp-radius-small;
 	}
 
 	// Hover state in editor
 	&.is-hovered {
 		outline: 1px dashed var(--wp-admin-theme-color, #007cba);
 		outline-offset: 2px;
-		border-radius: 4px;
+		border-radius: $airo-wp-radius-small;
 	}
 
 	// Icon wrapper - matches frontend (style.scss)
@@ -73,7 +74,7 @@
 		}
 
 		&.shape-rounded {
-			border-radius: 8px;
+			border-radius: $airo-wp-radius-medium;
 		}
 	}
 
@@ -108,5 +109,5 @@
 .airo-wp-grid--has-hover-icon:hover .airo-wp-grid__inner > .airo-wp-icon .airo-wp-icon__wrapper,
 .airo-wp-stack--has-hover-icon:hover .airo-wp-stack__inner > .airo-wp-icon .airo-wp-icon__wrapper {
 	background-color: var(--airo-wp-parent-hover-icon-bg) !important;
-	transition: background-color 0.3s ease;
+	transition: background-color $airo-wp-duration-normal $airo-wp-easing;
 }

@@ -4,6 +4,8 @@
  * Implements expandable panels with background images and overlays
  */
 
+@use '../../styles/variables' as *;
+
 .airo-wp-image-accordion-item {
 	// Position and layout
 	position: relative;
@@ -12,7 +14,7 @@
 	cursor: pointer;
 
 	// Smooth transition on flex property
-	transition: flex var(--transition-duration, 0.5s) cubic-bezier(0.4, 0, 0.2, 1);
+	transition: flex var(--transition-duration, $airo-wp-duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 
 	// Background image must always cover the item regardless of what the Styles
 	// panel sets inline — allowing `auto`/`contain` breaks the accordion layout.
@@ -57,7 +59,7 @@
 			)
 		);
 		opacity: var(--airo-wp-resolved-overlay-opacity);
-		transition: opacity 0.3s ease;
+		transition: opacity $airo-wp-duration-normal ease;
 		pointer-events: none;
 		z-index: 1;
 	}
@@ -83,21 +85,23 @@
 		position: relative;
 		z-index: 2;
 		// Default padding: L (top/bottom), M (left/right)
-		padding-top: var(--wp--preset--spacing--large, 2rem);
-		padding-bottom: var(--wp--preset--spacing--large, 2rem);
-		padding-left: var(--wp--preset--spacing--medium, 1.5rem);
-		padding-right: var(--wp--preset--spacing--medium, 1.5rem);
+		padding-block: var(--wp--preset--spacing--large, 2rem);
+		padding-inline: var(--wp--preset--spacing--medium, 1.5rem);
 		height: 100%;
 		display: flex;
 		flex-direction: column;
 		// Use alignment from attributes
 		justify-content: var(--airo-wp-vertical-alignment, center);
 		align-items: var(--airo-wp-horizontal-alignment, center);
+		// Fixed white, not themed: this text sits over an author photo plus a
+		// dark scrim (the overlay above), so a theme's text-color preset could
+		// easily go dark-on-dark here. Same reasoning as the focus-ring mixin's
+		// slider-arrow note.
 		color: #fff;
 
 		// Smooth content opacity transition
 		opacity: 0.9;
-		transition: opacity 0.3s ease;
+		transition: opacity $airo-wp-duration-normal ease;
 
 		// Make all text white for readability over images
 		h1, h2, h3, h4, h5, h6,
@@ -168,6 +172,13 @@
 		outline: none;
 	}
 
+	// Inset: items sit edge to edge, and the accordion clips its overflow.
+	&:focus-visible {
+		outline: 3px solid #fff;
+		outline-offset: -3px;
+		box-shadow: inset 0 0 0 5px rgba(0, 0, 0, 0.6);
+	}
+
 	// Note: Hover interactions are handled by JavaScript (view.js)
 	// which adds/removes is-expanded and is-collapsed classes
 }
@@ -193,6 +204,6 @@
 
 	.airo-wp-image-accordion-item {
 		flex: 1 !important;
-		page-break-inside: avoid;
+		break-inside: avoid;
 	}
 }

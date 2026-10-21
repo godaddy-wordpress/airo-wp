@@ -11,20 +11,15 @@ import classnames from 'classnames';
 import {
 	useBlockProps,
 	InspectorControls,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseColorProps as useColorProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseBorderProps as useBorderProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalGetSpacingClassesAndStyles as getSpacingClassesAndStyles,
 } from '@wordpress/block-editor';
 import {
 	RangeControl,
 	ToggleControl,
 	TextControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalToggleGroupControl as ToggleGroupControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalToggleGroupControlOption as ToggleGroupControlOption,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
@@ -389,7 +384,7 @@ export default function IconEdit({
 									'airo-wp'
 								)}
 								help={__(
-									'Provide a brief description of what the icon represents (e.g., "Search", "Shopping cart", "Download").',
+									'Describe what the icon means (e.g., "Search", "Shopping cart"). Left empty, the icon is hidden from screen readers unless it links somewhere.',
 									'airo-wp'
 								)}
 								__next40pxDefaultSize

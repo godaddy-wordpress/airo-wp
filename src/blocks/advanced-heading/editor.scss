@@ -91,3 +91,9 @@
 .airo-wp-advanced-heading.has-text-align-right .airo-wp-advanced-heading__inner {
 	text-align: right;
 }
+
+// A saved line break starts a new line; it must not acquire a synthetic word gap.
+.airo-wp-advanced-heading .airo-wp-heading-segment:has(.airo-wp-heading-segment__text > br:last-child) + .airo-wp-heading-segment .airo-wp-heading-segment__text,
+.airo-wp-advanced-heading .airo-wp-heading-segment .airo-wp-heading-segment__text:has(> br:first-child) {
+	margin-inline-start: 0;
+}

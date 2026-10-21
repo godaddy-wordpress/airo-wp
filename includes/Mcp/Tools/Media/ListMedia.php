@@ -82,9 +82,15 @@ class ListMedia extends BaseTool {
 		$context       = isset( $input['context'] ) ? $input['context'] : 'view';
 
 		if ( $query->have_posts() ) {
+			$this->prime_parent_caches( $query->posts );
+
 			while ( $query->have_posts() ) {
 				$query->the_post();
 				$post = get_post();
+
+				if ( ! current_user_can( 'read_post', $post->ID ) ) {
+					continue;
+				}
 
 				$complete_media_data = $this->build_media_data( $post, $context, $include_meta );
 
@@ -558,7 +564,7 @@ class ListMedia extends BaseTool {
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of media items matching the query', 'airo-wp' ),
+					'description' => __( 'Total number of media items matching the query, before per-item permission filtering; a page may hold fewer than per_page items', 'airo-wp' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',

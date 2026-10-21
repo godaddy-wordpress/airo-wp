@@ -2,10 +2,7 @@
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
-import {
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
-	__experimentalUnitControl as UnitControl,
-} from '@wordpress/components';
+import { __experimentalUnitControl as UnitControl } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../../../components/shared';
 
 /**

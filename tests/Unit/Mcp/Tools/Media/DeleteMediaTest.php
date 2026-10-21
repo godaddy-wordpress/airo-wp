@@ -58,6 +58,7 @@ final class DeleteMediaTest extends TestCase {
         $post->post_type   = 'attachment';
         $post->post_title  = 'Test Image';
 
+        Functions\when( 'current_user_can' )->justReturn( true );
         Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
         Functions\expect( 'wp_get_attachment_url' )->with( 10 )->andReturn( 'https://example.com/image.jpg' );
         Functions\expect( 'wp_delete_attachment' )->with( 10, true )->andReturn( false );
@@ -73,6 +74,7 @@ final class DeleteMediaTest extends TestCase {
         $post->post_type   = 'attachment';
         $post->post_title  = 'Test Image';
 
+        Functions\when( 'current_user_can' )->justReturn( true );
         Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
         Functions\expect( 'wp_get_attachment_url' )->with( 10 )->andReturn( 'https://example.com/image.jpg' );
         Functions\expect( 'wp_delete_attachment' )->with( 10, true )->andReturn( $post );
@@ -83,5 +85,19 @@ final class DeleteMediaTest extends TestCase {
         $this->assertSame( 10, $result['deleted_media']['id'] );
         $this->assertSame( 'Test Image', $result['deleted_media']['title'] );
         $this->assertSame( 'https://example.com/image.jpg', $result['deleted_media']['url'] );
+    }
+
+    public function test_permission_denied_returns_error(): void {
+        $post            = new \stdClass();
+        $post->ID        = 10;
+        $post->post_type = 'attachment';
+        Functions\expect( 'get_post' )->with( 10 )->andReturn( $post );
+        Functions\expect( 'current_user_can' )->with( 'delete_post', 10 )->andReturn( false );
+        Functions\expect( 'wp_delete_attachment' )->never();
+
+        $result = $this->tool->execute( array( 'media_id' => 10 ) );
+
+        $this->assertFalse( $result['success'] );
+        $this->assertStringContainsString( 'permission', $result['message'] );
     }
 }

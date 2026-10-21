@@ -57,6 +57,7 @@
 		]
 	},
 	"supports": {
+		"anchor": true,
 		"html": false,
 		"reusable": false,
 		"spacing": {
@@ -107,5 +108,5 @@
 	},
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
-	"style": "file:./index.css"
+	"style": "file:./style-index.css"
 }

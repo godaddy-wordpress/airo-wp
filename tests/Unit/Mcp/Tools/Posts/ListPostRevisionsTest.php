@@ -71,5 +71,18 @@ namespace GoDaddy\WordPress\Plugins\AiroWp\Tests\Unit\Mcp\Tools\Posts {
 			$this->assertFalse( $result['success'] );
 			$this->assertStringContainsString( '999', $result['message'] );
 		}
+
+		public function test_permission_denied_on_parent_returns_error(): void {
+			$parent            = new \stdClass();
+			$parent->ID        = 5;
+			$parent->post_type = 'post';
+			Functions\expect( 'get_post' )->with( 5 )->andReturn( $parent );
+			Functions\expect( 'current_user_can' )->with( 'edit_post', 5 )->andReturn( false );
+
+			$result = $this->tool->execute( array( 'parent' => 5 ) );
+
+			$this->assertFalse( $result['success'] );
+			$this->assertStringContainsString( 'permission', $result['message'] );
+		}
 	}
 }

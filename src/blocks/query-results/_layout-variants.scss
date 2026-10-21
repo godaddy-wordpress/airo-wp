@@ -6,6 +6,8 @@
 // (`.airo-wp-query__editor-preview-list`) so authors see the same thing in the
 // inserter preview as on the published page.
 
+@use '../../styles/variables' as *;
+
 // Magazine ────────────────────────────────────────────────────────────────
 // Default-ish card. Date as faint meta above the title; excerpt tight.
 .airo-wp-query-results.is-layout-magazine {
@@ -88,7 +90,7 @@
 		.airo-wp-query__item .wp-block-airo-wp-section {
 			padding: 1.5rem;
 			background: var(--wp--preset--color--base-2, rgba(0, 0, 0, 0.04));
-			border-radius: 8px;
+			border-radius: $airo-wp-radius-medium;
 			display: flex;
 			flex-direction: column;
 			gap: 1rem;
@@ -138,7 +140,7 @@
 		.airo-wp-query__item .wp-block-airo-wp-section {
 			position: relative;
 			overflow: hidden;
-			border-radius: 6px;
+			border-radius: $airo-wp-radius-medium;
 			isolation: isolate;
 			padding: 0;
 		}
@@ -236,7 +238,7 @@
 				height: 96px;
 				aspect-ratio: 1 / 1;
 				object-fit: cover;
-				border-radius: 6px;
+				border-radius: $airo-wp-radius-medium;
 			}
 		}
 

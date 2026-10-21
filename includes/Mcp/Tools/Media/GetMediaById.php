@@ -86,6 +86,18 @@ class GetMediaById extends BaseTool {
 			);
 		}
 
+		// read_post takes the parent's status but the attachment type's caps, so a private
+		// page's attachment needs read_private_posts, not read_private_pages. Core REST
+		// (check_read_permission) grants at least as much: it also falls back to reading
+		// the parent. Report hidden attachments as missing.
+		if ( ! current_user_can( 'read_post', $media_id ) ) {
+			return array(
+				'success' => false,
+				/* translators: %d: Media ID */
+				'message' => sprintf( __( 'Media with ID %d not found', 'airo-wp' ), $media_id ),
+			);
+		}
+
 		$attachment_metadata = wp_get_attachment_metadata( $media_id );
 		$file_path           = get_attached_file( $media_id );
 		$file_size           = $file_path && file_exists( $file_path ) ? filesize( $file_path ) : 0;
@@ -115,7 +127,7 @@ class GetMediaById extends BaseTool {
 			);
 		}
 
-		if ( ! empty( $input['include_meta'] ) ) {
+		if ( ! empty( $input['include_meta'] ) && current_user_can( 'edit_post', $media_id ) ) {
 			$result['meta'] = get_post_meta( $media_id );
 		}
 

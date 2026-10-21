@@ -58,21 +58,25 @@ class ListPosts extends BaseTool {
 		$post_type  = $query_args['post_type'];
 		$status     = $query_args['post_status'];
 
-		// check_permissions() only validates edit_posts for built-in types; custom post
-		// types may register different edit caps, so verify against the actual type cap.
-		$builtin_types = array( 'post', 'page', 'attachment', 'revision', 'nav_menu_item' );
-		if ( ! in_array( $post_type, $builtin_types, true ) ) {
-			$post_type_obj = get_post_type_object( $post_type );
-			if ( ! $post_type_obj ) {
-				return array(
-					'success' => false,
-					'message' => sprintf(
-						/* translators: %s: post type slug */
-						__( 'Invalid post type: %s', 'airo-wp' ),
-						$post_type
-					),
-				);
-			}
+		$post_type_obj = get_post_type_object( $post_type );
+		if ( ! $post_type_obj ) {
+			return array(
+				'success' => false,
+				'message' => sprintf(
+					/* translators: %s: post type slug */
+					__( 'Invalid post type: %s', 'airo-wp' ),
+					$post_type
+				),
+			);
+		}
+
+		// check_permissions() only validates edit_posts. Custom types may register different
+		// edit caps, and can_read_post() drops every item of a non-viewable type (revision,
+		// nav_menu_item, wp_template, ...) without that type's edit cap, so refuse up front
+		// rather than return a silently empty page. These types skip that type-cap gate;
+		// their items still go through can_read_post().
+		$ungated_types = array( 'post', 'page', 'attachment' );
+		if ( ! in_array( $post_type, $ungated_types, true ) || ! is_post_type_viewable( $post_type_obj ) ) {
 			if ( ! current_user_can( $post_type_obj->cap->edit_posts ) ) {
 				return array(
 					'success' => false,
@@ -85,8 +89,7 @@ class ListPosts extends BaseTool {
 		// requires edit_others_posts (or the type-specific equivalent).
 		$non_public = array( 'private', 'draft', 'pending', 'future', 'trash', 'any' );
 		if ( in_array( $status, $non_public, true ) ) {
-			$post_type_obj   = get_post_type_object( $post_type );
-			$edit_others_cap = $post_type_obj ? $post_type_obj->cap->edit_others_posts : 'edit_others_posts';
+			$edit_others_cap = $post_type_obj->cap->edit_others_posts;
 			if ( ! current_user_can( $edit_others_cap ) ) {
 				return array(
 					'success' => false,
@@ -105,9 +108,20 @@ class ListPosts extends BaseTool {
 			|| in_array( 'featured_media_id', array_map( 'sanitize_key', $fields_filter ), true );
 
 		if ( $query->have_posts() ) {
+			// Only attachments and revisions resolve their parent during read_post.
+			if ( in_array( $post_type, array( 'attachment', 'revision' ), true ) ) {
+				$this->prime_parent_caches( $query->posts );
+			}
+
 			while ( $query->have_posts() ) {
 				$query->the_post();
 				$post = get_post();
+
+				// Same rule as get-post, applied per item: revisions and attachments
+				// resolve through their parent, which the status guard above cannot see.
+				if ( ! $this->can_read_post( $post ) ) {
+					continue;
+				}
 
 				$complete_post_data = $this->build_post_data( $post, $context, $include_meta, $include_featured );
 
@@ -222,25 +236,28 @@ class ListPosts extends BaseTool {
 			'menu_order' => (int) $post->menu_order,
 		);
 
+		$can_edit     = current_user_can( 'edit_post', $post->ID );
+		$hide_content = $this->is_content_withheld( $post, $can_edit );
+
 		if ( $include_featured ) {
 			$post_data['featured_media_id'] = (int) get_post_thumbnail_id( $post->ID );
 		}
 
 		switch ( $context ) {
 			case 'embed':
-				$post_data['excerpt']       = wp_trim_words( $post->post_excerpt ? $post->post_excerpt : $post->post_content, 55 );
+				$post_data['excerpt']       = $hide_content ? '' : wp_trim_words( $post->post_excerpt ? $post->post_excerpt : $post->post_content, 55 );
 				$post_data['date_created']  = $post->post_date;
 				$post_data['date_modified'] = $post->post_modified;
 				break;
 
 			case 'edit':
-				$post_data['content']       = $post->post_content;
-				$post_data['excerpt']       = $post->post_excerpt;
+				$post_data['content']       = $hide_content ? '' : $post->post_content;
+				$post_data['excerpt']       = $hide_content ? '' : $post->post_excerpt;
 				$post_data['author_id']     = (int) $post->post_author;
 				$post_data['date_created']  = $post->post_date;
 				$post_data['date_modified'] = $post->post_modified;
 
-				if ( $include_meta ) {
+				if ( $include_meta && $can_edit ) {
 					$post_data['meta'] = get_post_meta( $post->ID );
 				}
 				break;
@@ -248,13 +265,13 @@ class ListPosts extends BaseTool {
 			case 'view':
 			default:
 				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- applying core WP filter.
-				$post_data['content']       = apply_filters( 'the_content', $post->post_content );
-				$post_data['excerpt']       = $post->post_excerpt;
+				$post_data['content']       = $hide_content ? '' : apply_filters( 'the_content', $post->post_content );
+				$post_data['excerpt']       = $hide_content ? '' : $post->post_excerpt;
 				$post_data['author_id']     = (int) $post->post_author;
 				$post_data['date_created']  = $post->post_date;
 				$post_data['date_modified'] = $post->post_modified;
 
-				if ( $include_meta ) {
+				if ( $include_meta && $can_edit ) {
 					$post_data['meta'] = get_post_meta( $post->ID );
 				}
 				break;
@@ -462,7 +479,7 @@ class ListPosts extends BaseTool {
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of posts matching the query', 'airo-wp' ),
+					'description' => __( 'Total number of posts matching the query, before per-item permission filtering; a page may hold fewer than per_page items', 'airo-wp' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',

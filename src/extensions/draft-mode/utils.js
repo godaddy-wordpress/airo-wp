@@ -20,9 +20,41 @@ export function clearDirtyState() {
 		wp.data.dispatch('core/editor').resetEditorBlocks(currentBlocks, {
 			__unstableShouldCreateUndoLevel: false,
 		});
-	} catch (e) {
+	} catch {
 		// Silent fail - navigation will proceed anyway.
 	}
+}
+
+/**
+ * Whether the most recent editor save went through.
+ *
+ * `savePost()` resolves even when the request fails, so callers that go on to
+ * do something irreversible (merge a draft into the live page) must check this
+ * first, otherwise they publish a stale copy of the content.
+ *
+ * @return {boolean} True when the last save succeeded and nothing is saving.
+ */
+export function didSaveSucceed() {
+	try {
+		const editor = wp.data.select('core/editor');
+		return (
+			!editor.isSavingPost() &&
+			editor.didPostSaveRequestSucceed() &&
+			!editor.didPostSaveRequestFail?.()
+		);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Whether an API error is the "live page changed since the draft" conflict.
+ *
+ * @param {Object} err Error thrown by apiFetch.
+ * @return {boolean} True for a draft_conflict error.
+ */
+export function isConflictError(err) {
+	return err?.code === 'draft_conflict' || err?.data?.status === 409;
 }
 
 /**

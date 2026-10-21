@@ -22,6 +22,7 @@ final class GetPageDraftStatusTest extends TestCase {
 		}
 
 		Functions\when( '__' )->returnArg();
+		Functions\when( 'current_user_can' )->justReturn( true );
 		Functions\when( 'absint' )->alias(
 			function ( $value ) {
 				return abs( (int) $value );
@@ -87,5 +88,25 @@ final class GetPageDraftStatusTest extends TestCase {
 		$this->assertNull( $result['draft_id'] );
 		$this->assertSame( 10, $result['original_id'] );
 		$this->assertTrue( $result['can_create'] );
+	}
+
+	public function test_permission_denied_returns_error(): void {
+		$post              = new \stdClass();
+		$post->ID          = 10;
+		$post->post_type   = 'page';
+		$post->post_status = 'publish';
+
+		Functions\when( 'get_post' )->justReturn( $post );
+		Functions\when( 'current_user_can' )->alias(
+			function ( $cap, $id = null ) {
+				return ! ( 'edit_post' === $cap && 10 === $id );
+			}
+		);
+		Functions\expect( 'get_post_meta' )->never();
+
+		$result = $this->tool->execute( array( 'post_id' => 10 ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
 	}
 }

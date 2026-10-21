@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { __ } from '@wordpress/i18n';
+import { __, _n } from '@wordpress/i18n';
 
 /**
  * Format countdown time for display
@@ -12,43 +12,23 @@ import { __ } from '@wordpress/i18n';
  */
 export function formatCountdownDisplay(timeData, visibilitySettings) {
 	const units = [];
+	const add = (type, value) =>
+		units.push({ value, label: getUnitLabel(type, value), type });
 
 	if (visibilitySettings.showDays) {
-		units.push({
-			value: timeData.days,
-			label:
-				timeData.days === 1
-					? __('Day', 'airo-wp')
-					: __('Days', 'airo-wp'),
-			type: 'days',
-		});
+		add('days', timeData.days);
 	}
 
 	if (visibilitySettings.showHours) {
-		units.push({
-			value: timeData.hours,
-			label:
-				timeData.hours === 1
-					? __('Hour', 'airo-wp')
-					: __('Hours', 'airo-wp'),
-			type: 'hours',
-		});
+		add('hours', timeData.hours);
 	}
 
 	if (visibilitySettings.showMinutes) {
-		units.push({
-			value: timeData.minutes,
-			label: __('Min', 'airo-wp'),
-			type: 'minutes',
-		});
+		add('minutes', timeData.minutes);
 	}
 
 	if (visibilitySettings.showSeconds) {
-		units.push({
-			value: timeData.seconds,
-			label: __('Sec', 'airo-wp'),
-			type: 'seconds',
-		});
+		add('seconds', timeData.seconds);
 	}
 
 	return units;
@@ -57,17 +37,25 @@ export function formatCountdownDisplay(timeData, visibilitySettings) {
 /**
  * Get unit label (singular or plural)
  *
+ * Days and hours go through _n() so each language applies its own plural
+ * rule: French treats 0 as singular, Russian has three forms. Minutes and
+ * seconds are abbreviations with no plural.
+ *
  * @param {string} unitType - Type of unit (days, hours, minutes, seconds)
  * @param {number} value    - Value of the unit
  * @return {string} Label for the unit
  */
 export function getUnitLabel(unitType, value) {
-	const labels = {
-		days: value === 1 ? __('Day', 'airo-wp') : __('Days', 'airo-wp'),
-		hours: value === 1 ? __('Hour', 'airo-wp') : __('Hours', 'airo-wp'),
-		minutes: __('Min', 'airo-wp'),
-		seconds: __('Sec', 'airo-wp'),
-	};
+	switch (unitType) {
+		case 'days':
+			return _n('Day', 'Days', value, 'airo-wp');
+		case 'hours':
+			return _n('Hour', 'Hours', value, 'airo-wp');
+		case 'minutes':
+			return __('Min', 'airo-wp');
+		case 'seconds':
+			return __('Sec', 'airo-wp');
+	}
 
-	return labels[unitType] || '';
+	return '';
 }

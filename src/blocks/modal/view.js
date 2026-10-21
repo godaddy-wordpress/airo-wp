@@ -7,8 +7,10 @@
  * @package
  */
 
-/* global MutationObserver, sessionStorage, localStorage, navigator, history, requestAnimationFrame */
-/* eslint-disable @wordpress/no-global-active-element, no-lonely-if, jsdoc/require-param-type, jsdoc/no-undefined-types */
+/* global MutationObserver, history, requestAnimationFrame */
+/* eslint-disable @wordpress/no-global-active-element */
+
+import { __ } from '@wordpress/i18n';
 
 (function () {
 	'use strict';
@@ -38,7 +40,10 @@
 	 */
 	function safeStorageGet(type, key) {
 		try {
-			const storage = type === 'session' ? sessionStorage : localStorage;
+			const storage =
+				type === 'session'
+					? window.sessionStorage
+					: window.localStorage;
 			return storage.getItem(key);
 		} catch (e) {
 			// Storage access blocked — use memory fallback.
@@ -67,7 +72,10 @@
 	 */
 	function safeStorageSet(type, key, value) {
 		try {
-			const storage = type === 'session' ? sessionStorage : localStorage;
+			const storage =
+				type === 'session'
+					? window.sessionStorage
+					: window.localStorage;
 			storage.setItem(key, value);
 			return;
 		} catch (e) {
@@ -332,29 +340,37 @@
 					return;
 				}
 
-				// If no focusable elements, allow Tab to close modal for accessibility
+				// Recompute when the cache was invalidated (or is empty) so the
+				// list always reflects what is visible right now.
+				this.updateFocusableElements();
+
+				// No focusable elements: keep focus on the dialog instead of
+				// closing it or letting focus escape behind the modal.
 				if (this.focusableElements.length === 0) {
 					e.preventDefault();
-					this.close();
+					if (this.content) {
+						this.content.setAttribute('tabindex', '-1');
+						this.content.focus();
+					}
 					return;
 				}
 
 				const firstElement = this.focusableElements[0];
 				const lastElement =
 					this.focusableElements[this.focusableElements.length - 1];
+				const active = document.activeElement;
+				const activeInList = this.focusableElements.includes(active);
 
 				if (e.shiftKey) {
 					// Shift + Tab
-					if (document.activeElement === firstElement) {
+					if (active === firstElement || !activeInList) {
 						e.preventDefault();
 						lastElement.focus();
 					}
-				} else {
+				} else if (active === lastElement || !activeInList) {
 					// Tab
-					if (document.activeElement === lastElement) {
-						e.preventDefault();
-						firstElement.focus();
-					}
+					e.preventDefault();
+					firstElement.focus();
 				}
 			};
 		}
@@ -428,8 +444,11 @@
 			this.focusableElements = Array.from(
 				this.modal.querySelectorAll(focusableSelectors.join(','))
 			).filter((el) => {
+				// getClientRects() is empty for display:none, but unlike
+				// offsetParent it also works for position:fixed elements.
 				return (
-					el.offsetParent !== null && !el.hasAttribute('aria-hidden')
+					el.getClientRects().length > 0 &&
+					!el.hasAttribute('aria-hidden')
 				);
 			});
 
@@ -598,7 +617,7 @@
 				const value = parts.pop().split(';').shift();
 				try {
 					return decodeURIComponent(value);
-				} catch (e) {
+				} catch {
 					// If decoding fails, return raw value
 					return value;
 				}
@@ -771,7 +790,7 @@
 		 */
 		isMobileDevice() {
 			return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-				navigator.userAgent
+				window.navigator.userAgent
 			);
 		}
 
@@ -1103,7 +1122,7 @@
 			const prevButton = document.createElement('button');
 			prevButton.className = 'airo-wp-modal__gallery-prev';
 			prevButton.setAttribute('type', 'button');
-			prevButton.setAttribute('aria-label', 'Previous');
+			prevButton.setAttribute('aria-label', __('Previous', 'airo-wp'));
 			prevButton.appendChild(this.getNavigationIcon('prev'));
 			prevButton.addEventListener('click', (e) => {
 				e.preventDefault();
@@ -1114,7 +1133,7 @@
 			const nextButton = document.createElement('button');
 			nextButton.className = 'airo-wp-modal__gallery-next';
 			nextButton.setAttribute('type', 'button');
-			nextButton.setAttribute('aria-label', 'Next');
+			nextButton.setAttribute('aria-label', __('Next', 'airo-wp'));
 			nextButton.appendChild(this.getNavigationIcon('next'));
 			nextButton.addEventListener('click', (e) => {
 				e.preventDefault();
@@ -1168,7 +1187,9 @@
 
 			const span = document.createElement('span');
 			if (this.settings.navigationStyle === 'text') {
-				span.textContent = isNext ? 'Next' : 'Previous';
+				span.textContent = isNext
+					? __('Next', 'airo-wp')
+					: __('Previous', 'airo-wp');
 			} else {
 				// Chevrons (default)
 				span.textContent = isNext ? '›' : '‹';
@@ -1223,9 +1244,6 @@
 				this.originalNextSibling = this.modal.nextSibling;
 				document.body.appendChild(this.modal);
 			}
-
-			// Update focusable elements
-			this.updateFocusableElements();
 
 			// Attach keyboard listeners (ESC and Tab)
 			this.attachKeyboardListeners();
@@ -1310,6 +1328,10 @@
 			if (this.settings.galleryGroupId) {
 				this.renderNavigationButtons();
 			}
+
+			// The modal is displayed now, so visibility checks are meaningful.
+			this.focusableElementsCached = false;
+			this.updateFocusableElements();
 
 			// Focus the first focusable element or the content
 			if (this.focusableElements.length > 0) {

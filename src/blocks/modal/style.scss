@@ -5,6 +5,8 @@
  */
 
 @use '../../styles/variables' as *;
+@use './surface' as *;
+@use '../../styles/mixins' as *;
 
 // Modal Container
 .airo-wp-modal {
@@ -34,7 +36,7 @@
 		right: 0;
 		bottom: 0;
 		z-index: 1; // Relative z-index within modal container (modal is z-index: 1050 globally)
-		transition: opacity 0.3s ease;
+		transition: opacity $airo-wp-duration-normal ease;
 		// Default scrim color. An author-set overlay color is written inline by
 		// save() and wins; otherwise the theme token owns it:
 		//   1. --wp--custom--airo-wp--modal--overlay-color — theme.json /
@@ -61,8 +63,9 @@
 	// Modal Content
 	&__content {
 		position: relative;
-		background: #fff;
-		border-radius: 8px;
+		// Explicit block support styles win over the shared legacy-safe default.
+		background: $airo-wp-modal-background;
+		border-radius: $airo-wp-radius-medium;
 		overflow: auto; // Allows scrolling in both directions
 		max-height: 90vh;
 		padding: 24px;
@@ -86,8 +89,9 @@
 		z-index: 10;
 		background: transparent;
 		border: none;
-		border-radius: 0;
+		border-radius: $airo-wp-radius-none;
 		cursor: pointer;
+		// Match the legacy white surface; an authored close color wins inline.
 		color: #000;
 		transition: all 0.2s ease;
 		display: flex;
@@ -102,7 +106,7 @@
 		}
 
 		&:focus {
-			outline: 2px solid #007cba;
+			outline: 2px solid var(--wp--preset--color--primary, #007cba);
 			outline-offset: 2px;
 		}
 
@@ -325,7 +329,7 @@ body.airo-wp-modal-open {
 }
 
 // Responsive Adjustments
-@media (max-width: 768px) {
+@media (max-width: #{$breakpoint-mobile}) {
 
 	.airo-wp-modal {
 
@@ -358,6 +362,7 @@ body.airo-wp-modal-open {
 	}
 }
 
+// 480px is a small-phone tier with no dedicated token; kept literal.
 @media (max-width: 480px) {
 
 	.airo-wp-modal {
@@ -369,7 +374,10 @@ body.airo-wp-modal-open {
 
 		&__content {
 			max-height: calc(100vh - 60px);
-			border-radius: 12px; // Slightly larger radius on mobile for modern look
+			// 12px sits in the "12-16px → large" token bucket; snapping to
+			// $airo-wp-radius-large (1rem) would visibly grow it by 4px on a
+			// small screen, so it's kept literal here.
+			border-radius: 12px;
 		}
 	}
 }
@@ -423,6 +431,10 @@ body.airo-wp-modal-open {
 }
 
 // Gallery Navigation Buttons
+// Fixed dark-scrim + white treatment is intentional here, not themed: like the
+// focus-ring mixin's slider arrows, these float over author-supplied gallery
+// photography rather than a themed surface, so a guaranteed-contrast pair
+// beats a preset that might vanish against a similarly-toned photo.
 .airo-wp-modal__gallery-prev,
 .airo-wp-modal__gallery-next {
 	background: rgba(0, 0, 0, 0.5);
@@ -445,7 +457,7 @@ body.airo-wp-modal-open {
 	}
 
 	&:focus {
-		outline: 2px solid #007cba;
+		outline: 2px solid var(--wp--preset--color--primary, #007cba);
 		outline-offset: 2px;
 	}
 
@@ -460,14 +472,15 @@ body.airo-wp-modal-open {
 
 	// Text style
 	.airo-wp-modal__gallery-nav--text & {
-		border-radius: 4px;
+		border-radius: $airo-wp-radius-small;
 		width: auto;
 		padding: 8px 16px;
-		font-size: 14px;
+		font-size: var(--wp--preset--font-size--small, 14px);
 		font-weight: 500;
 	}
 
-	// Chevron style
+	// Chevron style. Large glyph size is an icon substitute, not body text, so
+	// it stays literal rather than mapping to a content font-size preset.
 	.airo-wp-modal__gallery-nav--chevrons & {
 		font-size: 32px;
 		font-weight: 300;
@@ -476,7 +489,7 @@ body.airo-wp-modal-open {
 }
 
 // Responsive adjustments for gallery navigation
-@media (max-width: 768px) {
+@media (max-width: #{$breakpoint-mobile}) {
 
 	.airo-wp-modal__gallery-prev,
 	.airo-wp-modal__gallery-next {
@@ -498,6 +511,7 @@ body.airo-wp-modal-open {
 	}
 }
 
+// 480px is a small-phone tier with no dedicated token; kept literal.
 @media (max-width: 480px) {
 
 	.airo-wp-modal__gallery-prev,
@@ -545,7 +559,7 @@ body.airo-wp-modal-open {
 		max-height: 100%;
 		align-items: stretch;
 		justify-content: stretch;
-		transition: transform 0.3s ease;
+		transition: transform $airo-wp-duration-normal ease;
 		will-change: transform;
 	}
 
@@ -558,7 +572,7 @@ body.airo-wp-modal-open {
 		width: 100%;
 		height: 100%;
 		max-height: 100%;
-		border-radius: 0;
+		border-radius: $airo-wp-radius-none;
 		overflow-y: auto;
 	}
 

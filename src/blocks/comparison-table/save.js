@@ -5,9 +5,9 @@
  * Includes data attributes for tooltip behavior handled by view.js.
  */
 
-import { __ } from '@wordpress/i18n';
 import { useBlockProps, RichText } from '@wordpress/block-editor';
 import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+import { getCtaFallback, getFeaturedBadgeText } from './utils/fallback-labels';
 
 /**
  * Save component for the Comparison Table block
@@ -27,7 +27,12 @@ export default function ComparisonTableSave({ attributes }) {
 		headerTextColor,
 		showCtaButtons,
 		ctaStyle,
+		featuredBadgeText,
+		savedCtaTexts,
 	} = attributes;
+
+	// Fallback labels are read back from the stored markup, so opening the
+	// post in another editor language keeps the block valid.
 
 	const blockProps = useBlockProps.save({
 		className: [
@@ -64,13 +69,18 @@ export default function ComparisonTableSave({ attributes }) {
 					{/* Header Row */}
 					<thead className="airo-wp-comparison-table__header">
 						<tr>
-							{/* Feature label column header */}
-							<th className="airo-wp-comparison-table__header-cell airo-wp-comparison-table__header-cell--label"></th>
+							{/*
+							 * Feature label column corner. A <td>, not an empty
+							 * <th>: it labels nothing, and an empty header is
+							 * announced as a blank column heading.
+							 */}
+							<td className="airo-wp-comparison-table__header-cell airo-wp-comparison-table__header-cell--label"></td>
 
 							{/* Column headers */}
 							{columns.map((col, colIndex) => (
 								<th
 									key={colIndex}
+									scope="col"
 									className={[
 										'airo-wp-comparison-table__header-cell',
 										col.featured &&
@@ -81,7 +91,9 @@ export default function ComparisonTableSave({ attributes }) {
 								>
 									{col.featured && (
 										<span className="airo-wp-comparison-table__featured-badge">
-											{__('Popular', 'airo-wp')}
+											{getFeaturedBadgeText(
+												featuredBadgeText
+											)}
 										</span>
 									)}
 
@@ -98,7 +110,11 @@ export default function ComparisonTableSave({ attributes }) {
 											rel="noopener noreferrer"
 										>
 											{col.linkText ||
-												__('Get Started', 'airo-wp')}
+												getCtaFallback(
+													columns,
+													savedCtaTexts,
+													colIndex
+												)}
 										</a>
 									)}
 
@@ -123,8 +139,11 @@ export default function ComparisonTableSave({ attributes }) {
 								key={rowIndex}
 								className="airo-wp-comparison-table__row"
 							>
-								{/* Feature label */}
-								<td className="airo-wp-comparison-table__cell airo-wp-comparison-table__cell--label">
+								{/* Feature label: the row header for its cells */}
+								<th
+									scope="row"
+									className="airo-wp-comparison-table__cell airo-wp-comparison-table__cell--label"
+								>
 									<div className="airo-wp-comparison-table__label-wrapper">
 										<RichText.Content
 											tagName="span"
@@ -143,7 +162,7 @@ export default function ComparisonTableSave({ attributes }) {
 											</span>
 										)}
 									</div>
-								</td>
+								</th>
 
 								{/* Cells */}
 								{row.cells.map((cell, colIndex) => (
@@ -165,8 +184,6 @@ export default function ComparisonTableSave({ attributes }) {
 												<svg
 													xmlns="http://www.w3.org/2000/svg"
 													viewBox="0 0 24 24"
-													width="20"
-													height="20"
 													fill="none"
 													stroke="currentColor"
 													strokeWidth="2.5"
@@ -184,8 +201,6 @@ export default function ComparisonTableSave({ attributes }) {
 												<svg
 													xmlns="http://www.w3.org/2000/svg"
 													viewBox="0 0 24 24"
-													width="20"
-													height="20"
 													fill="none"
 													stroke="currentColor"
 													strokeWidth="2.5"

@@ -25,6 +25,7 @@ final class CreatePageDraftTest extends TestCase {
 		Functions\when( 'sanitize_text_field' )->returnArg();
 		Functions\when( 'sanitize_textarea_field' )->returnArg();
 		Functions\when( 'wp_kses_post' )->returnArg();
+		Functions\when( 'current_user_can' )->justReturn( true );
 
 		$this->service = new DraftPageService();
 		$this->tool    = new CreatePageDraft( $this->service );
@@ -165,5 +166,25 @@ final class CreatePageDraftTest extends TestCase {
 		) );
 
 		$this->assertSame( 1, $kses_called, 'wp_kses_post must be called exactly once for post_content' );
+	}
+
+	public function test_permission_denied_returns_error(): void {
+		$post              = new \stdClass();
+		$post->ID          = 10;
+		$post->post_type   = 'page';
+		$post->post_status = 'publish';
+
+		Functions\when( 'get_post' )->justReturn( $post );
+		Functions\when( 'current_user_can' )->alias(
+			function ( $cap, $id = null ) {
+				return ! ( 'edit_post' === $cap && 10 === $id );
+			}
+		);
+		Functions\expect( 'wp_insert_post' )->never();
+
+		$result = $this->tool->execute( array( 'post_id' => 10 ) );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'permission', $result['message'] );
 	}
 }

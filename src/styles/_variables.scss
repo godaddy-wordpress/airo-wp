@@ -5,9 +5,30 @@
  */
 
 // Breakpoints
+// Query "below" a breakpoint with `max-width: $bp - 1px` and "at or above" it
+// with `min-width: $bp` (the `below` / `from` mixins do this), so no viewport
+// width ever matches both sides.
+$breakpoint-small: 600px; // WordPress core's small breakpoint.
 $breakpoint-mobile: 768px;
+$breakpoint-wp-medium: 782px; // WordPress core: columns stack, admin bar resizes.
 $breakpoint-tablet: 1024px;
 $breakpoint-desktop: 1280px;
+
+// Design tokens
+// Each resolves a `settings.custom.airowp.*` value from theme.json or a
+// Style Kit, falling back to the plugin default. Use these instead of literal
+// radii and durations so a theme can retune every block at once. The radius
+// names match the existing `.airo-wp-rounded-*` utilities.
+$airo-wp-radius-none: var(--wp--custom--airo-wp--border-radius--none, 0);
+$airo-wp-radius-small: var(--wp--custom--airo-wp--border-radius--small, 0.25rem);
+$airo-wp-radius-medium: var(--wp--custom--airo-wp--border-radius--medium, 0.5rem);
+$airo-wp-radius-large: var(--wp--custom--airo-wp--border-radius--large, 1rem);
+$airo-wp-radius-full: var(--wp--custom--airo-wp--border-radius--full, 9999px);
+
+$airo-wp-duration-fast: var(--wp--custom--airo-wp--duration--fast, 150ms);
+$airo-wp-duration-normal: var(--wp--custom--airo-wp--duration--normal, 300ms);
+$airo-wp-duration-slow: var(--wp--custom--airo-wp--duration--slow, 500ms);
+$airo-wp-easing: var(--wp--custom--airo-wp--easing, ease);
 
 // Z-index layers
 $z-index-base: 1;

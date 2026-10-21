@@ -142,6 +142,7 @@ function getPlaceholderText(placeholder, phoneFormat) {
  * the dynamic block saves no inner HTML and never matches this signature.
  */
 const vStatic = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: sharedAttributes,
 
@@ -259,6 +260,7 @@ const vStatic = {
  * new content and uniquely identifies this legacy era.
  */
 const v4 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: sharedAttributes,
 
@@ -368,6 +370,7 @@ const v4 = {
  * the current save format and hydrates the <select> with inline options.
  */
 const v3 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: sharedAttributes,
 
@@ -490,6 +493,7 @@ const v3 = {
  * now populated by view.js at runtime.
  */
 const v2 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: sharedAttributes,
 
@@ -668,6 +672,7 @@ const v2 = {
  * standard `selected` attribute on individual <option> elements.
  */
 const v1 = {
+	apiVersion: 3,
 	supports: sharedSupports,
 	attributes: sharedAttributes,
 

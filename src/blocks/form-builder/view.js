@@ -7,13 +7,41 @@
  */
 
 import { __ } from '@wordpress/i18n';
+import { initFormConditions } from './conditions-dom';
+import { initFormSteps } from './steps-dom';
 
-/* global airowpForm, dsgoIntegrations, sessionStorage */
+/* global airowpForm, dsgoIntegrations */
 
 // Track Turnstile script loading state
 let turnstileScriptLoaded = false;
 let turnstileScriptLoading = false;
 const turnstileLoadCallbacks = [];
+
+/**
+ * Read the plugin's own JSON error from a response, if that is what it is.
+ *
+ * The plugin answers 429 itself (rate limit, submitted too fast), and so does
+ * a host or CDN that blocks the request. Only the plugin's body has the
+ * REST error shape ({ code, message }) or the admin-ajax one
+ * ({ success: false, data: { message } }); a host returns HTML or nothing.
+ *
+ * @param {Response} response A response the caller may still read (clone it).
+ * @return {Promise<string>} The plugin's message, or '' when it is not one.
+ */
+async function readPluginError(response) {
+	try {
+		const body = await response.json();
+		if (body && typeof body.code === 'string' && body.message) {
+			return String(body.message);
+		}
+		if (body && body.success === false && body.data?.message) {
+			return String(body.data.message);
+		}
+	} catch {
+		// Not JSON: a host or CDN block page.
+	}
+	return '';
+}
 
 /**
  * Load Turnstile script dynamically
@@ -68,15 +96,49 @@ function initFormBuilder() {
 	const forms = document.querySelectorAll('.airo-wp-form-builder');
 
 	forms.forEach((formContainer) => {
+		// Isolate each form: one form's error must not leave later forms
+		// uninitialised (their conditional fields would stay pre-hidden while
+		// still required). Rethrown async so it still reaches the console.
+		try {
+			initForm(formContainer);
+		} catch (error) {
+			setTimeout(() => {
+				throw error;
+			}, 0);
+		}
+	});
+
+	/**
+	 * Wire up one form: conditional fields, anti-spam fields, submission.
+	 *
+	 * @param {HTMLElement} formContainer .airo-wp-form-builder wrapper.
+	 */
+	function initForm(formContainer) {
 		// Guard against duplicate initialization (e.g. bfcache restore)
 		if (formContainer.dataset.dsgoInitialized) {
 			return;
 		}
 		formContainer.dataset.dsgoInitialized = 'true';
 
+		// Conditional fields first, so they're correct before anything else
+		// (and the ready flag the CSS waits for is always set).
+		initFormConditions(
+			formContainer,
+			formContainer.querySelector('.airo-wp-form')
+		);
+
+		// Steps next: they read the conditions' field visibility. Must run
+		// before the early return below so the ready flag is always set.
+
+		const steps = initFormSteps(
+			formContainer,
+			formContainer.querySelector('.airo-wp-form')
+		);
+
 		const formElement = formContainer.querySelector('.airo-wp-form');
+		// [type="submit"]: a multi-step form's Next copies the submit classes.
 		const submitButton = formElement?.querySelector(
-			'.airo-wp-form__submit'
+			'.airo-wp-form__submit[type="submit"]'
 		);
 		const messageContainer = formElement?.querySelector(
 			'.airo-wp-form__message'
@@ -86,14 +148,21 @@ function initFormBuilder() {
 			return;
 		}
 
-		// Add timestamp field dynamically (not in save.js to avoid validation errors)
-		// Set at init time so server can verify user spent >= 3s on page (anti-spam).
+		// Timestamp for the server's "too fast" check (anti-spam). Not in
+		// save.js, to avoid validation errors; the server renders one for
+		// visitors without JavaScript, so reuse it rather than post two.
+		// Set at init time so server can verify user spent >= 3s on page.
 		// Re-set on bfcache restore so stale timestamps don't cause false rejections.
-		const timestampField = document.createElement('input');
-		timestampField.type = 'hidden';
-		timestampField.name = 'dsg_timestamp';
+		let timestampField = formElement.querySelector(
+			'input[name="dsg_timestamp"]'
+		);
+		if (!timestampField) {
+			timestampField = document.createElement('input');
+			timestampField.type = 'hidden';
+			timestampField.name = 'dsg_timestamp';
+			formElement.appendChild(timestampField);
+		}
 		timestampField.value = Date.now();
-		formElement.appendChild(timestampField);
 
 		window.addEventListener('pageshow', function (e) {
 			if (e.persisted) {
@@ -115,6 +184,10 @@ function initFormBuilder() {
 			typeof dsgoIntegrations !== 'undefined'
 				? dsgoIntegrations.turnstileSiteKey
 				: null;
+		// Localized as "1" / "" (wp_localize_script stringifies booleans).
+		const turnstileConfigured =
+			typeof dsgoIntegrations !== 'undefined' &&
+			Boolean(dsgoIntegrations.turnstileConfigured);
 		let turnstileTokenField = null;
 
 		if (turnstileEnabled) {
@@ -124,8 +197,15 @@ function initFormBuilder() {
 			formElement.appendChild(turnstileTokenField);
 		}
 
-		// Initialize Turnstile if enabled
-		if (turnstileEnabled && turnstileContainer && turnstileSiteKey) {
+		// Render the widget only when the server can verify its token too. With
+		// just a site key it would show a challenge nothing checks; the server
+		// then turns the form away with a message instead.
+		if (
+			turnstileEnabled &&
+			turnstileContainer &&
+			turnstileSiteKey &&
+			turnstileConfigured
+		) {
 			loadTurnstileScript()
 				.then(() => {
 					if (!window.turnstile) {
@@ -206,26 +286,36 @@ function initFormBuilder() {
 		const errorMessage = formContainer.getAttribute('data-error-message');
 
 		function ensureNativePostFields() {
-			formElement.action = airowpForm.adminPostUrl;
-			formElement.method = 'post';
-
-			let actionField = formElement.querySelector('input[name="action"]');
-			if (!actionField) {
-				actionField = document.createElement('input');
-				actionField.type = 'hidden';
-				actionField.name = 'action';
-				formElement.appendChild(actionField);
+			// The admin-post action is in this URL's query string, not a hidden
+			// `action` field, so an author's own field named `action` posts
+			// intact. Drop the field a page cached before that change carries.
+			// Such a page also carries the old inline adminPostUrl (a bare
+			// admin-post.php) while this script loads fresh from disk, so add
+			// the action whenever the URL lacks it: removing the field is only
+			// safe once the URL routes the post.
+			const postUrl = new URL(
+				airowpForm.adminPostUrl,
+				window.location.href
+			);
+			if (!postUrl.searchParams.has('action')) {
+				postUrl.searchParams.set('action', 'airowp_form_submit');
 			}
-			actionField.value = 'airowp_form_submit';
-			actionField.defaultValue = actionField.value;
+			formElement.action = postUrl.toString();
+			formElement.method = 'post';
+			formElement
+				.querySelector('input[name="action"][data-airo-wp-system]')
+				?.remove();
 
+			// Only the plugin's own copy (data-airo-wp-system): an author's field
+			// may share the name, and its value must be left alone.
 			let nonceField = formElement.querySelector(
-				'input[name="_wpnonce"]'
+				'input[name="_wpnonce"][data-airo-wp-system]'
 			);
 			if (!nonceField) {
 				nonceField = document.createElement('input');
 				nonceField.type = 'hidden';
 				nonceField.name = '_wpnonce';
+				nonceField.setAttribute('data-airo-wp-system', '');
 				formElement.appendChild(nonceField);
 			}
 			nonceField.value = airowpForm.ajaxNonce;
@@ -234,7 +324,7 @@ function initFormBuilder() {
 
 		function getStoredConfirmation() {
 			try {
-				return sessionStorage.getItem(storageKey);
+				return window.sessionStorage.getItem(storageKey);
 			} catch {
 				return null;
 			}
@@ -242,7 +332,7 @@ function initFormBuilder() {
 
 		function storeConfirmation(message) {
 			try {
-				sessionStorage.setItem(storageKey, message);
+				window.sessionStorage.setItem(storageKey, message);
 			} catch {
 				// sessionStorage unavailable
 			}
@@ -250,7 +340,7 @@ function initFormBuilder() {
 
 		function clearConfirmation() {
 			try {
-				sessionStorage.removeItem(storageKey);
+				window.sessionStorage.removeItem(storageKey);
 			} catch {
 				// sessionStorage unavailable
 			}
@@ -279,10 +369,17 @@ function initFormBuilder() {
 				(params.has('airowp_form_error') || status === 'error')
 			) {
 				clearConfirmation();
+				// Keep the reason the server printed for this result (e.g.
+				// which field to fill in) when the form posted natively.
+				const detail = messageContainer
+					.querySelector('.airo-wp-form__message-detail')
+					?.textContent.trim();
+				const msg =
+					errorMessage ||
+					__('An error occurred. Please try again.', 'airo-wp');
 				showMessage(
 					messageContainer,
-					errorMessage ||
-						__('An error occurred. Please try again.', 'airo-wp'),
+					detail ? `${msg} ${detail}` : msg,
 					'error'
 				);
 				shown = true;
@@ -293,6 +390,7 @@ function initFormBuilder() {
 				const cleanUrl = new URL(window.location.href);
 				cleanUrl.searchParams.delete('airowp_form_success');
 				cleanUrl.searchParams.delete('airowp_form_error');
+				cleanUrl.searchParams.delete('airowp_form_field');
 				cleanUrl.searchParams.delete('airowp_form_status');
 				cleanUrl.searchParams.delete('airowp_form_id');
 				window.history.replaceState(null, '', cleanUrl.href);
@@ -303,7 +401,7 @@ function initFormBuilder() {
 
 		function markTransportBlocked(key) {
 			try {
-				sessionStorage.setItem(key, '1');
+				window.sessionStorage.setItem(key, '1');
 			} catch {
 				// sessionStorage may be unavailable
 			}
@@ -311,9 +409,25 @@ function initFormBuilder() {
 
 		function isTransportBlocked(key) {
 			try {
-				return sessionStorage.getItem(key) === '1';
+				return window.sessionStorage.getItem(key) === '1';
 			} catch {
 				return false;
+			}
+		}
+
+		/**
+		 * Clear the Turnstile token and ask the widget for a fresh one.
+		 *
+		 * The server spends a token the moment it verifies it, so a token that
+		 * went out with a failed submission can never be used again.
+		 */
+		function resetTurnstile() {
+			turnstileToken = null;
+			if (turnstileTokenField) {
+				turnstileTokenField.value = '';
+			}
+			if (turnstileWidgetId !== null && window.turnstile) {
+				window.turnstile.reset(turnstileWidgetId);
 			}
 		}
 
@@ -341,10 +455,35 @@ function initFormBuilder() {
 			}
 			typeMapField.value = JSON.stringify(typeMap);
 
+			// dsg_timestamp holds this browser's clock (set at init), so send
+			// the submit time from the same clock; the server would otherwise
+			// compare it with its own time and reject a fast-running clock.
+			let submittedAtField = formElement.querySelector(
+				'input[name="dsg_submitted_at"]'
+			);
+			if (!submittedAtField) {
+				submittedAtField = document.createElement('input');
+				submittedAtField.type = 'hidden';
+				submittedAtField.name = 'dsg_submitted_at';
+				formElement.appendChild(submittedAtField);
+			}
+			submittedAtField.value = String(Date.now());
+
 			window.HTMLFormElement.prototype.submit.call(formElement);
 		}
 
+		// A result the server printed for visitors without JavaScript. Shown
+		// again below from the URL (replacing it, so it never appears twice),
+		// or hidden: without the URL params it came from a page cache.
+		const hasServerMessage = messageContainer.hasAttribute(
+			'data-airo-wp-server-message'
+		);
+		messageContainer.removeAttribute('data-airo-wp-server-message');
+
 		const shownFromRedirect = showRedirectStatus();
+		if (hasServerMessage && !shownFromRedirect) {
+			hideMessage(messageContainer);
+		}
 
 		// Restore confirmation message persisted from a previous submission (one-time)
 		if (!shownFromRedirect) {
@@ -363,6 +502,16 @@ function initFormBuilder() {
 		if (!ajaxEnabled) {
 			ensureNativePostFields();
 
+			// Multi-step: Enter on an earlier step advances instead of posting
+			// the whole form, and an invalid field on another step is shown there.
+			if (steps.isMultiStep) {
+				formElement.addEventListener('submit', (e) => {
+					if (!steps.beforeSubmit()) {
+						e.preventDefault();
+					}
+				});
+			}
+
 			return;
 		}
 
@@ -378,6 +527,12 @@ function initFormBuilder() {
 			hideMessage(messageContainer);
 			clearConfirmation();
 
+			// Multi-step: Enter on an earlier step advances instead of
+			// submitting, and an invalid field on another step is shown there.
+			if (!steps.beforeSubmit()) {
+				return;
+			}
+
 			// Validate form using HTML5 validation
 			if (!formElement.checkValidity()) {
 				formElement.reportValidity();
@@ -390,8 +545,21 @@ function initFormBuilder() {
 			const originalText = submitButton.textContent;
 			submitButton.setAttribute('aria-busy', 'true');
 
-			// Collect form data
+			// Collect form data, leaving out the admin-post fields rendered for
+			// visitors without JS (data-airo-wp-system). They are skipped by
+			// element, not name: an author's own field may be called `action`.
+			const systemFields = Array.from(
+				formElement.querySelectorAll(
+					'[data-airo-wp-system]:not([name^="dsg_"]):not(:disabled)'
+				)
+			);
+			systemFields.forEach((el) => {
+				el.disabled = true;
+			});
 			const formData = new FormData(formElement);
+			systemFields.forEach((el) => {
+				el.disabled = false;
+			});
 			const fields = [];
 
 			for (const [name, value] of formData.entries()) {
@@ -406,7 +574,7 @@ function initFormBuilder() {
 				}
 
 				const fieldElement = formElement.querySelector(
-					`[name="${name}"]`
+					`[name="${name}"]:not([data-airo-wp-system])`
 				);
 				const fieldType =
 					fieldElement?.getAttribute('data-field-type') ||
@@ -431,7 +599,12 @@ function initFormBuilder() {
 					formId,
 					fields,
 					honeypot: honeypot || '',
-					timestamp: timestamp || Date.now(),
+					timestamp: timestamp || '',
+					// Same clock as `timestamp`, so a visitor whose clock is off
+					// from the server's isn't rejected as "too fast".
+					submittedAt: String(Date.now()),
+					// Form IDs can repeat across pages; this picks the copy on this page.
+					sourcePostId: parseInt(airowpForm.postId, 10) || 0,
 					// Include Turnstile token if available (graceful degradation: empty if failed)
 					turnstile_token: turnstileToken || '',
 				});
@@ -506,8 +679,14 @@ function initFormBuilder() {
 
 					if (restResponse.ok) {
 						result = await restResponse.json();
-					} else if (restResponse.status === 429 && useAjax) {
-						// Remember that REST is blocked for this session
+					} else if (
+						restResponse.status === 429 &&
+						useAjax &&
+						!(await readPluginError(restResponse.clone()))
+					) {
+						// A 429 that is not the plugin's own JSON error comes
+						// from the host or CDN. Remember that REST is blocked
+						// for this session.
 						markTransportBlocked('airowp_rest_blocked');
 						// Fall through to admin-ajax below
 					} else {
@@ -546,7 +725,10 @@ function initFormBuilder() {
 					});
 
 					if (!ajaxResponse.ok) {
-						if (ajaxResponse.status === 429) {
+						if (
+							ajaxResponse.status === 429 &&
+							!(await readPluginError(ajaxResponse.clone()))
+						) {
 							markTransportBlocked('airowp_ajax_blocked');
 							redirecting = true;
 							submitViaNativePost();
@@ -603,20 +785,32 @@ function initFormBuilder() {
 
 					// Reset form
 					formElement.reset();
-					turnstileToken = null;
-					if (turnstileTokenField) {
-						turnstileTokenField.value = '';
-					}
-					if (turnstileWidgetId !== null && window.turnstile) {
-						window.turnstile.reset(turnstileWidgetId);
-					}
+					resetTurnstile();
 
 					// Scroll to message if not visible
-					if (!isElementInViewport(messageContainer)) {
-						messageContainer.scrollIntoView({
-							behavior: 'smooth',
-							block: 'nearest',
-						});
+					const revealMessage = () => {
+						if (!isElementInViewport(messageContainer)) {
+							messageContainer.scrollIntoView({
+								behavior: 'smooth',
+								block: 'nearest',
+							});
+						}
+					};
+					if (steps.isMultiStep) {
+						// reset() sends the steps back to step 1 on a timer, and
+						// hides the focused submit button. After that, hide the
+						// steps so the message stands alone, then measure and
+						// scroll with focus on the message.
+						setTimeout(() => {
+							steps.finish();
+							if (!messageContainer.hasAttribute('tabindex')) {
+								messageContainer.setAttribute('tabindex', '-1');
+							}
+							messageContainer.focus({ preventScroll: true });
+							revealMessage();
+						}, 0);
+					} else {
+						revealMessage();
 					}
 				} else {
 					throw new Error(result.message || errorMessage);
@@ -625,12 +819,15 @@ function initFormBuilder() {
 				// eslint-disable-next-line no-console -- Error logging for debugging
 				console.error('Form submission error:', error);
 
+				// The server may have already spent the Turnstile token.
+				resetTurnstile();
+
 				// Show error message
 				showMessage(
 					messageContainer,
 					error.message ||
 						errorMessage ||
-						'An error occurred. Please try again.',
+						__('An error occurred. Please try again.', 'airo-wp'),
 					'error'
 				);
 
@@ -656,7 +853,7 @@ function initFormBuilder() {
 				}
 			}
 		});
-	});
+	}
 
 	/**
 	 * Show message to user
@@ -666,17 +863,13 @@ function initFormBuilder() {
 	 * @param {string}      type      Message type: 'success' or 'error'
 	 */
 	function showMessage(container, message, type) {
-		container.textContent = message;
+		// The container is itself the live region (status, or alert for
+		// errors), so it announces the text once. Shown before the text is
+		// set, so the region is in the accessibility tree when it changes.
 		container.className = `airo-wp-form__message airo-wp-form__message--${type}`;
 		container.style.display = 'block';
 		container.setAttribute('role', type === 'error' ? 'alert' : 'status');
-
-		// Announce to screen readers
-		const announcement = document.createElement('span');
-		announcement.className = 'screen-reader-text';
-		announcement.textContent = message;
-		announcement.setAttribute('aria-live', 'polite');
-		container.appendChild(announcement);
+		container.textContent = message;
 	}
 
 	/**
@@ -730,5 +923,11 @@ function initFormBuilder() {
 	}
 }
 
-document.addEventListener('DOMContentLoaded', initFormBuilder);
+// Run now if the script loads after parsing (deferred, late or injected),
+// otherwise once the DOM is ready.
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', initFormBuilder);
+} else {
+	initFormBuilder();
+}
 document.addEventListener('airo-wp-content-loaded', initFormBuilder);

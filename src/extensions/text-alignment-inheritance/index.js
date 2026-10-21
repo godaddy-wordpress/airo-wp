@@ -12,13 +12,9 @@
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { useEffect, useRef } from '@wordpress/element';
+import { useWasJustInserted } from '../../hooks/useWasJustInserted';
 import { shouldExtendBlock } from '../../utils/should-extend-block';
-
-/**
- * Track which blocks have already had alignment initialized
- * Using WeakMap so it doesn't persist to database or cause validation issues
- */
-const initializedBlocks = new WeakMap();
+import { isExtensionEnabled } from '../../utils/is-extension-enabled';
 
 /**
  * List of core blocks that support text alignment
@@ -60,11 +56,11 @@ addFilter(
 
 /**
  * Apply inherited alignment from parent container ONCE on insertion
- * Uses WeakMap to track initialization without affecting block validation
+ * Runs only for blocks inserted this session (not on every mount, e.g. post load)
  */
 const withAlignmentInheritance = createHigherOrderComponent((BlockEdit) => {
 	return (props) => {
-		const { name, attributes, setAttributes, context } = props;
+		const { name, attributes, setAttributes, context, clientId } = props;
 
 		// Only apply to text blocks
 		if (!TEXT_BLOCKS.includes(name)) {
@@ -73,7 +69,8 @@ const withAlignmentInheritance = createHigherOrderComponent((BlockEdit) => {
 
 		const { textAlign } = attributes;
 		const parentTextAlign = context['airo-wp/textAlign'];
-		const isInitialized = useRef(initializedBlocks.get(props) || false);
+		const isInitialized = useRef(false);
+		const justInserted = useWasJustInserted(clientId);
 
 		// One-time alignment inheritance on block insertion
 		useEffect(() => {
@@ -84,12 +81,13 @@ const withAlignmentInheritance = createHigherOrderComponent((BlockEdit) => {
 
 			// Mark as initialized immediately to prevent re-running
 			isInitialized.current = true;
-			initializedBlocks.set(props, true);
 
 			// Only inherit if:
 			// 1. Parent has alignment set
-			// 2. This block has no alignment yet (newly inserted)
-			if (parentTextAlign && !textAlign) {
+			// 2. This block has no alignment yet
+			// 3. The block was inserted this session; mounting alone (post
+			//    load, remount) must never rewrite saved content.
+			if (justInserted && parentTextAlign && !textAlign) {
 				setAttributes({ textAlign: parentTextAlign });
 			}
 			// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,8 +97,12 @@ const withAlignmentInheritance = createHigherOrderComponent((BlockEdit) => {
 	};
 }, 'withAlignmentInheritance');
 
-addFilter(
-	'editor.BlockEdit',
-	'airo-wp/with-alignment-inheritance',
-	withAlignmentInheritance
-);
+// Switched off, new blocks simply don't inherit their parent's alignment;
+// alignment already saved on blocks is untouched.
+if (isExtensionEnabled('text-alignment-inheritance')) {
+	addFilter(
+		'editor.BlockEdit',
+		'airo-wp/with-alignment-inheritance',
+		withAlignmentInheritance
+	);
+}

@@ -73,6 +73,78 @@ export const BINDABLE_ATTRIBUTES = {
 			label: __('Date', 'airo-wp'),
 		},
 	],
+	// airo-wp blocks — keep in step with DEFAULT_SUPPORTED_ATTRIBUTES in
+	// includes/bindings/class-block-bindings-support.php, which opts them in
+	// server-side and places bound values in the markup.
+	'airo-wp/heading-segment': [
+		{
+			attribute: 'content',
+			returns: ['text'],
+			label: __('Content', 'airo-wp'),
+		},
+	],
+	'airo-wp/accordion-item': [
+		{
+			attribute: 'title',
+			returns: ['text'],
+			label: __('Title', 'airo-wp'),
+		},
+	],
+	'airo-wp/modal-trigger': [
+		{
+			attribute: 'text',
+			returns: ['text'],
+			label: __('Text', 'airo-wp'),
+		},
+	],
+	'airo-wp/icon-button': [
+		{
+			attribute: 'text',
+			returns: ['text'],
+			label: __('Text', 'airo-wp'),
+		},
+	],
+	'airo-wp/breadcrumbs': [
+		{
+			attribute: 'homeText',
+			returns: ['text'],
+			label: __('Home text', 'airo-wp'),
+		},
+		{
+			attribute: 'prefixText',
+			returns: ['text'],
+			label: __('Prefix text', 'airo-wp'),
+		},
+	],
+	'airo-wp/query-pagination': [
+		{
+			attribute: 'labelLoadMore',
+			returns: ['text'],
+			label: __('Load more label', 'airo-wp'),
+		},
+		{
+			attribute: 'labelLoading',
+			returns: ['text'],
+			label: __('Loading label', 'airo-wp'),
+		},
+		{
+			attribute: 'buttonLabelWhenPaused',
+			returns: ['text'],
+			label: __('Paused button label', 'airo-wp'),
+		},
+	],
+	'airo-wp/star-rating': [
+		{
+			attribute: 'rating',
+			returns: ['number'],
+			label: __('Rating', 'airo-wp'),
+		},
+		{
+			attribute: 'ratingCount',
+			returns: ['number'],
+			label: __('Rating count', 'airo-wp'),
+		},
+	],
 };
 
 export function getBindableAttributes(blockName) {

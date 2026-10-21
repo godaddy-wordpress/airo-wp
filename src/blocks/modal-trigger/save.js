@@ -18,14 +18,13 @@
 import {
 	useBlockProps,
 	RichText,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalGetBorderClassesAndStyles as getBorderClassesAndStyles,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalGetColorClassesAndStyles as getColorClassesAndStyles,
 	getTypographyClassesAndStyles,
 } from '@wordpress/block-editor';
 import clsx from 'clsx';
 import { getJustificationClass } from '../../utils/justification';
+import { convertPaddingValue } from '../icon-button/utils/padding';
 
 export default function save({ attributes }) {
 	const {
@@ -66,16 +65,16 @@ export default function save({ attributes }) {
 		...typography.style,
 		...(hasIcon && iconGap && { gap: iconGap }),
 		...(paddingValue?.top !== undefined && {
-			paddingTop: paddingValue.top,
+			paddingTop: convertPaddingValue(paddingValue.top),
 		}),
 		...(paddingValue?.right !== undefined && {
-			paddingRight: paddingValue.right,
+			paddingRight: convertPaddingValue(paddingValue.right),
 		}),
 		...(paddingValue?.bottom !== undefined && {
-			paddingBottom: paddingValue.bottom,
+			paddingBottom: convertPaddingValue(paddingValue.bottom),
 		}),
 		...(paddingValue?.left !== undefined && {
-			paddingLeft: paddingValue.left,
+			paddingLeft: convertPaddingValue(paddingValue.left),
 		}),
 	};
 

@@ -3,6 +3,9 @@
  * Supports 6 layout presets: standard, horizontal-left, horizontal-right, background, minimal, featured
  */
 
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
 .airo-wp-card {
 	position: relative;
 	display: flex;
@@ -69,6 +72,19 @@
 	z-index: 0;
 }
 
+// Front end only: render time swaps the inline background-image for a lazy
+// <img> (includes/features/class-static-block-images.php). Two classes so a
+// theme's `.entry-content img { height: auto }` can't collapse it.
+.airo-wp-card__background > .airo-wp-card__background-image {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+}
+
 .airo-wp-card__overlay {
 	position: absolute;
 	top: 0;
@@ -111,7 +127,8 @@
 .airo-wp-card__title--hidden,
 .airo-wp-card__subtitle--hidden,
 .airo-wp-card__body--hidden,
-.airo-wp-card__badge--hidden {
+.airo-wp-card__badge--hidden,
+.airo-wp-card .airo-wp-card__cta--hidden {
 	display: none;
 }
 
@@ -246,7 +263,7 @@
 	}
 
 	// Stack on mobile
-	@media (max-width: 768px) {
+	@media (max-width: #{$breakpoint-mobile}) {
 
 		.airo-wp-card__inner {
 			flex-direction: column;
@@ -280,7 +297,7 @@
 	}
 
 	// Stack on mobile
-	@media (max-width: 768px) {
+	@media (max-width: #{$breakpoint-mobile}) {
 
 		.airo-wp-card__inner {
 			flex-direction: column;
@@ -337,7 +354,7 @@
 	}
 
 	// Reduce min-height on mobile
-	@media (max-width: 768px) {
+	@media (max-width: #{$breakpoint-mobile}) {
 		min-height: 300px;
 
 		.airo-wp-card__inner {
@@ -360,7 +377,7 @@
 		align-items: center;
 	}
 
-	@media (max-width: 768px) {
+	@media (max-width: #{$breakpoint-mobile}) {
 
 		.airo-wp-card__inner {
 			padding: 1.5rem;
@@ -397,6 +414,8 @@
 // ========================================
 // Responsive adjustments
 // ========================================
+// 480px is block-specific (a small-phone type-scale step, not one of the
+// shared breakpoints), so it stays a literal.
 @media (max-width: 480px) {
 
 	.airo-wp-card__title {

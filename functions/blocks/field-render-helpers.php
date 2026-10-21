@@ -27,8 +27,16 @@ if ( ! function_exists( 'airowp_form_field_width_style' ) ) {
 	/**
 	 * Build the flex-basis / max-width inline style for a field wrapper.
 	 *
-	 * Mirrors the pre-dynamic save() output so field layout is unchanged. The
-	 * calc() keeps a half-gap between side-by-side fields.
+	 * The fields container is a wrapping flex row with
+	 * `gap: var(--airo-wp-form-field-spacing)`. For N equal columns of P% each,
+	 * the row holds N-1 gaps, so every field must give up gap * (N-1)/N, which
+	 * is gap * (100 - P) / 100. The old "half a gap" only fit two columns: three
+	 * 33% fields overflowed and the third wrapped. 33 and 66 map to exact
+	 * thirds so three (or 66 + 33) fields fill the row.
+	 *
+	 * Keep in sync with getFormFieldWidth() in
+	 * src/blocks/form-builder/utils/field-width.js (editor preview); both are
+	 * checked against tests/fixtures/form-field-width-cases.json.
 	 *
 	 * @param string|int $field_width Width percentage (e.g. '100', '50').
 	 * @return string CSS declarations (no trailing semicolon).
@@ -44,8 +52,53 @@ if ( ! function_exists( 'airowp_form_field_width_style' ) ) {
 			return 'flex-basis:100%;max-width:100%';
 		}
 
-		$calc = 'calc(' . $field_width . '% - var(--airo-wp-form-field-spacing, 1.5rem) / 2)';
+		$percent_map = array(
+			'33' => '33.3333',
+			'66' => '66.6667',
+		);
+		$percent     = isset( $percent_map[ $field_width ] ) ? $percent_map[ $field_width ] : $field_width;
+
+		// Share of one gap each field gives up, rounded to 4 decimals with
+		// trailing zeros trimmed (50 -> 0.5, 33.3333 -> 0.6667).
+		$gap_factor = rtrim( rtrim( number_format( ( 100 - (float) $percent ) / 100, 4, '.', '' ), '0' ), '.' );
+
+		$calc = 'calc(' . $percent . '% - var(--airo-wp-form-field-spacing, 1.5rem) * ' . $gap_factor . ')';
 		return 'flex-basis:' . $calc . ';max-width:' . $calc;
+	}
+}
+
+if ( ! function_exists( 'airowp_form_field_wrapper_attributes' ) ) {
+	/**
+	 * Build a form field's wrapper attributes.
+	 *
+	 * Adds `data-airo-wp-field` (the field name) to every field and, when the
+	 * field has conditional logic, the `airo-wp-form-field--conditional` class and
+	 * its sanitized rules as `data-airo-wp-conditions` for the view script.
+	 * get_block_wrapper_attributes() escapes every value.
+	 *
+	 * @param array  $attributes Block attributes.
+	 * @param string $type       Field type slug for the BEM modifier (e.g. 'text').
+	 * @param string $style      Inline style ('' for none).
+	 * @return string Wrapper attributes.
+	 */
+	function airowp_form_field_wrapper_attributes( array $attributes, $type, $style = '' ) {
+		$extra = array( 'class' => 'airo-wp-form-field airo-wp-form-field--' . $type );
+		if ( '' !== $style ) {
+			$extra['style'] = $style;
+		}
+
+		$field_name = isset( $attributes['fieldName'] ) ? (string) $attributes['fieldName'] : '';
+		if ( '' !== $field_name ) {
+			$extra['data-airo-wp-field'] = $field_name;
+		}
+
+		$rules = \airo - wp\Blocks\Form_Conditions::normalize_rules( isset( $attributes['dsgoConditions'] ) ? $attributes['dsgoConditions'] : null );
+		if ( null !== $rules ) {
+			$extra['class']                  .= ' airo-wp-form-field--conditional';
+			$extra['data-airo-wp-conditions'] = wp_json_encode( $rules );
+		}
+
+		return get_block_wrapper_attributes( $extra );
 	}
 }
 

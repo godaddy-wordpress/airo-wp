@@ -26,16 +26,14 @@ if ( ! function_exists( 'airowp_render_form_hidden_field' ) ) {
 	 * @return void
 	 */
 	function airowp_render_form_hidden_field( $attributes, $content, $block ) {
+		unset( $content, $block );
+
 		$field_name = isset( $attributes['fieldName'] ) ? (string) $attributes['fieldName'] : '';
 		$value      = isset( $attributes['value'] ) ? (string) $attributes['value'] : '';
 
 		$inner = '<input type="hidden" name="' . esc_attr( $field_name ) . '" value="' . esc_attr( $value ) . '" data-field-type="hidden"/>';
 
-		$wrapper = get_block_wrapper_attributes(
-			array(
-				'class' => 'airo-wp-form-field airo-wp-form-field--hidden',
-			)
-		);
+		$wrapper = airowp_form_field_wrapper_attributes( $attributes, 'hidden' );
 
 		echo '<div ' . $wrapper . '>' . $inner . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}

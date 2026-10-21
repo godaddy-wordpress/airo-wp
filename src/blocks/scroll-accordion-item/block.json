@@ -21,6 +21,9 @@
 		"overlayColor": {
 			"type": "string",
 			"default": ""
+		},
+		"overlayOpacity": {
+			"type": "integer"
 		}
 	},
 	"supports": {
@@ -62,6 +65,36 @@
 			"style": true,
 			"width": true
 		}
+	},
+	"example": {
+		"attributes": {
+			"style": {
+				"color": {
+					"background": "#1e293b",
+					"text": "#ffffff"
+				}
+			}
+		},
+		"innerBlocks": [
+			{
+				"name": "core/heading",
+				"attributes": {
+					"level": 3,
+					"content": "Scroll card",
+					"style": {
+						"color": {
+							"text": "#ffffff"
+						}
+					}
+				}
+			},
+			{
+				"name": "core/paragraph",
+				"attributes": {
+					"content": "This card sticks in place while the next one scrolls over it."
+				}
+			}
+		]
 	},
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",

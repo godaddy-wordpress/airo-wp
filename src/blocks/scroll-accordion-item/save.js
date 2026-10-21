@@ -4,6 +4,7 @@
 import { useBlockProps, useInnerBlocksProps } from '@wordpress/block-editor';
 import classnames from 'classnames';
 import { convertColorToCSSVar } from '../../utils/convert-preset-to-css-var';
+import { getOverlayOpacity } from '../../utils/overlay-opacity';
 
 /**
  * Save component for the Scroll Accordion Item block.
@@ -20,7 +21,10 @@ export default function Save({ attributes }) {
 	const overlayStyles = overlayColor
 		? {
 				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
-				'--airo-wp-overlay-opacity': '0.8',
+				'--airo-wp-overlay-opacity': getOverlayOpacity(
+					overlayColor,
+					attributes.overlayOpacity
+				),
 			}
 		: {};
 

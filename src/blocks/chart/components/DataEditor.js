@@ -35,7 +35,7 @@ export function DataEditor({ value, onChange }) {
 				<Flex
 					// The rows have no stable identity of their own — reordering
 					// is not offered, and a label may legitimately be blank.
-					// eslint-disable-next-line react/no-array-index-key
+
 					key={index}
 					align="flex-end"
 					gap={2}

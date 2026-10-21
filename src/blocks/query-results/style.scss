@@ -1,4 +1,6 @@
 @use 'layout-variants';
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
 
 // Frontend grid layout. Scoped to `[data-airo-wp-query-results-role="container"]`
 // so the grid attaches only to the rendered <ul>/<ol>/<div> list and doesn't
@@ -27,6 +29,8 @@
 	transition: opacity 0.2s ease;
 }
 
+// 900px is a block-specific "tablet columns" breakpoint (not the shared
+// scale — chosen to fit this grid's column math), kept literal.
 @media (max-width: 900px) {
 
 	.airo-wp-query-results[data-airo-wp-query-results-role="container"] {
@@ -38,7 +42,7 @@
 	}
 }
 
-@media (max-width: 600px) {
+@media (max-width: #{$breakpoint-small}) {
 
 	.airo-wp-query-results[data-airo-wp-query-results-role="container"] {
 		grid-template-columns: repeat(var(--airo-wp-query-columns-mobile, 1), minmax(0, 1fr));

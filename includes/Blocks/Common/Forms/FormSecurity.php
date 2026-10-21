@@ -50,17 +50,24 @@ class FormSecurity {
 	/**
 	 * Check time-based spam detection.
 	 *
-	 * @param string $timestamp Submission timestamp.
-	 * @param string $form_id   Form identifier.
-	 * @return true|WP_Error True if valid, WP_Error if too fast.
+	 * A timestamp is required: every real client (view.js, the no-JS form's
+	 * server-rendered field) sends one, so an absent one is a script skipping
+	 * the check. When the client also reports when it submitted, elapsed time
+	 * is measured entirely on the client's clock, so a visitor whose clock is
+	 * off from the server's is not rejected as "too fast". Without it (no-JS
+	 * forms) the server's clock stands in for the submit time.
+	 *
+	 * @param string $timestamp    Form-ready timestamp in milliseconds.
+	 * @param string $form_id      Form identifier.
+	 * @param string $submitted_at Optional submit time in milliseconds, same clock as $timestamp.
+	 * @return true|WP_Error True if valid, WP_Error if too fast or missing.
 	 */
-	public function check_submission_timing( string $timestamp, string $form_id ) {
-		if ( empty( $timestamp ) ) {
-			return true;
-		}
+	public function check_submission_timing( string $timestamp, string $form_id, string $submitted_at = '' ) {
+		$ready_ms = is_numeric( $timestamp ) ? (int) $timestamp : 0;
+		$now_ms   = ( '' !== $submitted_at && is_numeric( $submitted_at ) ) ? (int) $submitted_at : time() * 1000;
+		$elapsed  = $now_ms - $ready_ms;
 
-		$elapsed = ( time() * 1000 ) - intval( $timestamp );
-		if ( $elapsed < 3000 ) {
+		if ( $ready_ms <= 0 || $elapsed < 3000 ) {
 			do_action( 'airowp_form_spam_detected', $form_id, 'too_fast', $this->get_client_ip(), array( 'elapsed_ms' => $elapsed ) );
 
 			return new WP_Error(
@@ -71,6 +78,57 @@ class FormSecurity {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Count a submission attempt against the visitor's IP, before any lookup.
+	 *
+	 * Counts every attempt, including unknown-form and failed ones, so a client
+	 * can't use unknown IDs to force a database scan per request. The cap is
+	 * well above the success limits below; real visitors never meet it.
+	 *
+	 * @return true|WP_Error True if allowed, WP_Error if the IP is over the cap.
+	 */
+	public function reserve_attempt() {
+		$ip_address = $this->get_client_ip();
+		$key        = 'airowp_form_attempt_ip_' . md5( $ip_address );
+		$count      = (int) get_transient( $key );
+		$max        = (int) apply_filters( 'airowp_form_attempt_limit_count', 60, $ip_address );
+		$window     = (int) apply_filters( 'airowp_form_attempt_limit_window', 60, $ip_address );
+
+		if ( $count >= $max ) {
+			do_action( 'airowp_form_global_rate_limit_exceeded', $ip_address, $count, $max );
+
+			return new WP_Error(
+				'global_rate_limit',
+				__( 'Too many submissions. Please try again later.', 'airo-wp' ),
+				array( 'status' => 429 )
+			);
+		}
+
+		set_transient( $key, $count + 1, $window );
+
+		return true;
+	}
+
+	/**
+	 * Whether a form ID was recently found not to exist.
+	 *
+	 * @param string $form_id Form identifier.
+	 * @return bool
+	 */
+	public function is_unknown_form_cached( string $form_id ): bool {
+		return false !== get_transient( 'airowp_form_unknown_' . md5( $form_id ) );
+	}
+
+	/**
+	 * Remember briefly that a form ID doesn't exist, so repeats skip the lookup.
+	 *
+	 * @param string $form_id Form identifier.
+	 * @return void
+	 */
+	public function cache_unknown_form( string $form_id ): void {
+		set_transient( 'airowp_form_unknown_' . md5( $form_id ), 1, 30 );
 	}
 
 	/**
@@ -168,27 +226,59 @@ class FormSecurity {
 	}
 
 	/**
+	 * Whether both Turnstile keys are configured.
+	 *
+	 * The widget needs the site key and verification needs the secret, so a
+	 * form is only protected when both are set. The editor, the frontend and
+	 * the submission handler all ask this one question.
+	 *
+	 * @return bool
+	 */
+	public static function is_turnstile_configured(): bool {
+		$keys = self::turnstile_keys();
+
+		return '' !== $keys['site'] && '' !== $keys['secret'];
+	}
+
+	/**
+	 * The stored Turnstile keys, trimmed.
+	 *
+	 * @return array{site:string,secret:string}
+	 */
+	private static function turnstile_keys(): array {
+		$settings     = get_option( 'airowp_settings', array() );
+		$integrations = is_array( $settings ) && isset( $settings['integrations'] ) && is_array( $settings['integrations'] )
+			? $settings['integrations']
+			: array();
+
+		return array(
+			'site'   => isset( $integrations['turnstile_site_key'] ) && is_string( $integrations['turnstile_site_key'] ) ? trim( $integrations['turnstile_site_key'] ) : '',
+			'secret' => isset( $integrations['turnstile_secret_key'] ) && is_string( $integrations['turnstile_secret_key'] ) ? trim( $integrations['turnstile_secret_key'] ) : '',
+		);
+	}
+
+	/**
 	 * Verify Cloudflare Turnstile token.
+	 *
+	 * Fails closed: a token is accepted only when Cloudflare explicitly
+	 * reports success. A missing secret, an HTTP error, a timeout and an
+	 * unreadable response are all failures, since none of them proves the
+	 * visitor passed the challenge.
 	 *
 	 * @param string $token The Turnstile response token from the frontend.
 	 * @return true|WP_Error True on success, WP_Error on verification failure.
 	 */
 	public function verify_turnstile( string $token ) {
-		$settings   = get_option( 'airowp_settings', array() );
-		$secret_key = isset( $settings['integrations']['turnstile_secret_key'] )
-			? $settings['integrations']['turnstile_secret_key']
-			: '';
+		$secret_key = self::turnstile_keys()['secret'];
 
-		// If no secret key configured, skip verification (graceful degradation).
-		if ( empty( $secret_key ) ) {
-			return true;
+		if ( '' === $secret_key ) {
+			return self::turnstile_error( 'turnstile_not_configured', 'Secret key is not configured' );
 		}
 
 		// 3s timeout is intentional. Turnstile runs on Cloudflare's edge network and
 		// should respond in well under a second; this verification call blocks the
 		// form submission response, so a generous timeout directly penalises customer
-		// experience. On timeout, wp_remote_post() returns a WP_Error and we degrade
-		// gracefully (let the submission through) rather than punish the user.
+		// experience.
 		$response = wp_remote_post(
 			// phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent -- Server-side Turnstile verification API endpoint, not an offloaded asset. The sniff matches any `cloudflare.com` host in any string; no image, script, style or other content is loaded from it.
 			'https://challenges.cloudflare.com/turnstile/v0/siteverify',
@@ -202,39 +292,61 @@ class FormSecurity {
 			)
 		);
 
-		// Handle HTTP errors (graceful degradation).
-		if ( is_wp_error( $response ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'airo-wp Turnstile: HTTP error - ' . $response->get_error_message() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			}
-			return true;
-		}
+		$code = wp_remote_retrieve_response_code( $response );
+		$data = is_wp_error( $response ) ? null : json_decode( wp_remote_retrieve_body( $response ), true );
 
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
-
-		if ( ! is_array( $data ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'airo-wp Turnstile: Invalid response from Cloudflare' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		if ( is_wp_error( $response ) || $code >= 500 || ! is_array( $data ) ) {
+			/**
+			 * Whether to accept a submission when Turnstile can't be reached.
+			 *
+			 * Off by default: an HTTP error, a timeout or an unreadable reply
+			 * proves nothing about the visitor, so the submission is rejected.
+			 * A site that prefers availability during a Cloudflare outage can
+			 * return true. A missing secret or a token Cloudflare rejects is
+			 * never accepted.
+			 *
+			 * @since 2.8.3
+			 * @param bool           $accept   Default false.
+			 * @param array|WP_Error $response The siteverify response.
+			 */
+			if ( apply_filters( 'airowp_turnstile_accept_when_unavailable', false, $response ) ) {
+				return true;
 			}
-			return true;
+
+			$detail = is_wp_error( $response ) ? 'HTTP error - ' . $response->get_error_message() : 'Invalid response from Cloudflare (HTTP ' . $code . ')';
+
+			return self::turnstile_error( 'turnstile_unavailable', $detail );
 		}
 
 		if ( ! isset( $data['success'] ) || true !== $data['success'] ) {
-			$error_codes = isset( $data['error-codes'] ) ? implode( ', ', $data['error-codes'] ) : 'unknown';
+			$error_codes = isset( $data['error-codes'] ) && is_array( $data['error-codes'] ) ? implode( ', ', $data['error-codes'] ) : 'unknown';
 
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'airo-wp Turnstile: Verification failed - ' . $error_codes ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			}
-
-			return new WP_Error(
-				'turnstile_failed',
-				__( 'Security verification failed. Please try again.', 'airo-wp' ),
-				array( 'status' => 403 )
-			);
+			return self::turnstile_error( 'turnstile_failed', 'Verification failed - ' . $error_codes );
 		}
 
 		return true;
+	}
+
+	/**
+	 * A failed Turnstile verification, logged when debugging.
+	 *
+	 * Visitors get one generic message for every cause, so the response does
+	 * not reveal whether the site's keys or Cloudflare are at fault.
+	 *
+	 * @param string $code   Error code.
+	 * @param string $detail Debug log detail.
+	 * @return WP_Error
+	 */
+	private static function turnstile_error( string $code, string $detail ): WP_Error {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'airo-wp Turnstile: ' . $detail ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
+
+		return new WP_Error(
+			$code,
+			__( 'Security verification failed. Please try again.', 'airo-wp' ),
+			array( 'status' => 403 )
+		);
 	}
 
 	/**

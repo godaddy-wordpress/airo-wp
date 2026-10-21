@@ -13,7 +13,10 @@
 
 .airo-wp-star-rating {
 	// Icons are sized from a custom property so the two rows cannot disagree.
-	--airo-wp-star-rating-size: 24px;
+	// render.php writes it inline on __inner only for an explicit iconSize;
+	// otherwise it resolves from theme.json
+	// settings.custom.airowp.starRating.defaultSize (a unitless number).
+	--airo-wp-star-rating-size: calc(var(--wp--custom--airo-wp--star-rating--default-size, 24) * 1px);
 	--airo-wp-star-rating-gap: 4px;
 	--airo-wp-star-rating-fill: 0%;
 

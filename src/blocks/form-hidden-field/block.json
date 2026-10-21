@@ -13,7 +13,8 @@
 		"value"
 	],
 	"parent": [
-		"airo-wp/form-builder"
+		"airo-wp/form-builder",
+		"airo-wp/form-step"
 	],
 	"textdomain": "airo-wp",
 	"icon": "hidden",
@@ -24,6 +25,10 @@
 		"reusable": false
 	},
 	"attributes": {
+		"dsgoConditions": {
+			"type": "object",
+			"default": null
+		},
 		"fieldName": {
 			"type": "string",
 			"default": ""

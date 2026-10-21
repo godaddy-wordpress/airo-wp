@@ -14,11 +14,8 @@ import {
 	RangeControl,
 	ToggleControl,
 	TextControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalToggleGroupControl as ToggleGroupControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalToggleGroupControlOption as ToggleGroupControlOption,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../../../components/shared';
@@ -293,6 +290,7 @@ export const ButtonSettingsPanel = ({
 						// limitation of static placeholders); the empty field
 						// always means "inherit the themed default".
 						placeholder="8px"
+						min={0}
 						onChange={(value) => setAttributes({ iconGap: value })}
 						units={[
 							{ value: 'px', label: 'px' },

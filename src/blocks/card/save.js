@@ -22,6 +22,7 @@ export default function CardSave({ attributes }) {
 		layoutPreset,
 		imageUrl,
 		imageAlt,
+		imageFallbackAlt,
 		imageAspectRatio,
 		imageCustomAspectRatio,
 		imageObjectFit,
@@ -64,8 +65,12 @@ export default function CardSave({ attributes }) {
 	});
 
 	// Inner blocks props for CTA area
+	// The CTA area is always rendered so its inner blocks survive the toggle;
+	// `--hidden` hides it (same pattern as title / body / badge).
 	const innerBlocksProps = useInnerBlocksProps.save({
-		className: 'airo-wp-card__cta',
+		className: classnames('airo-wp-card__cta', {
+			'airo-wp-card__cta--hidden': !showCta,
+		}),
 	});
 
 	// Calculate image styles
@@ -132,12 +137,7 @@ export default function CardSave({ attributes }) {
 		);
 
 		return (
-			<span
-				className={badgeClass}
-				style={badgeStyles}
-				role="status"
-				aria-label={__('Badge', 'airo-wp')}
-			>
+			<span className={badgeClass} style={badgeStyles}>
 				{badgeText}
 			</span>
 		);
@@ -169,7 +169,9 @@ export default function CardSave({ attributes }) {
 		}
 
 		// Provide fallback alt text for accessibility
-		const altText = imageAlt || __('Card image', 'airo-wp');
+		// Preserve the saved decorative label when the editor locale changes.
+		const altText =
+			imageAlt || (imageFallbackAlt ?? __('Card image', 'airo-wp'));
 		const imageProps = {
 			src: imageUrl,
 			alt: altText,
@@ -234,7 +236,7 @@ export default function CardSave({ attributes }) {
 				/>
 			)}
 
-			{showCta && <div {...innerBlocksProps} />}
+			<div {...innerBlocksProps} />
 		</div>
 	);
 

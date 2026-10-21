@@ -15,9 +15,7 @@ import {
 	useBlockProps,
 	InspectorControls,
 	RichText,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseBorderProps as useBorderProps,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseColorProps as useColorProps,
 	getTypographyClassesAndStyles,
 } from '@wordpress/block-editor';
@@ -26,11 +24,8 @@ import {
 	Notice,
 	RangeControl,
 	ToggleControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalToggleGroupControl as ToggleGroupControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalToggleGroupControlOption as ToggleGroupControlOption,
 } from '@wordpress/components';
 import clsx from 'clsx';
@@ -42,6 +37,7 @@ import { getIcon } from '../icon/utils/svg-icons';
 import { IconPicker } from '../icon/components/IconPicker';
 import { useIconDefaults } from '../../hooks';
 import { getJustificationClass } from '../../utils/justification';
+import { convertPaddingValue } from '../icon-button/utils/padding';
 
 /**
  * Recursively find modal blocks in a block tree
@@ -135,16 +131,16 @@ export default function ModalTriggerEdit({
 		...typography.style,
 		...(hasIcon && iconGap && { gap: iconGap }),
 		...(paddingValue?.top !== undefined && {
-			paddingTop: paddingValue.top,
+			paddingTop: convertPaddingValue(paddingValue.top),
 		}),
 		...(paddingValue?.right !== undefined && {
-			paddingRight: paddingValue.right,
+			paddingRight: convertPaddingValue(paddingValue.right),
 		}),
 		...(paddingValue?.bottom !== undefined && {
-			paddingBottom: paddingValue.bottom,
+			paddingBottom: convertPaddingValue(paddingValue.bottom),
 		}),
 		...(paddingValue?.left !== undefined && {
-			paddingLeft: paddingValue.left,
+			paddingLeft: convertPaddingValue(paddingValue.left),
 		}),
 	};
 

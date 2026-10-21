@@ -4,6 +4,19 @@
  * Handles tab switching, keyboard navigation, deep linking, and mobile responsive behavior
  */
 
+import { __, sprintf } from '@wordpress/i18n';
+
+/**
+ * Fallback tab title when a panel has no title of its own.
+ *
+ * @param {number} index Zero-based tab index.
+ * @return {string} Localized "Tab N".
+ */
+function fallbackTabTitle(index) {
+	/* translators: %d: tab number */
+	return sprintf(__('Tab %d', 'airo-wp'), index + 1);
+}
+
 (function () {
 	'use strict';
 
@@ -110,10 +123,14 @@
 
 			// Debounced resize handler for better performance
 			let resizeTimeout;
-			window.addEventListener('resize', () => {
-				clearTimeout(resizeTimeout);
-				resizeTimeout = setTimeout(() => this.handleResize(), 150);
-			});
+			window.addEventListener(
+				'resize',
+				() => {
+					clearTimeout(resizeTimeout);
+					resizeTimeout = setTimeout(() => this.handleResize(), 150);
+				},
+				{ passive: true }
+			);
 
 			// Determine initial tab: prioritize deep linking, then default to first tab
 			let initialTab = this.activeTab;
@@ -149,12 +166,16 @@
 			// Clear existing navigation (modern approach without innerHTML)
 			this.nav.replaceChildren();
 
-			// Add skip link for keyboard accessibility
+			// Add skip link for keyboard accessibility. It is a sibling placed
+			// before the nav, not a child: role="tablist" may only own tabs.
+			this.nav.parentElement
+				?.querySelectorAll(':scope > .airo-wp-tabs__skip-link')
+				.forEach((link) => link.remove());
 			const activePanel = this.panels[this.clampTabIndex(this.activeTab)];
 			const skipLink = document.createElement('a');
 			skipLink.href = `#${activePanel.id}`;
 			skipLink.className = 'airo-wp-tabs__skip-link';
-			skipLink.textContent = 'Skip to tab content';
+			skipLink.textContent = __('Skip to tab content', 'airo-wp');
 			skipLink.addEventListener('click', (e) => {
 				e.preventDefault();
 				const panel = this.panels[this.clampTabIndex(this.activeTab)];
@@ -162,7 +183,7 @@
 					panel.focus();
 				}
 			});
-			this.nav.appendChild(skipLink);
+			this.nav.before(skipLink);
 
 			// Build tab buttons from panels
 			this.panels.forEach((panel, index) => {
@@ -170,7 +191,7 @@
 				const title =
 					panel.getAttribute('aria-label') ||
 					this.getTabTitle(panel) ||
-					`Tab ${index + 1}`;
+					fallbackTabTitle(index);
 				const icon = panel.dataset.icon;
 				const iconPosition = panel.dataset.iconPosition || 'left';
 				const iconStyle = panel.dataset.iconStyle;
@@ -179,6 +200,9 @@
 				const button = document.createElement('button');
 				button.className = 'airo-wp-tabs__tab';
 				button.id = tabId;
+				// With a custom anchor the panel id no longer matches the
+				// server-rendered aria-labelledby, so point it at this tab.
+				panel.setAttribute('aria-labelledby', tabId);
 				button.setAttribute('type', 'button');
 				button.setAttribute('role', 'tab');
 				button.setAttribute(
@@ -457,7 +481,7 @@
 					const title =
 						panel.getAttribute('aria-label') ||
 						this.getTabTitle(panel) ||
-						`Tab ${index + 1}`;
+						fallbackTabTitle(index);
 					header.textContent = title;
 
 					header.addEventListener('click', () => {
@@ -487,7 +511,10 @@
 				// Create dropdown select element
 				dropdown = document.createElement('select');
 				dropdown.className = 'airo-wp-tabs__dropdown';
-				dropdown.setAttribute('aria-label', 'Select tab');
+				dropdown.setAttribute(
+					'aria-label',
+					__('Select tab', 'airo-wp')
+				);
 
 				// Add options from panels
 				this.panels.forEach((panel, index) => {
@@ -496,7 +523,7 @@
 					option.textContent =
 						panel.getAttribute('aria-label') ||
 						this.getTabTitle(panel) ||
-						`Tab ${index + 1}`;
+						fallbackTabTitle(index);
 					option.selected = index === this.activeTab;
 					dropdown.appendChild(option);
 				});

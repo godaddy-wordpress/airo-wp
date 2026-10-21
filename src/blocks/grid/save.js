@@ -11,6 +11,7 @@ import {
 	convertPresetToCSSVar,
 	convertColorToCSSVar,
 } from '../../utils/convert-preset-to-css-var';
+import { getOverlayOpacity } from '../../utils/overlay-opacity';
 import {
 	hasOverlayStyleClass,
 	hoverVariationClasses,
@@ -30,6 +31,9 @@ export default function GridSave({ attributes }) {
 		constrainWidth,
 		contentWidth,
 		columnMinWidth,
+		columnTemplate,
+		tabletColumnTemplate,
+		mobileColumnTemplate,
 		desktopColumns,
 		tabletColumns,
 		mobileColumns,
@@ -93,7 +97,10 @@ export default function GridSave({ attributes }) {
 			}),
 			...(overlayColor && {
 				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
-				'--airo-wp-overlay-opacity': '0.8',
+				'--airo-wp-overlay-opacity': getOverlayOpacity(
+					overlayColor,
+					attributes.overlayOpacity
+				),
 			}),
 		},
 	});
@@ -120,11 +127,18 @@ export default function GridSave({ attributes }) {
 		gridTemplateColumns: getGridTemplateColumns(
 			columnMinWidth,
 			desktopColumns,
-			resolvedColumnGap
+			resolvedColumnGap,
+			columnTemplate
 		),
 		alignItems: alignItems || 'stretch',
 		rowGap: blockGapRow || rowGap || defaultGap,
 		columnGap: resolvedColumnGap,
+		...(tabletColumnTemplate?.trim() && {
+			'--airo-wp-grid-columns-tablet': tabletColumnTemplate.trim(),
+		}),
+		...(mobileColumnTemplate?.trim() && {
+			'--airo-wp-grid-columns-mobile': mobileColumnTemplate.trim(),
+		}),
 	};
 
 	// Apply width constraints to inner container

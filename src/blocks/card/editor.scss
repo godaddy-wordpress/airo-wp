@@ -74,6 +74,11 @@
 	// CTA area hint
 	.airo-wp-card__cta {
 
+		&.airo-wp-card__cta--hidden,
+		&.airo-wp-card__cta--hidden:empty {
+			display: none;
+		}
+
 		&:empty {
 			min-height: 40px;
 			border: 1px dashed var(--wp--preset--color--contrast-3, #ccc);

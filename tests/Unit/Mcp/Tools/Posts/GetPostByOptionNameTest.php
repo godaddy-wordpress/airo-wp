@@ -60,9 +60,12 @@ final class GetPostByOptionNameTest extends TestCase {
 			'post_date'     => '2026-01-01 00:00:00',
 			'post_modified' => '2026-01-01 00:00:00',
 			'post_name'     => 'home',
+			'post_password' => '',
 		);
 		Functions\expect( 'get_post' )->with( 42 )->andReturn( $post );
 		Functions\expect( 'get_post_thumbnail_id' )->with( 42 )->andReturn( 0 );
+		Functions\when( 'get_post_type_object' )->justReturn( (object) array( 'cap' => (object) array( 'edit_posts' => 'edit_posts' ) ) );
+		Functions\when( 'is_post_type_viewable' )->justReturn( true );
 
 		$result = $this->tool->execute( array( 'option_name' => 'page_on_front' ) );
 		$this->assertSame( 42, $result['id'] );

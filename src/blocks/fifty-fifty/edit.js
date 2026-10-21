@@ -23,9 +23,7 @@ import {
 	FocalPointPicker,
 	Button,
 	TextControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseCustomUnits as useCustomUnits,
 	ToolbarButton,
 	ToolbarGroup,

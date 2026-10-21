@@ -42,7 +42,7 @@
 	padding: 0;
 	margin: -1px;
 	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
+	clip-path: inset(50%);
 	white-space: nowrap;
 	border-width: 0;
 }
@@ -278,7 +278,7 @@ body.airo-wp-show-focus-outlines :where(.wp-site-blocks *:focus-visible) {
 	> .airo-wp-grid__inner {
 
 		// Exclude blocks with explicit max-width set via our extension
-		> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width) {
+		> :not(.alignleft):not(.alignright):not(.airo-wp-has-max-width):not(.airo-wp-stack--has-box-width) {
 			max-width: none !important;
 		}
 	}

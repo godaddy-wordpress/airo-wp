@@ -1,21 +1,19 @@
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import {
 	useBlockProps,
 	useInnerBlocksProps,
 	InspectorControls,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import {
 	SelectControl,
 	RangeControl,
 	ToggleControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
+import { useIconDefaults } from '../../hooks';
 import classnames from 'classnames';
 import {
 	encodeColorValue,
@@ -39,6 +37,13 @@ export default function TimelineEdit({ attributes, setAttributes, clientId }) {
 		staggerDelay,
 	} = attributes;
 
+	// Inherited marker size (theme.json settings.custom.airowp.timeline.defaultSize),
+	// shown in the inspector while markerSize is unset.
+	const { size: inheritedMarkerSize } = useIconDefaults({
+		sizeKey: 'timeline',
+		sizeFallback: 16,
+	});
+
 	// Get theme color palette
 	const colorGradientSettings = useMultipleOriginColorsAndGradients();
 
@@ -48,7 +53,10 @@ export default function TimelineEdit({ attributes, setAttributes, clientId }) {
 			lineColor || 'var(--wp--preset--color--contrast, #e5e7eb)',
 		'--airo-wp-timeline-line-thickness': `${lineThickness}px`,
 		'--airo-wp-timeline-connector-style': connectorStyle,
-		'--airo-wp-timeline-marker-size': `${markerSize}px`,
+		// Must match save.js: only an explicit Marker Size is written inline.
+		...(typeof markerSize === 'number' && {
+			'--airo-wp-timeline-marker-size': `${markerSize}px`,
+		}),
 		'--airo-wp-timeline-marker-color':
 			markerColor || 'var(--wp--preset--color--primary, #2563eb)',
 		'--airo-wp-timeline-marker-border-color':
@@ -121,7 +129,7 @@ export default function TimelineEdit({ attributes, setAttributes, clientId }) {
 							lineThickness: 2,
 							connectorStyle: 'solid',
 							markerStyle: 'circle',
-							markerSize: 16,
+							markerSize: undefined,
 							itemSpacing: '2rem',
 							animateOnScroll: true,
 							animationDuration: 600,
@@ -309,18 +317,38 @@ export default function TimelineEdit({ attributes, setAttributes, clientId }) {
 
 					<DsgoInspectorPanel.Item
 						label={__('Marker Size', 'airo-wp')}
-						hasValue={() => markerSize !== 16}
-						onDeselect={() => setAttributes({ markerSize: 16 })}
+						hasValue={() => typeof markerSize === 'number'}
+						onDeselect={() =>
+							setAttributes({ markerSize: undefined })
+						}
 						isShownByDefault
 					>
 						<RangeControl
 							label={__('Marker Size', 'airo-wp')}
 							value={markerSize}
 							onChange={(value) =>
-								setAttributes({ markerSize: value })
+								setAttributes({
+									markerSize:
+										typeof value === 'number'
+											? value
+											: undefined,
+								})
 							}
 							min={8}
 							max={48}
+							allowReset
+							placeholder={inheritedMarkerSize}
+							help={
+								typeof markerSize !== 'number' &&
+								sprintf(
+									/* translators: %d: inherited marker size in pixels. */
+									__(
+										'Inheriting theme default (%dpx).',
+										'airo-wp'
+									),
+									inheritedMarkerSize
+								)
+							}
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>

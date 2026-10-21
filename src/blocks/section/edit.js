@@ -15,21 +15,20 @@ import {
 	InspectorControls,
 	store as blockEditorStore,
 	useSettings,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
 } from '@wordpress/block-editor';
 import {
 	ToggleControl,
 	SelectControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUnitControl as UnitControl,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseCustomUnits as useCustomUnits,
+	__experimentalToggleGroupControl as ToggleGroupControl,
+	__experimentalToggleGroupControlOption as ToggleGroupControlOption,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
-import { useSelect, useDispatch } from '@wordpress/data';
+import LayoutControls from '../../extensions/layout/controls';
+import { useSelect } from '@wordpress/data';
 import { useEffect } from '@wordpress/element';
-import { createBlock } from '@wordpress/blocks';
 import ShapeDividerControls from './components/ShapeDividerControls';
 import ShapeDivider, {
 	getRenderedShapeHeight,
@@ -42,11 +41,22 @@ import {
 	convertColorToCSSVar,
 	convertPresetToCSSVar,
 } from '../../utils/convert-preset-to-css-var';
-import { useBlockColors } from '../../hooks';
+import { getOverlayOpacity } from '../../utils/overlay-opacity';
+import {
+	useBlockColors,
+	useFixedOrientation,
+	useWasJustInserted,
+} from '../../hooks';
 import {
 	hasOverlayStyleClass,
 	hoverVariationClasses,
 } from './utils/has-overlay-style';
+import { getContentColumnMargins } from './utils/content-position';
+import {
+	BOX_WIDTH_CLASS,
+	getBoxWidthStyle,
+	hasBoxWidth,
+} from './utils/box-width';
 
 /**
  * Section Container Edit Component
@@ -66,6 +76,8 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 		textColor,
 		constrainWidth,
 		contentWidth,
+		contentPosition = 'center',
+		boxWidth,
 		hoverBackgroundColor,
 		hoverTextColor,
 		hoverIconBackgroundColor,
@@ -174,18 +186,14 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 		availableUnits: ['px', 'em', 'rem', 'vh', 'vw', '%'],
 	});
 
-	const { replaceBlock } = useDispatch(blockEditorStore);
+	// A Section is always vertical; the orientation toggle is hidden.
+	useFixedOrientation(layout, 'vertical', setAttributes);
 
 	// Get inner blocks to determine if container is empty
-	const { hasInnerBlocks, innerBlocks } = useSelect(
-		(select) => {
-			const { getBlock } = select(blockEditorStore);
-			const block = getBlock(clientId);
-			return {
-				hasInnerBlocks: block?.innerBlocks?.length > 0,
-				innerBlocks: block?.innerBlocks || [],
-			};
-		},
+	const hasInnerBlocks = useSelect(
+		(select) =>
+			select(blockEditorStore).getBlock(clientId)?.innerBlocks?.length >
+			0,
 		[clientId]
 	);
 
@@ -199,42 +207,16 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 		[clientId]
 	);
 
-	// CRITICAL: Auto-convert to Row block when orientation changes to horizontal
-	// Section is meant for vertical stacking only
-	// If user wants horizontal layout, they should use Row block
-	useEffect(() => {
-		if (layout?.orientation === 'horizontal') {
-			// Create a new Row block with the same attributes and inner blocks
-			const rowBlock = createBlock(
-				'airo-wp/row',
-				{
-					hoverBackgroundColor,
-					hoverTextColor,
-					hoverIconBackgroundColor,
-					hoverButtonBackgroundColor,
-				},
-				innerBlocks
-			);
+	// Only a section the author just inserted is a candidate; one loaded with
+	// the post mounts too, and rewriting it here would silently change saved
+	// padding and dirty the post on open.
+	const wasJustInserted = useWasJustInserted(clientId);
 
-			// Replace this Section block with the Row block
-			replaceBlock(clientId, rowBlock);
-		}
-	}, [
-		layout?.orientation,
-		clientId,
-		replaceBlock,
-		hoverBackgroundColor,
-		hoverTextColor,
-		hoverIconBackgroundColor,
-		hoverButtonBackgroundColor,
-		innerBlocks,
-	]);
-
-	// Auto-clear default padding for nested sections.
+	// Auto-clear default padding for newly inserted nested sections.
 	// Intentionally uses [] deps (mount-only) — isNested is excluded because
 	// re-running on block moves would clear user-customized padding.
 	useEffect(() => {
-		if (!isNested) {
+		if (!isNested || !wasJustInserted) {
 			return;
 		}
 
@@ -281,12 +263,14 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 		hasOverlay && 'airo-wp-stack--has-overlay',
 		(shapeDividerTop || shapeDividerBottom) &&
 			'airo-wp-stack--has-shape-divider',
+		hasBoxWidth(attributes) && BOX_WIDTH_CLASS,
 		...hoverVariationClasses(className),
 	]
 		.filter(Boolean)
 		.join(' ');
 
-	// Block wrapper props - outer div stays full width (must match save.js EXACTLY)
+	// Block wrapper props - outer div stays full width unless `boxWidth` caps it
+	// (must match save.js EXACTLY)
 	// WordPress handles flex layout through layout support and CSS classes
 	// We only add custom CSS variables for hover effects and overlay
 	const TagName = tagName || 'div';
@@ -313,7 +297,10 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 			}),
 			...(overlayColor && {
 				'--airo-wp-overlay-color': convertColorToCSSVar(overlayColor),
-				'--airo-wp-overlay-opacity': '0.8',
+				'--airo-wp-overlay-opacity': getOverlayOpacity(
+					overlayColor,
+					attributes.overlayOpacity
+				),
 			}),
 			// Default content clearance matched to the divider's rendered height
 			// (must match save.js EXACTLY). See save.js for the full rationale.
@@ -331,6 +318,9 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 						shapeDividerBottomHeight
 					)}px`,
 				}),
+			// Outer box width (must match save.js EXACTLY). Emits nothing when
+			// `boxWidth` is unset. See utils/box-width.js.
+			...getBoxWidthStyle(attributes),
 		},
 	});
 
@@ -339,8 +329,7 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 	const innerStyle = {};
 	if (constrainWidth) {
 		innerStyle.maxWidth = contentWidth || themeContentSize || '1140px';
-		innerStyle.marginLeft = 'auto';
-		innerStyle.marginRight = 'auto';
+		Object.assign(innerStyle, getContentColumnMargins(contentPosition));
 	}
 
 	// Inner content clearance for shape dividers. The value is a block-user
@@ -406,9 +395,42 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 						setAttributes({
 							constrainWidth: true,
 							contentWidth: '',
+							contentPosition: 'center',
+							boxWidth: '',
+							dsgoLayout: undefined,
 						})
 					}
 				>
+					<DsgoInspectorPanel.Item
+						label={__('Max Section Width', 'airo-wp')}
+						// Falsy rather than `!== ''`: a block migrated through a
+						// deprecation arrives with boxWidth UNDEFINED, because
+						// migrate() returns the old schema's attributes and
+						// WordPress does not re-apply current block.json
+						// defaults afterwards. `!== ''` would report those
+						// blocks as having a value and show a reset affordance
+						// for a control that is empty.
+						hasValue={() => !!boxWidth}
+						onDeselect={() => setAttributes({ boxWidth: '' })}
+						isShownByDefault
+					>
+						<UnitControl
+							label={__('Max Section Width', 'airo-wp')}
+							value={boxWidth || ''}
+							onChange={(value) =>
+								setAttributes({ boxWidth: value ?? '' })
+							}
+							placeholder={__('Full width', 'airo-wp')}
+							units={units}
+							__unstableInputWidth="80px"
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+							help={__(
+								'Narrows the whole section — its background, border, shadow and shape dividers move in with it. Inside another section it follows that section\u2019s alignment; elsewhere it centers. Leave empty to fill the available width. To narrow only the text and blocks inside, use Max Content Width instead.',
+								'airo-wp'
+							)}
+						/>
+					</DsgoInspectorPanel.Item>
 					<DsgoInspectorPanel.Item
 						label={__('Constrain Inner Width', 'airo-wp')}
 						hasValue={() => constrainWidth !== true}
@@ -416,6 +438,7 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 							setAttributes({
 								constrainWidth: true,
 								contentWidth: '',
+								contentPosition: 'center',
 							})
 						}
 						isShownByDefault
@@ -478,6 +501,50 @@ export default function SectionEdit({ attributes, setAttributes, clientId }) {
 							/>
 						</DsgoInspectorPanel.Item>
 					)}
+					{constrainWidth && (
+						<DsgoInspectorPanel.Item
+							label={__('Content Position', 'airo-wp')}
+							hasValue={() => contentPosition !== 'center'}
+							onDeselect={() =>
+								setAttributes({ contentPosition: 'center' })
+							}
+							isShownByDefault
+						>
+							<ToggleGroupControl
+								label={__('Content Position', 'airo-wp')}
+								value={contentPosition}
+								onChange={(value) =>
+									setAttributes({ contentPosition: value })
+								}
+								help={__(
+									'Where the content column sits inside the section. Use layout justification to align blocks within the column.',
+									'airo-wp'
+								)}
+								isBlock
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+							>
+								<ToggleGroupControlOption
+									value="left"
+									label={__('Left', 'airo-wp')}
+								/>
+								<ToggleGroupControlOption
+									value="center"
+									label={__('Center', 'airo-wp')}
+								/>
+								<ToggleGroupControlOption
+									value="right"
+									label={__('Right', 'airo-wp')}
+								/>
+							</ToggleGroupControl>
+						</DsgoInspectorPanel.Item>
+					)}
+					<LayoutControls
+						name="airo-wp/section"
+						attributes={attributes}
+						setAttributes={setAttributes}
+						clientId={clientId}
+					/>
 				</DsgoInspectorPanel>
 			</InspectorControls>
 

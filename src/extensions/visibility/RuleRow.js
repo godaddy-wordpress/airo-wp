@@ -3,7 +3,6 @@ import {
 	SelectControl,
 	TextControl,
 	Button,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export in @wordpress/components
 	__experimentalHStack as HStack,
 } from '@wordpress/components';
 
@@ -46,6 +45,10 @@ function MetaControls({ rule, onChange }) {
 		<>
 			<TextControl
 				label={__('Meta Key', 'airo-wp')}
+				help={__(
+					'Protected keys (starting with an underscore) are never read, so a rule on one never matches.',
+					'airo-wp'
+				)}
 				value={rule.key ?? ''}
 				onChange={(key) => onChange({ ...rule, key })}
 				__next40pxDefaultSize
@@ -128,6 +131,10 @@ function IndexControls({ rule, onChange }) {
 			/>
 			<TextControl
 				label={__('Index Value', 'airo-wp')}
+				help={__(
+					'Counts from 0. Only meaningful inside a Dynamic Query; elsewhere the index is -1.',
+					'airo-wp'
+				)}
 				value={String(rule.value ?? '')}
 				onChange={(value) => onChange({ ...rule, value })}
 				__next40pxDefaultSize

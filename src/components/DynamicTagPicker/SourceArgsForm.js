@@ -10,7 +10,6 @@ import {
 	SelectControl,
 	TextControl,
 	Spinner,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- no stable export in @wordpress/components
 	__experimentalVStack as VStack,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';

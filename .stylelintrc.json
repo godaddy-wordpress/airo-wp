@@ -6,6 +6,8 @@
 		"no-duplicate-selectors": null,
 		"color-named": [ "never", { "ignore": [ "inside-function" ] } ],
 		"at-rule-no-unknown": null,
-		"scss/at-rule-no-unknown": true
+		"scss/at-rule-no-unknown": true,
+		"property-no-deprecated": null,
+		"declaration-property-value-keyword-no-deprecated": null
 	}
 }

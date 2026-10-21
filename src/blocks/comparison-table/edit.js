@@ -11,9 +11,7 @@ import {
 	useBlockProps,
 	InspectorControls,
 	RichText,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalColorGradientSettingsDropdown as ColorGradientSettingsDropdown,
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import {
@@ -24,6 +22,11 @@ import {
 	Tooltip,
 } from '@wordpress/components';
 import { DsgoInspectorPanel } from '../../components/shared';
+import {
+	getCtaFallback,
+	getFeaturedBadgeText,
+	remapSavedCtaTexts,
+} from './utils/fallback-labels';
 import { useState } from '@wordpress/element';
 import {
 	encodeColorValue,
@@ -84,8 +87,6 @@ const CheckIcon = () => (
 	<svg
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 24 24"
-		width="20"
-		height="20"
 		fill="none"
 		stroke="currentColor"
 		strokeWidth="2.5"
@@ -106,8 +107,6 @@ const CrossIcon = () => (
 	<svg
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 24 24"
-		width="20"
-		height="20"
 		fill="none"
 		stroke="currentColor"
 		strokeWidth="2.5"
@@ -162,7 +161,7 @@ function CellContent({ cell, rowIndex, colIndex, onCellChange }) {
  */
 export default function ComparisonTableEdit({
 	attributes,
-	setAttributes,
+	setAttributes: setBlockAttributes,
 	clientId,
 }) {
 	const {
@@ -175,7 +174,47 @@ export default function ComparisonTableEdit({
 		headerTextColor,
 		showCtaButtons,
 		ctaStyle,
+		featuredBadgeText,
+		savedCtaTexts,
 	} = attributes;
+
+	/**
+	 * setAttributes that keeps the labels read back from the stored markup
+	 * (see utils/fallback-labels.js) in step with a column edit.
+	 *
+	 * @param {Object}             next        Attribute changes.
+	 * @param {Array<number|null>} sourceIndex For each column in next.columns,
+	 *                                         its current index, or null for a
+	 *                                         new one. Omitted: all new.
+	 */
+	const setAttributes = (next, sourceIndex) => {
+		if (!('columns' in next)) {
+			setBlockAttributes(next);
+			return;
+		}
+		setBlockAttributes({
+			...next,
+			savedCtaTexts: remapSavedCtaTexts(
+				columns,
+				next.columns,
+				savedCtaTexts,
+				sourceIndex ?? next.columns.map(() => null)
+			),
+			// With no featured column the badge leaves the markup, so a
+			// reload would drop the stored text too; featuring a column
+			// again shows the default in the current language.
+			...(next.columns.some((col) => col.featured)
+				? {}
+				: { featuredBadgeText: undefined }),
+		});
+	};
+
+	// A linked CTA with no text shows its fallback on the front end, so the
+	// placeholder shows that same text rather than a generic hint.
+	const ctaPlaceholder = (col, colIndex) =>
+		col.link
+			? getCtaFallback(columns, savedCtaTexts, colIndex)
+			: __('CTA Text', 'airo-wp');
 
 	const [selectedCell, setSelectedCell] = useState(null);
 
@@ -191,7 +230,10 @@ export default function ComparisonTableEdit({
 		const newColumns = columns.map((col, i) =>
 			i === colIndex ? { ...col, ...changes } : col
 		);
-		setAttributes({ columns: newColumns });
+		setAttributes(
+			{ columns: newColumns },
+			columns.map((_, i) => i)
+		);
 	};
 
 	/**
@@ -247,7 +289,10 @@ export default function ComparisonTableEdit({
 			...row,
 			cells: [...row.cells, { type: 'text', value: '' }],
 		}));
-		setAttributes({ columns: newColumns, rows: newRows });
+		setAttributes({ columns: newColumns, rows: newRows }, [
+			...columns.map((_, i) => i),
+			null,
+		]);
 	};
 
 	/**
@@ -264,7 +309,10 @@ export default function ComparisonTableEdit({
 			...row,
 			cells: row.cells.filter((_, i) => i !== colIndex),
 		}));
-		setAttributes({ columns: newColumns, rows: newRows });
+		setAttributes(
+			{ columns: newColumns, rows: newRows },
+			columns.map((_, i) => i).filter((i) => i !== colIndex)
+		);
 	};
 
 	/**
@@ -584,6 +632,10 @@ export default function ComparisonTableEdit({
 										<TextControl
 											label={__('CTA Text', 'airo-wp')}
 											value={col.linkText}
+											placeholder={ctaPlaceholder(
+												col,
+												colIndex
+											)}
 											onChange={(value) =>
 												updateColumn(colIndex, {
 													linkText: value,
@@ -666,7 +718,9 @@ export default function ComparisonTableEdit({
 									>
 										{col.featured && (
 											<span className="airo-wp-comparison-table__featured-badge">
-												{__('Popular', 'airo-wp')}
+												{getFeaturedBadgeText(
+													featuredBadgeText
+												)}
 											</span>
 										)}
 										<RichText
@@ -695,9 +749,9 @@ export default function ComparisonTableEdit({
 														linkText: value,
 													})
 												}
-												placeholder={__(
-													'CTA Text',
-													'airo-wp'
+												placeholder={ctaPlaceholder(
+													col,
+													colIndex
 												)}
 												allowedFormats={[]}
 											/>

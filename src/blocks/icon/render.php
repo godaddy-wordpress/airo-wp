@@ -88,6 +88,15 @@ if ( ! function_exists( 'airowp_render_icon' ) ) {
 			return '';
 		}
 
+		// The wrapper below owns the accessible name (or decorative state).
+		// Its nested SVG is only the drawing, not a second unnamed image.
+		$svg_processor = new WP_HTML_Tag_Processor( $svg );
+		while ( $svg_processor->next_tag( 'svg' ) ) {
+			$svg_processor->set_attribute( 'aria-hidden', 'true' );
+			$svg_processor->set_attribute( 'focusable', 'false' );
+		}
+		$svg = $svg_processor->get_updated_html();
+
 		// Wrapper inline styles. Width/height are baked inline only when the author
 		// set an explicit iconSize; left unset, sizing falls to the kit-tunable
 		// `--wp--custom--airo-wp--icon--default-size` CSS var (see style.scss),
@@ -101,12 +110,16 @@ if ( ! function_exists( 'airowp_render_icon' ) ) {
 			$wrapper_style .= sprintf( 'transform:rotate(%ddeg);', $rotation );
 		}
 
-		// ARIA: decorative → hidden from AT; otherwise labelled with the custom
-		// label or a humanized icon name (e.g. "circle-check" → "Circle Check").
-		if ( $is_decorative ) {
+		// ARIA: decorative → hidden from AT; otherwise labelled with the
+		// author's label. With no label, a linked icon still needs a name, so
+		// it falls back to a humanized icon name (e.g. "circle-check" →
+		// "Circle Check"). An unlabelled, unlinked icon is hidden instead:
+		// announcing its slug tells a screen-reader user nothing true.
+		$has_link = ! empty( $attributes['linkUrl'] );
+		if ( $is_decorative || ( '' === trim( $aria_label ) && ! $has_link ) ) {
 			$aria = ' role="presentation" aria-hidden="true"';
 		} else {
-			$label = '' !== $aria_label ? $aria_label : ucwords( str_replace( '-', ' ', $icon ) );
+			$label = '' !== trim( $aria_label ) ? $aria_label : ucwords( str_replace( '-', ' ', $icon ) );
 			$aria  = sprintf( ' role="img" aria-label="%s"', esc_attr( $label ) );
 		}
 
@@ -143,7 +156,7 @@ if ( ! function_exists( 'airowp_render_icon' ) ) {
 		// block.json default fills in when the key is missing), so it cannot
 		// be used to detect that. `align: wide|full` is unrelated (still a
 		// live, current feature) and is left alone.
-		$legacy_align = isset( $attributes['align'] ) ? (string) $attributes['align'] : '';
+		$legacy_align  = isset( $attributes['align'] ) ? (string) $attributes['align'] : '';
 		$justification = in_array( $legacy_align, array( 'left', 'center', 'right' ), true )
 			? $legacy_align
 			: ( isset( $attributes['justification'] ) ? (string) $attributes['justification'] : 'center' );

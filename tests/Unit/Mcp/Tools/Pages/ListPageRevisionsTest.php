@@ -44,6 +44,7 @@ namespace GoDaddy\WordPress\Plugins\AiroWp\Tests\Unit\Mcp\Tools\Pages {
 			parent::setUp();
 
 			Functions\when( '__' )->returnArg();
+			Functions\when( 'current_user_can' )->justReturn( true );
 			Functions\when( 'sanitize_text_field' )->returnArg();
 
 			$this->tool = new ListPageRevisions();
@@ -105,6 +106,24 @@ namespace GoDaddy\WordPress\Plugins\AiroWp\Tests\Unit\Mcp\Tools\Pages {
 			$this->assertSame( 0, $result['total_pages'] );
 			$this->assertSame( 1, $result['page'] );
 			$this->assertSame( 10, $result['per_page'] );
+		}
+
+		public function test_permission_denied_on_parent_returns_error(): void {
+			$parent            = new \stdClass();
+			$parent->ID        = 5;
+			$parent->post_type = 'page';
+
+			Functions\expect( 'get_post' )->with( 5 )->andReturn( $parent );
+			Functions\when( 'current_user_can' )->alias(
+				function ( $cap, $id = null ) {
+					return ! ( 'edit_post' === $cap && 5 === $id );
+				}
+			);
+
+			$result = $this->tool->execute( array( 'parent' => 5 ) );
+
+			$this->assertFalse( $result['success'] );
+			$this->assertStringContainsString( 'permission', $result['message'] );
 		}
 	}
 }

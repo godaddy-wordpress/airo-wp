@@ -1,3 +1,11 @@
+// Core's `.block-editor-block-list__block { position: relative }` ties the
+// frontend rule on specificity and loads later, which put every marker back in
+// normal flow so each one pushed the next down. Doubling the class restores
+// the absolute placement the frontend uses.
+.wp-block-airo-wp-hotspot-item.wp-block-airo-wp-hotspot-item {
+	position: absolute;
+}
+
 .wp-block-airo-wp-hotspot-item {
 
 	:where(.airo-wp-hotspot-item__tooltip) {

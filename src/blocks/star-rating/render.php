@@ -68,14 +68,14 @@ if ( ! function_exists( 'airowp_star_rating_icon_row' ) ) {
 	 * Track and fill render identical rows — the fill row is clipped by width,
 	 * which is what produces a partial icon.
 	 *
-	 * @param string $class      Row class name.
+	 * @param string $row_class  Row class name.
 	 * @param int    $count      Number of icons.
 	 * @param string $icon       Icon name from the shared library.
 	 * @param string $icon_style 'filled' or 'outlined'.
 	 * @return string Row markup. SVG comes from the hardcoded library, so it is
 	 *                trusted output.
 	 */
-	function airowp_star_rating_icon_row( $class, $count, $icon, $icon_style ) {
+	function airowp_star_rating_icon_row( $row_class, $count, $icon, $icon_style ) {
 		$svg = airowp_render_icon_svg( $icon, $icon_style );
 
 		$stars = str_repeat(
@@ -83,7 +83,7 @@ if ( ! function_exists( 'airowp_star_rating_icon_row' ) ) {
 			max( 0, (int) $count )
 		);
 
-		return '<span class="' . esc_attr( $class ) . '">' . $stars . '</span>';
+		return '<span class="' . esc_attr( $row_class ) . '">' . $stars . '</span>';
 	}
 }
 
@@ -105,9 +105,23 @@ if ( ! function_exists( 'airowp_render_star_rating' ) ) {
 		$precision = isset( $attributes['precision'] ) ? (string) $attributes['precision'] : 'half';
 		$fill      = airowp_star_rating_fill_percent( $raw, $max, $precision );
 
+		// iconStyle and iconSize have no block.json default: left unset, they
+		// inherit the theme tokens. Style falls back to the site-wide
+		// settings.custom.airowp.icon.defaultStyle; size is simply not
+		// written, so style.scss's --wp--custom--airo-wp--star-rating--default-size
+		// applies. Only an explicit author choice is baked into the markup.
+		$default_style = 'filled';
+		if ( class_exists( '\\airo-wp\\Icon_Injector' ) ) {
+			$default_style = \airo-wp\Icon_Injector::get_icon_defaults()['style'];
+		}
+
 		$icon       = ! empty( $attributes['icon'] ) ? (string) $attributes['icon'] : 'star';
-		$icon_style = ( isset( $attributes['iconStyle'] ) && 'outlined' === $attributes['iconStyle'] ) ? 'outlined' : 'filled';
-		$icon_size  = isset( $attributes['iconSize'] ) ? (int) $attributes['iconSize'] : 24;
+		$icon_style = isset( $attributes['iconStyle'] ) && in_array( $attributes['iconStyle'], array( 'filled', 'outlined' ), true )
+			? (string) $attributes['iconStyle']
+			: $default_style;
+		$icon_size  = isset( $attributes['iconSize'] ) && is_numeric( $attributes['iconSize'] )
+			? max( 1, (int) $attributes['iconSize'] ) . 'px'
+			: '';
 		$icon_gap   = isset( $attributes['iconGap'] ) ? (int) $attributes['iconGap'] : 4;
 
 		$show_value = ! empty( $attributes['showValue'] );
@@ -130,7 +144,7 @@ if ( ! function_exists( 'airowp_render_star_rating' ) ) {
 		// numbers and colours, so there is no finite class set to emit.
 		$vars = array(
 			'--airo-wp-star-rating-fill'        => $fill . '%',
-			'--airo-wp-star-rating-size'        => max( 1, $icon_size ) . 'px',
+			'--airo-wp-star-rating-size'        => $icon_size,
 			'--airo-wp-star-rating-gap'         => max( 0, $icon_gap ) . 'px',
 			'--airo-wp-star-rating-color'       => $rating_color,
 			'--airo-wp-star-rating-track-color' => $track_color,

@@ -103,6 +103,13 @@ class UpdateMediaMeta extends BaseTool {
 			);
 		}
 
+		if ( ! current_user_can( 'edit_post', $media_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'You do not have permission to edit this media item', 'airo-wp' ),
+			);
+		}
+
 		$update_data    = array( 'ID' => $media_id );
 		$updated_fields = array();
 

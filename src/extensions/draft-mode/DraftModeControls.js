@@ -11,8 +11,6 @@
  * @since 1.4.0
  */
 
-/* global navigator */
-
 import { __ } from '@wordpress/i18n';
 import { useSelect, useDispatch } from '@wordpress/data';
 import {
@@ -28,7 +26,10 @@ import { useHeaderContainer } from './hooks/useHeaderContainer';
 import DraftModeHeaderControl from './components/DraftModeHeaderControl';
 import DraftModeBanner from './components/DraftModeBanner';
 import ErrorModal from './components/ErrorModal';
-import { CreateConfirmModal } from './components/DraftModeModals';
+import {
+	CreateConfirmModal,
+	ConflictConfirmModal,
+} from './components/DraftModeModals';
 
 /**
  * Draft Mode Controls Component
@@ -43,6 +44,7 @@ export default function DraftModeControls() {
 	const [errorMessage, setErrorMessage] = useState(null);
 	const [showErrorModal, setShowErrorModal] = useState(false);
 	const [showCreateConfirm, setShowCreateConfirm] = useState(false);
+	const [retryPublish, setRetryPublish] = useState(null);
 
 	// Find header container for portaling controls.
 	const headerContainer = useHeaderContainer();
@@ -80,7 +82,18 @@ export default function DraftModeControls() {
 		setShowErrorModal(true);
 	}, []);
 
-	usePublishIntercept(postId, status?.is_draft, handlePublishError);
+	// The live page changed since the draft was made: hold the retry until the
+	// author picks "Publish Anyway".
+	const handlePublishConflict = useCallback((retry) => {
+		setRetryPublish(() => retry);
+	}, []);
+
+	usePublishIntercept(
+		postId,
+		status?.is_draft,
+		handlePublishError,
+		handlePublishConflict
+	);
 
 	// Fetch draft status.
 	const fetchStatus = useCallback(async () => {
@@ -92,7 +105,7 @@ export default function DraftModeControls() {
 		try {
 			const result = await getDraftStatus(postId);
 			setStatus(result);
-		} catch (err) {
+		} catch {
 			// Silently fail.
 		} finally {
 			setIsLoading(false);
@@ -182,7 +195,7 @@ export default function DraftModeControls() {
 				err.message !== 'Failed to create draft.'
 			) {
 				messageText = err.message;
-			} else if (!navigator.onLine) {
+			} else if (!window.navigator.onLine) {
 				messageText = __(
 					'Network error. Please check your connection and try again.',
 					'airo-wp'
@@ -237,6 +250,16 @@ export default function DraftModeControls() {
 				isOpen={showErrorModal}
 				message={errorMessage}
 				onClose={() => setShowErrorModal(false)}
+			/>
+
+			<ConflictConfirmModal
+				isOpen={!!retryPublish}
+				onConfirm={() => {
+					const retry = retryPublish;
+					setRetryPublish(null);
+					retry?.();
+				}}
+				onCancel={() => setRetryPublish(null)}
 			/>
 
 			<CreateConfirmModal
