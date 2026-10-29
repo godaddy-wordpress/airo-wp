@@ -146,7 +146,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
+          check-latest: true
           cache: npm
 
       - run: npm ci
@@ -244,7 +245,8 @@ jobs:
           ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
+          check-latest: true
           cache: npm
       - run: npm ci
       - run: npm run lint:php
@@ -260,7 +262,8 @@ jobs:
           ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
+          check-latest: true
           cache: npm
       - run: npm ci
       - run: npm run test:unit:php
@@ -279,7 +282,8 @@ jobs:
           ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
+          check-latest: true
           cache: npm
       - run: npm ci
       - name: Download built artifact

@@ -78,8 +78,12 @@ function airowp_normalize_css_escapes( $css ) {
 	$css = str_replace( "\0", '', $css );
 
 	// Unicode escape: backslash + 1..6 hex digits + optional single whitespace.
+	// "Whitespace" is CSS's, not PCRE's `\s`: CR LF is ONE newline to a browser,
+	// so it goes as a pair, and vertical tab is not whitespace at all. Eating
+	// only the CR of `\75\r\nrl(` left `u\nrl(`, which hid a `url(` the browser
+	// still saw.
 	$css = preg_replace_callback(
-		'/\\\\([0-9a-fA-F]{1,6})\s?/',
+		'/\\\\([0-9a-fA-F]{1,6})(?:\r\n|[ \t\r\n\f])?/',
 		static function ( $matches ) {
 			$codepoint = hexdec( $matches[1] );
 
@@ -257,6 +261,28 @@ function airowp_sanitize_css_color( $value ) {
  */
 function airowp_is_dsg_block( $block_name ) {
 	return strpos( $block_name, 'airo-wp/' ) === 0;
+}
+
+/**
+ * Restrict a container block's tagName to the elements it may render as.
+ *
+ * Section, Row and Grid store their wrapper element as a free-form `tagName`
+ * string in the block comment, and any author can write that comment by hand.
+ * kses never sees it as markup - `img src=x onerror=...` contains no `<` - so
+ * PHP that builds `'<' . $tag` from it writes a live element into the page.
+ * Every such place must pass the value through here first.
+ *
+ * The list mirrors the "HTML Element" options in each block's edit.js and the
+ * `enum` on `tagName` in their block.json files; change all three together.
+ *
+ * @param mixed  $tag      Stored tagName value.
+ * @param string $fallback Element to use when $tag is not allowed.
+ * @return string An allowed element name, or $fallback.
+ */
+function airowp_sanitize_container_tag( $tag, $fallback = 'div' ) {
+	$allowed = array( 'div', 'section', 'article', 'aside', 'header', 'footer', 'main' );
+
+	return is_string( $tag ) && in_array( $tag, $allowed, true ) ? $tag : $fallback;
 }
 
 /**

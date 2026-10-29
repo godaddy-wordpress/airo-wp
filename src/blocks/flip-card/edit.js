@@ -21,6 +21,11 @@ import { DsgoInspectorPanel } from '../../components/shared';
 import { useSelect } from '@wordpress/data';
 import FlipCardPlaceholder from './components/FlipCardPlaceholder';
 
+// Stable references: useSelect compares its result shallowly, so a fresh
+// array on every call re-renders the block on every store change.
+const FACE_ALLOWED = ['airo-wp/flip-card-face'];
+const NONE_ALLOWED = [];
+
 /**
  * Flip Card Edit Component
  *
@@ -56,7 +61,7 @@ export default function FlipCardEdit({ attributes, setAttributes, clientId }) {
 			).length;
 			// Empty array hides the inserter entirely — flip card is at capacity.
 			const allowed =
-				legacyCount + faceCount >= 2 ? [] : ['airo-wp/flip-card-face'];
+				legacyCount + faceCount >= 2 ? NONE_ALLOWED : FACE_ALLOWED;
 			return {
 				allowedBlocks: allowed,
 				hasInnerBlocks: children.length > 0,
