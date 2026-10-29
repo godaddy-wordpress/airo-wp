@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.3
+
+- Updated development and build dependencies to clear security advisories in the toolchain; no change to plugin behaviour
+- Building the plugin from source now requires Node.js 24.18 or later (npm 11.16 or later)
+
 ## 0.4.2
 
 - Security: Google Fonts used in global styles are now only downloaded from Google's own font servers, and only saved as WOFF2 font files; `http://` and protocol-relative Google Fonts links are upgraded to HTTPS and localised too

@@ -1,7 +1,11 @@
 {
   "name": "airo-wp",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": true,
+  "engines": {
+    "node": ">=24.18.0 <25 || >=26",
+    "npm": ">=11.16.0"
+  },
   "files": [
     "airo-wp.php",
     "CHANGELOG.md",
@@ -38,7 +42,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@wordpress/e2e-test-utils-playwright": "^2.1.0",
-    "@wordpress/env": "^11.16.0",
+    "@wordpress/env": "^12.0.0",
     "@wordpress/eslint-plugin": "^27.1.0",
     "@wordpress/icons": "^17.0.0",
     "@wordpress/scripts": "^36.1.0",

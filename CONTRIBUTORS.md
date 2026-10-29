@@ -10,8 +10,8 @@ Airo WP is a **plugin scaffold**: bootstrap, DI container, package loader, Strau
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| Node.js | 20+ | Required |
-| npm | 10+ | Required |
+| Node.js | 24.18+ | Required (latest 24.x LTS recommended). Node 25 is not supported: `@wordpress/scripts` excludes it (`^24.15.0 \|\| >=26`) |
+| npm | 11.16+ | Required (bundled with Node.js 24.18+) |
 | Docker | 24+ | Required by the WordPress test environment |
 | PHP | 7.4+ | Optional — only needed if running Composer on the host |
 | Composer | 2.x | Optional — runs inside the WordPress environment |
