@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.4
+
+- Updated development and build dependencies to clear security advisories in the toolchain; no change to plugin behaviour
+
 ## 0.4.3
 
 - Updated development and build dependencies to clear security advisories in the toolchain; no change to plugin behaviour
