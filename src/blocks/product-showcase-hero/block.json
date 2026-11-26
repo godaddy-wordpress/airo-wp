@@ -4,7 +4,7 @@
 	"name": "airo-wp/product-showcase-hero",
 	"version": "1.0.0",
 	"title": "Product Showcase Hero",
-	"category": "airo-wp",
+	"category": "widgets",
 	"description": "Full-width hero section showcasing a WooCommerce product with large image, price, rating, and add-to-cart action. Requires WooCommerce.",
 	"keywords": [
 		"product",
@@ -13,7 +13,10 @@
 		"woocommerce",
 		"shop",
 		"store",
-		"ecommerce"
+		"ecommerce",
+		"featured product",
+		"best seller",
+		"product launch"
 	],
 	"textdomain": "airo-wp",
 	"icon": "store",

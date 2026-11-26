@@ -4,7 +4,7 @@
 	"name": "airo-wp/form-date-field",
 	"version": "1.0.0",
 	"title": "Date Field",
-	"category": "airo-wp",
+	"category": "widgets",
 	"description": "A date picker input field for forms.",
 	"keywords": [
 		"form",

@@ -30,7 +30,15 @@ import metadata from '../block.json';
 import save from '../save';
 import deprecated, { v3, v4 } from '../deprecated';
 
-setCategories([{ slug: 'airo-wp', title: 'airo-wp' }]);
+setCategories([
+	{ slug: 'airo-wp', title: 'airo-wp' },
+	{ slug: 'text', title: 'Text' },
+	{ slug: 'media', title: 'Media' },
+	{ slug: 'design', title: 'Design' },
+	{ slug: 'widgets', title: 'Widgets' },
+	{ slug: 'theme', title: 'Theme' },
+	{ slug: 'embed', title: 'Embed' },
+]);
 
 registerBlockType(metadata.name, { ...metadata, save, deprecated });
 

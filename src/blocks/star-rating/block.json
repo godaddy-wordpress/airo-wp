@@ -4,14 +4,19 @@
   "name": "airo-wp/star-rating",
   "version": "1.0.0",
   "title": "Star Rating",
-  "category": "airo-wp",
-  "description": "Show a rating as stars — from a fixed value or bound to post meta, ACF or a WooCommerce average rating.",
+  "category": "widgets",
+  "description": "Star rating display from a fixed value or bound to post meta, ACF, or a WooCommerce average rating. Use in testimonials, reviews, and product highlights.",
   "keywords": [
     "rating",
     "stars",
+    "star",
     "review",
+    "reviews",
     "score",
-    "testimonial"
+    "testimonial",
+  	"customer reviews",
+  	"5 stars",
+  	"feedback"
   ],
   "textdomain": "airo-wp",
   "icon": "star-half",

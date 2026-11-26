@@ -4,7 +4,7 @@
 	"name": "airo-wp/product-categories-grid",
 	"version": "1.0.0",
 	"title": "Product Categories Grid",
-	"category": "airo-wp",
+	"category": "widgets",
 	"description": "Display WooCommerce product categories in a visual grid with images, names, and product counts. Requires WooCommerce.",
 	"keywords": [
 		"product",
@@ -13,7 +13,10 @@
 		"woocommerce",
 		"shop",
 		"store",
-		"ecommerce"
+		"ecommerce",
+		"shop by category",
+		"collections",
+		"departments"
 	],
 	"textdomain": "airo-wp",
 	"icon": "products",

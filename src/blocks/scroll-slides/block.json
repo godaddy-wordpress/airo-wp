@@ -4,14 +4,17 @@
 	"name": "airo-wp/scroll-slides",
 	"version": "1.0.0",
 	"title": "Scroll Slides",
-	"category": "airo-wp",
+	"category": "design",
 	"description": "Full-screen scroll-pinned slideshow with crossfading content and navigation",
 	"keywords": [
 		"scroll",
 		"slides",
 		"fullscreen",
 		"pinned",
-		"showcase"
+		"showcase",
+		"storytelling",
+		"product walkthrough",
+		"case study"
 	],
 	"textdomain": "airo-wp",
 	"icon": "images-alt",

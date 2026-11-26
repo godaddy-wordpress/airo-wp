@@ -4,7 +4,7 @@
   "name": "airo-wp/query-pagination",
   "version": "1.0.0",
   "title": "Query Pagination",
-  "category": "airo-wp",
+  "category": "theme",
   "ancestor": ["airo-wp/query"],
   "description": "Pagination controls for the Dynamic Query block. Supports numbered links and Interactivity-API load-more.",
   "keywords": ["pagination", "load more"],

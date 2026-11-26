@@ -19,7 +19,15 @@ import {
 
 const editorSource = readFileSync(resolve(__dirname, '../edit.js'), 'utf8');
 
-setCategories([{ slug: 'airo-wp', title: 'airo-wp' }]);
+setCategories([
+	{ slug: 'airo-wp', title: 'airo-wp' },
+	{ slug: 'text', title: 'Text' },
+	{ slug: 'media', title: 'Media' },
+	{ slug: 'design', title: 'Design' },
+	{ slug: 'widgets', title: 'Widgets' },
+	{ slug: 'theme', title: 'Theme' },
+	{ slug: 'embed', title: 'Embed' },
+]);
 
 if (!getBlockType(metadata.name)) {
 	registerBlockType(metadata.name, { ...metadata, save });

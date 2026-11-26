@@ -4,14 +4,19 @@
 	"name": "airo-wp/modal",
 	"version": "1.0.0",
 	"title": "Modal",
-	"category": "airo-wp",
-	"description": "Create accessible modal dialogs with customizable triggers and content.",
+	"category": "design",
+	"description": "Accessible popup dialog opened by a button, link, or automatic trigger (time, scroll, exit intent). Use for popups, lightboxes, video popups, and signup or offer overlays.",
 	"keywords": [
 		"modal",
 		"popup",
+		"pop up",
 		"dialog",
+		"lightbox",
 		"overlay",
-		"lightbox"
+		"exit intent",
+		"newsletter popup",
+		"announcement",
+		"discount popup"
 	],
 	"textdomain": "airo-wp",
 	"icon": "feedback",

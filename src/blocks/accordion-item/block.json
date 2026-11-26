@@ -4,7 +4,7 @@
 	"name": "airo-wp/accordion-item",
 	"version": "1.0.0",
 	"title": "Accordion Item",
-	"category": "airo-wp",
+	"category": "design",
 	"parent": [
 		"airo-wp/accordion"
 	],

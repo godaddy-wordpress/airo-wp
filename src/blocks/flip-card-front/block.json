@@ -4,7 +4,7 @@
 	"name": "airo-wp/flip-card-front",
 	"version": "1.0.0",
 	"title": "Flip Card Front",
-	"category": "airo-wp",
+	"category": "design",
 	"parent": [
 		"airo-wp/flip-card"
 	],

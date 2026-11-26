@@ -4,7 +4,7 @@
 	"name": "airo-wp/flip-card-back",
 	"version": "1.0.0",
 	"title": "Flip Card Back",
-	"category": "airo-wp",
+	"category": "design",
 	"parent": [
 		"airo-wp/flip-card"
 	],

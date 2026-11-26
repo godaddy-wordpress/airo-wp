@@ -4,13 +4,15 @@
 	"name": "airo-wp/scroll-accordion",
 	"version": "1.0.0",
 	"title": "Scroll Accordion",
-	"category": "airo-wp",
+	"category": "design",
 	"description": "Accordion that reveals items progressively as you scroll down the page",
 	"keywords": [
 		"scroll",
 		"accordion",
 		"sticky",
-		"stacking"
+		"stacking",
+		"step by step",
+		"scrollytelling"
 	],
 	"textdomain": "airo-wp",
 	"icon": "menu-alt2",

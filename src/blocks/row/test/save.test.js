@@ -17,7 +17,15 @@ import {
 import metadata from '../block.json';
 import save from '../save';
 
-setCategories([{ slug: 'airo-wp', title: 'airo-wp' }]);
+setCategories([
+	{ slug: 'airo-wp', title: 'airo-wp' },
+	{ slug: 'text', title: 'Text' },
+	{ slug: 'media', title: 'Media' },
+	{ slug: 'design', title: 'Design' },
+	{ slug: 'widgets', title: 'Widgets' },
+	{ slug: 'theme', title: 'Theme' },
+	{ slug: 'embed', title: 'Embed' },
+]);
 
 registerBlockType(metadata.name, { ...metadata, save });
 

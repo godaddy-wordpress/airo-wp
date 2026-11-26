@@ -4,7 +4,7 @@
 	"name": "airo-wp/table-of-contents",
 	"version": "1.0.0",
 	"title": "Table of Contents",
-	"category": "airo-wp",
+	"category": "design",
 	"description": "Auto-generate a table of contents from page headings with smooth scroll navigation and scroll spy.",
 	"keywords": [
 		"toc",
@@ -12,7 +12,10 @@
 		"navigation",
 		"headings",
 		"anchor",
-		"outline"
+		"outline",
+		"jump links",
+		"on this page",
+		"quick links"
 	],
 	"textdomain": "airo-wp",
 	"icon": "editor-ol",

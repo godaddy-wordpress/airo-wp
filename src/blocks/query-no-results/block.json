@@ -4,7 +4,7 @@
   "name": "airo-wp/query-no-results",
   "version": "1.0.0",
   "title": "No Results",
-  "category": "airo-wp",
+  "category": "theme",
   "ancestor": ["airo-wp/query"],
   "description": "Content shown when the Dynamic Query returns no items.",
   "keywords": ["empty", "no results", "not found", "query", "loop"],

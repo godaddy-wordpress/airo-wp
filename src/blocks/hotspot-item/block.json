@@ -4,7 +4,7 @@
   "name": "airo-wp/hotspot-item",
   "version": "1.0.0",
   "title": "Hotspot Item",
-  "category": "airo-wp",
+  "category": "media",
   "description": "A marker within a Hotspot image.",
   "keywords": ["hotspot", "marker", "pin", "tooltip", "point"],
   "textdomain": "airo-wp",
