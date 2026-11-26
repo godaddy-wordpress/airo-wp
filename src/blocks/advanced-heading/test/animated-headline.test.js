@@ -17,7 +17,15 @@ const editSource = readFileSync(resolve(__dirname, '../edit.js'), 'utf8');
 const styleSource = readFileSync(resolve(__dirname, '../style.scss'), 'utf8');
 const viewSource = readFileSync(resolve(__dirname, '../view.js'), 'utf8');
 
-setCategories([{ slug: 'airo-wp', title: 'airo-wp' }]);
+setCategories([
+	{ slug: 'airo-wp', title: 'airo-wp' },
+	{ slug: 'text', title: 'Text' },
+	{ slug: 'media', title: 'Media' },
+	{ slug: 'design', title: 'Design' },
+	{ slug: 'widgets', title: 'Widgets' },
+	{ slug: 'theme', title: 'Theme' },
+	{ slug: 'embed', title: 'Embed' },
+]);
 
 if (!getBlockType(segmentMetadata.name)) {
 	registerBlockType(segmentMetadata.name, {

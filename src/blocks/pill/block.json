@@ -4,13 +4,18 @@
 	"name": "airo-wp/pill",
 	"version": "1.0.0",
 	"title": "Pill",
-	"category": "airo-wp",
-	"description": "Display text with a rounded background that wraps tightly around content.",
+	"category": "design",
+	"description": "Small rounded label that wraps tightly around its text. Use for eyebrow text above headings, badges, tags, and 'New' or 'Popular' labels.",
 	"keywords": [
 		"pill",
 		"badge",
 		"tag",
-		"label"
+		"label",
+		"eyebrow",
+		"chip",
+		"sale badge",
+		"status",
+		"kicker"
 	],
 	"textdomain": "airo-wp",
 	"icon": "tag",

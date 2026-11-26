@@ -4,7 +4,7 @@
 	"name": "airo-wp/blobs",
 	"version": "1.0.0",
 	"title": "Blobs",
-	"category": "airo-wp",
+	"category": "design",
 	"description": "Create random, unique, and organic-looking blob shapes. Customize with gradients, overlays, and images. Animate with smooth morphing effects.",
 	"keywords": [
 		"blob",
@@ -12,7 +12,9 @@
 		"organic",
 		"morph",
 		"animate",
-		"gradient"
+		"gradient",
+		"decorative background",
+		"abstract shape"
 	],
 	"textdomain": "airo-wp",
 	"icon": "art",

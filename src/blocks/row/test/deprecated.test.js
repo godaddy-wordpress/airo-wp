@@ -23,7 +23,15 @@ import deprecatedWithLayout from '../deprecated';
 // Keep historical-version positional assertions independent of the new snapshot.
 const deprecated = deprecatedWithLayout.slice(1);
 
-setCategories([{ slug: 'airo-wp', title: 'airo-wp' }]);
+setCategories([
+	{ slug: 'airo-wp', title: 'airo-wp' },
+	{ slug: 'text', title: 'Text' },
+	{ slug: 'media', title: 'Media' },
+	{ slug: 'design', title: 'Design' },
+	{ slug: 'widgets', title: 'Widgets' },
+	{ slug: 'theme', title: 'Theme' },
+	{ slug: 'embed', title: 'Embed' },
+]);
 
 registerBlockType(metadata.name, {
 	...metadata,

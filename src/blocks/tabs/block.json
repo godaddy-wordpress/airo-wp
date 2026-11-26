@@ -4,13 +4,18 @@
 	"name": "airo-wp/tabs",
 	"version": "1.0.0",
 	"title": "Tabs",
-	"category": "airo-wp",
-	"description": "Create tabbed content with icons, deep linking, and responsive accordion mode.",
+	"category": "design",
+	"description": "Tabbed content panels with optional icons, deep linking, and accordion mode on mobile. Use to organize features, pricing tiers, product details, or services into switchable tabs.",
 	"keywords": [
 		"tabs",
 		"tabbed",
+		"tab panels",
+		"switcher",
+		"toggle",
 		"accordion",
-		"toggle"
+		"specifications",
+		"specs",
+		"product details"
 	],
 	"textdomain": "airo-wp",
 	"icon": "tickets",

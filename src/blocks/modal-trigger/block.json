@@ -4,14 +4,16 @@
 	"name": "airo-wp/modal-trigger",
 	"version": "1.0.0",
 	"title": "Modal Trigger",
-	"category": "airo-wp",
-	"description": "A button or link that opens a modal dialog.",
+	"category": "design",
+	"description": "Button or link that opens a Modal popup.",
 	"keywords": [
 		"modal",
+		"popup",
 		"button",
 		"trigger",
-		"popup",
-		"open"
+		"open",
+		"watch video",
+		"show more"
 	],
 	"textdomain": "airo-wp",
 	"icon": "button",

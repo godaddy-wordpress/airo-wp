@@ -4,7 +4,7 @@
 	"name": "airo-wp/counter",
 	"version": "1.0.0",
 	"title": "Counter",
-	"category": "airo-wp",
+	"category": "widgets",
 	"description": "Individual counter item with animated number",
 	"keywords": [
 		"counter",

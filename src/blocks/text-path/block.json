@@ -4,13 +4,16 @@
 	"name": "airo-wp/text-path",
 	"version": "1.0.0",
 	"title": "Text Path",
-	"category": "airo-wp",
+	"category": "text",
 	"description": "Flow text along an SVG path.",
 	"keywords": [
 		"text",
 		"svg",
 		"path",
-		"curve"
+		"curve",
+		"curved text",
+		"circular text",
+		"circle"
 	],
 	"textdomain": "airo-wp",
 	"icon": "text",

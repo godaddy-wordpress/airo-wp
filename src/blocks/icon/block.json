@@ -4,13 +4,15 @@
 	"name": "airo-wp/icon",
 	"version": "1.0.0",
 	"title": "Icon",
-	"category": "airo-wp",
-	"description": "Display an inline SVG icon with customizable styling.",
+	"category": "media",
+	"description": "Standalone inline SVG icon with size, color, and background styling. Use as a visual accent above feature titles, in service boxes, or beside text.",
 	"keywords": [
 		"icon",
 		"svg",
 		"symbol",
-		"graphic"
+		"graphic",
+		"feature icon",
+		"pictogram"
 	],
 	"textdomain": "airo-wp",
 	"icon": "star-filled",

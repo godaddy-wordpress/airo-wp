@@ -3,7 +3,7 @@
 	"apiVersion": 3,
 	"name": "airo-wp/slide",
 	"title": "Slide",
-	"category": "airo-wp",
+	"category": "media",
 	"parent": [
 		"airo-wp/slider"
 	],

@@ -4,7 +4,7 @@
 	"name": "airo-wp/tab",
 	"version": "1.0.0",
 	"title": "Tab",
-	"category": "airo-wp",
+	"category": "design",
 	"description": "Individual tab panel within a Tabs block.",
 	"keywords": [
 		"tab",

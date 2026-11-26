@@ -4,7 +4,7 @@
 	"name": "airo-wp/heading-segment",
 	"version": "1.0.0",
 	"title": "Heading Segment",
-	"category": "airo-wp",
+	"category": "text",
 	"parent": [
 		"airo-wp/advanced-heading"
 	],

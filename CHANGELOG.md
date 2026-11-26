@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.5
+
+- Updated development and build dependencies (glob, follow-redirects, and fast-xml-parser).
+
+## 0.4.4
+
+- Updated development and build dependencies to clear security advisories in the toolchain; no change to plugin behaviour
+
 ## 0.4.3
 
 - Updated development and build dependencies to clear security advisories in the toolchain; no change to plugin behaviour

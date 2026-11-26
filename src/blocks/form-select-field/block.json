@@ -4,7 +4,7 @@
 	"name": "airo-wp/form-select-field",
 	"version": "1.0.0",
 	"title": "Select Field",
-	"category": "airo-wp",
+	"category": "widgets",
 	"description": "A dropdown select field for forms.",
 	"keywords": [
 		"form",

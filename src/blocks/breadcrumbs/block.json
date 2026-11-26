@@ -4,13 +4,15 @@
 	"name": "airo-wp/breadcrumbs",
 	"version": "1.0.0",
 	"title": "Breadcrumbs",
-	"category": "airo-wp",
+	"category": "theme",
 	"description": "Display navigation breadcrumbs with Schema.org markup for improved UX and SEO.",
 	"keywords": [
 		"breadcrumb",
 		"navigation",
 		"hierarchy",
-		"seo"
+		"seo",
+		"you are here",
+		"page trail"
 	],
 	"textdomain": "airo-wp",
 	"icon": "arrow-right-alt2",
